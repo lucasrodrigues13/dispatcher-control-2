@@ -1,0 +1,119 @@
+@extends("layouts.app2")
+
+@section('conteudo')
+@can('pode_visualizar_carriers')
+
+<div class="container">
+ <div class="page-inner">
+   <div class="page-header">
+      <h3 class="fw-bold mb-3">Carriers</h3>
+      <ul class="breadcrumbs mb-3">
+        <li class="nav-home"><a href="#"><i class="icon-home"></i></a></li>
+        <li class="separator"><i class="icon-arrow-right"></i></li>
+        <li class="nav-item"><a href="#">Carriers</a></li>
+        <li class="separator"><i class="icon-arrow-right"></i></li>
+        <li class="nav-item"><a href="#">List</a></li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+
+          <!-- Cabeçalho: Pesquisa + Botão "Novo" -->
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+            <div class="col-md-4 mb-2 m-md-0">
+              <form method="GET" action="{{ route('carriers.index') }}" class="d-flex flex-grow-1 me-2">
+                <input type="text" name="search" value="{{ request('search') }}" class="form-control me-2" placeholder="Pesquisar...">
+                <button class="btn btn-outline-primary" type="submit"><i class="fa fa-search"></i></button>
+              </form>
+            </div>
+
+            @can('pode_registrar_carriers')
+            <a href="{{ route('carriers.create') }}" class="btn btn-primary">
+              <i class="fa fa-plus"></i> New
+            </a>
+            @endcan
+          </div>
+
+          <!-- Tabela -->
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th>Company name</th>
+                    <th>Email</th>
+                    <th>Phone number</th>
+                    <th>Address</th>
+                    <th>MC</th>
+                    <th>DOT</th>
+                    <th>EIN</th>
+                    <th>Dispatcher</th>
+                    <th>Attachments</th>
+                    <th class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @forelse($carriers as $carrier)
+                    <tr>
+                      <td>{{ $carrier->company_name }}</td>
+                      <td>{{ $carrier->user->email }}</td>
+                      <td>{{ $carrier->phone }}</td>
+                      <td>{{ $carrier->address }}</td>
+                      <td>{{ $carrier->mc }}</td>
+                      <td>{{ $carrier->dot }}</td>
+                      <td>{{ $carrier->ein }}</td>
+                      <td>{{ optional($carrier->dispatchers->user)->name ?? 'N/A' }}</td>
+                      <td><a href="/attachments/list/{{ $carrier->user_id }}">Attachments</a></td>
+                      <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                          @can('pode_editar_carriers')
+                          <a href="{{ route('carriers.edit', $carrier) }}" class="btn btn-sm btn-primary" title="Editar">
+                            <i class="fa fa-edit"></i>
+                          </a>
+                          @endcan
+
+                          @can('pode_eliminar_carriers')
+                          <form action="{{ route('carriers.destroy', $carrier) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este carrier?')" style="display:inline;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
+                              <i class="fa fa-times"></i>
+                            </button>
+                          </form>
+                          @endcan
+                        </div>
+                      </td>
+                    </tr>
+                  @empty
+                    <tr>
+                      <td colspan="10" class="text-center text-muted">Nenhum carrier encontrado.</td>
+                    </tr>
+                  @endforelse
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Rodapé com paginação -->
+          <div class="card-footer d-flex justify-content-start">
+            {{ $carriers->appends(request()->query())->links('pagination::bootstrap-4') }}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+@else
+  <div class="container py-5">
+    <div class="alert alert-warning text-center">
+      <h4>Sem permissão</h4>
+      <p>Você não tem autorização para acessar a lista de carriers.</p>
+    </div>
+  </div>
+@endcan
+@endsection
