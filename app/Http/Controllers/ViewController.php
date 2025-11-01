@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use App\Models\Customer;
 use App\Models\Carrier;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +29,7 @@ class ViewController extends Controller
                 ->get();
 
             // Carregar funcionários com relacionamento de usuário
-            $employees = Employeer::with(['user:id,name'])
+            $employees = Employee::with(['user:id,name'])
                 ->select('id', 'user_id', 'position', 'dispatcher_id')
                 ->whereHas('user') // Apenas funcionários com usuário associado
                 ->get()
@@ -117,7 +117,7 @@ class ViewController extends Controller
                 }
 
                 try {
-                    $stats['total_employees'] = Employeer::count();
+                    $stats['total_employees'] = Employee::count();
                 } catch (\Exception $e) {
                     Log::warning('Could not count employees: ' . $e->getMessage());
                 }
@@ -321,7 +321,7 @@ class ViewController extends Controller
             'models_count' => [
                 'customers' => $this->safeCount(Customer::class),
                 'carriers' => $this->safeCount(Carrier::class),
-                'employees' => $this->safeCount(Employeer::class),
+                'employees' => $this->safeCount(Employee::class),
                 'drivers' => $this->safeCount(Driver::class),
             ]
         ];

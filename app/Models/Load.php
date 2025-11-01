@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Employeer;
+use App\Models\Employee;
 
 class Load extends Model
 {
@@ -119,7 +119,7 @@ class Load extends Model
      */
     public function employee()
     {
-        return $this->belongsTo(Employeer::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**

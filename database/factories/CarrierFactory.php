@@ -32,7 +32,7 @@ class CarrierFactory extends Factory
             'dot' => 'DOT' . $this->faker->unique()->randomNumber(6),
             'ein' => $this->faker->unique()->randomNumber(9),
             'user_id' => User::inRandomOrder()->first()->id ?? User::factory(),
-              'dispatcher_company_id' => \App\Models\Dispatcher::inRandomOrder()->first()->id ?? \App\Models\Dispatcher::factory(),
+              'dispatcher_id' => \App\Models\Dispatcher::inRandomOrder()->first()->id ?? \App\Models\Dispatcher::factory(),
         ];
     }
 }

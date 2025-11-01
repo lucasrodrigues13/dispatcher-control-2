@@ -60,9 +60,24 @@ class TimeLineChargeController extends Controller
 
    public function create(Request $request)
 {
-    // Carrega os dados auxiliares
-    $carriers = Carrier::with('user')->get();
-    $dispatchers = Dispatcher::with('user')->get();
+    // Buscar dispatcher do usuário logado
+    $dispatcher = Dispatcher::with('user')
+        ->where('user_id', auth()->id())
+        ->first();
+
+    // Carregar carriers e dispatchers filtrados pelo dispatcher do usuário logado
+    if (!$dispatcher) {
+        $carriers = collect();
+        $dispatchers = collect();
+    } else {
+        // Criar coleção com o dispatcher encontrado
+        $dispatchers = collect([$dispatcher]);
+        
+        // Filtra os carriers pelo dispatcher_id
+        $carriers = Carrier::with('user')
+            ->where('dispatcher_id', $dispatcher->id)
+            ->get();
+    }
 
     $totalAmount = 0;
     $loads = collect(); // Inicialmente vazio
@@ -340,8 +355,24 @@ class TimeLineChargeController extends Controller
         $charge = TimeLineCharge::findOrFail($id);
 
         // Dados auxiliares
-        $carriers = Carrier::with('user')->get();
-        $dispatchers = Dispatcher::with('user')->get();
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Carregar carriers e dispatchers filtrados pelo dispatcher do usuário logado
+        if (!$dispatcher) {
+            $carriers = collect();
+            $dispatchers = collect();
+        } else {
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
+            $carriers = Carrier::with('user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
+        }
 
         // Carregamento de filtros
         $dateStart   = $charge->date_start;
@@ -427,8 +458,24 @@ class TimeLineChargeController extends Controller
         $charge = TimeLineCharge::with(['carrier.user', 'dispatcher.user'])->findOrFail($id);
 
         // Dados auxiliares
-        $carriers = Carrier::with('user')->get();
-        $dispatchers = Dispatcher::with('user')->get();
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Carregar carriers e dispatchers filtrados pelo dispatcher do usuário logado
+        if (!$dispatcher) {
+            $carriers = collect();
+            $dispatchers = collect();
+        } else {
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
+            $carriers = Carrier::with('user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
+        }
 
         // Carregamento de filtros
         $dateStart = $charge->date_start;

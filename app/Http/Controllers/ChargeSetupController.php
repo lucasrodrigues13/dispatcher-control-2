@@ -14,9 +14,21 @@ class ChargeSetupController extends Controller
      */
     public function index()
     {
-        //
-        // $invoices = Dispatcher::with('user')->paginate(10);
-        $charges_setup = ChargeSetup::with('carrier.user')->paginate(10);
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
+
+        if (!$dispatcher) {
+            // Retornar paginador vazio quando não há dispatcher
+            $charges_setup = ChargeSetup::with('carrier.user')
+                ->whereRaw('1 = 0') // Query que sempre retorna vazio
+                ->paginate(10);
+        } else {
+            // Filtrar charge setups pelo dispatcher do usuário logado
+            $charges_setup = ChargeSetup::with('carrier.user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->paginate(10);
+        }
+        
         return view('invoice.charge_setup.index', compact('charges_setup'));
     }
 
@@ -25,9 +37,24 @@ class ChargeSetupController extends Controller
      */
     public function create()
     {
-        //
-        $carriers = Carrier::all();
-        $dispatchers = Dispatcher::all();
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Carregar carriers e dispatchers filtrados pelo dispatcher do usuário logado
+        if (!$dispatcher) {
+            $carriers = collect();
+            $dispatchers = collect();
+        } else {
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
+            $carriers = Carrier::with('user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
+        }
 
         return view("invoice.charge_setup.create", compact("carriers", "dispatchers"));
     }
@@ -37,14 +64,26 @@ class ChargeSetupController extends Controller
      */
     public function store(Request $request)
     {
-        // Validar se existe dispatcher para o user logado
-        // $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
 
-        // return $dispatcher;
+        if (!$dispatcher) {
+            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher não encontrado para este usuário.']);
+        }
 
-        // if (!$dispatcher) {
-        //     return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher não encontrado para este usuário.']);
-        // }
+        // Validar se o dispatcher_id do request pertence ao usuário logado
+        if ($request['dispatcher_id'] != $dispatcher->id) {
+            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        }
+
+        // Validar se o carrier pertence ao dispatcher logado
+        $carrier = Carrier::where('id', $request['carrier_id'])
+            ->where('dispatcher_id', $dispatcher->id)
+            ->first();
+
+        if (!$carrier) {
+            return redirect()->back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+        }
 
         $selectedFilters = collect($request->input('filters', []))
                             ->filter(fn($v) => $v == '1')
@@ -53,8 +92,7 @@ class ChargeSetupController extends Controller
 
         $chargeSetup = ChargeSetup::create([
             'carrier_id'           => $request['carrier_id'],
-            //'dispatcher_id'        => $dispatcher->id,
-            'dispatcher_id'        => $request['dispatcher_id'],
+            'dispatcher_id'        => $dispatcher->id,
             'price'                => $request['amount_type'], // ou amount_type se já ajustou
             'charges_setup_array'  => $selectedFilters,
         ]);
@@ -76,9 +114,26 @@ class ChargeSetupController extends Controller
     // Controller: ChargeSetupController.php
     public function edit($id)
     {
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        // Carregar carriers e dispatchers filtrados pelo dispatcher do usuário logado
+        if (!$dispatcher) {
+            $carriers = collect();
+            $dispatchers = collect();
+        } else {
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
+            $carriers = Carrier::with('user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
+        }
+
         $chargeSetup = ChargeSetup::findOrFail($id);
-        $carriers = Carrier::all();
-        $dispatchers = Dispatcher::all();
 
         // Certifique-se de que o campo charges_setup_array está como array
         $selectedFilters = is_array($chargeSetup->charges_setup_array)
@@ -90,16 +145,31 @@ class ChargeSetupController extends Controller
 
     public function update(Request $request, $id)
     {
-        $chargeSetup = ChargeSetup::findOrFail($id);
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
 
-        // Validar se existe dispatcher para o user logado
-        // $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
+        if (!$dispatcher) {
+            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher não encontrado para este usuário.']);
+        }
 
-        // if (!$dispatcher) {
-        //    return redirect()->back()->withErrors([
-        //        'dispatcher_id' => 'Dispatcher not found for the logged-in user.',
-        //    ]);
-        // }
+        // Buscar o charge setup e validar se pertence ao dispatcher logado
+        $chargeSetup = ChargeSetup::where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+
+        // Validar se o dispatcher_id do request pertence ao usuário logado
+        if ($request['dispatcher_id'] != $dispatcher->id) {
+            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        }
+
+        // Validar se o carrier pertence ao dispatcher logado
+        $carrier = Carrier::where('id', $request['carrier_id'])
+            ->where('dispatcher_id', $dispatcher->id)
+            ->first();
+
+        if (!$carrier) {
+            return redirect()->back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+        }
 
         $selectedFilters = collect($request->input('filters', []))
                             ->filter(fn($v) => $v == '1')
@@ -108,8 +178,7 @@ class ChargeSetupController extends Controller
 
         $chargeSetup->update([
             'carrier_id'          => $request['carrier_id'],
-            //'dispatcher_id'       => $dispatcher->id,
-            'dispatcher_id'        => $request['dispatcher_id'],
+            'dispatcher_id'       => $dispatcher->id,
             'price'               => $request['amount_type'],
             'charges_setup_array' => $selectedFilters,
         ]);
@@ -124,11 +193,21 @@ class ChargeSetupController extends Controller
      */
     public function destroy($id)
     {
-        $ChargeSetup = ChargeSetup::findOrFail($id);
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
 
-        $ChargeSetup->delete();
+        if (!$dispatcher) {
+            abort(403, 'Dispatcher não encontrado para este usuário.');
+        }
 
-        return redirect()->route('charges_setups.index');
+        // Buscar o charge setup e validar se pertence ao dispatcher logado
+        $chargeSetup = ChargeSetup::where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+
+        $chargeSetup->delete();
+
+        return redirect()->route('charges_setups.index')->with('success', 'Charge Setup deletado com sucesso.');
     }
 
 // SUBSTITUIR o método getSetupByCarrier por esta versão mais segura:

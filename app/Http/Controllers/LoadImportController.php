@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Imports\LoadsImport;
 use App\Models\Load;
 use App\Models\Dispatcher;
 use App\Models\Carrier;
 use App\Models\Container;
 use App\Repositories\UsageTrackingRepository;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Services\BillingService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
@@ -91,21 +92,33 @@ class LoadImportController extends Controller
      */
     public function create()
     {
-
-        $dispatchers = Dispatcher::with('user')
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
             ->where('user_id', auth()->id())
             ->first();
 
-        if (!$dispatchers) {
+        // Criar coleção com o dispatcher encontrado ou coleção vazia
+        if (!$dispatcher) {
+            $dispatchers = collect();
             $carriers = collect();
+            $employees = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatchers->id)
-                ->paginate(10);
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get(); // Usar get() ao invés de paginate() para formulário
+            
+            // Somente employees vinculados ao dispatcher logado
+            $employees = Employee::with('user', 'dispatcher.user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
         }
+        
         $loads = Load::all();
-        return view('load.create', compact('loads', 'dispatchers', 'carriers')); // resources/views/loads/index.blade.php
+        return view('load.create', compact('loads', 'dispatchers', 'carriers', 'employees'));
     }
 
     /**
@@ -257,20 +270,33 @@ class LoadImportController extends Controller
 
     public function edit($id)
     {
-        $dispatchers = Dispatcher::with('user')
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::with('user')
             ->where('user_id', auth()->id())
             ->first();
 
-        if (!$dispatchers) {
+        // Criar coleção com o dispatcher encontrado ou coleção vazia
+        if (!$dispatcher) {
+            $dispatchers = collect();
             $carriers = collect();
+            $employees = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Criar coleção com o dispatcher encontrado
+            $dispatchers = collect([$dispatcher]);
+            
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatchers->id)
-                ->paginate(10);
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get(); // Usar get() ao invés de paginate() para formulário
+            
+            // Somente employees vinculados ao dispatcher logado
+            $employees = Employee::with('user', 'dispatcher.user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
         }
+        
         $load = Load::findOrFail($id);
-        return view('load.edit', compact('load', 'dispatchers', 'carriers'));
+        return view('load.edit', compact('load', 'dispatchers', 'carriers', 'employees'));
     }
 
     public function update(Request $request, $id)
@@ -418,9 +444,9 @@ class LoadImportController extends Controller
         if (!$dispatchers) {
             $carriers = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatchers->id)
+                ->where('dispatcher_id', $dispatchers->id)
                 ->paginate(10);
         }
 
@@ -428,7 +454,7 @@ class LoadImportController extends Controller
             $employees = collect();
         } else {
             // Somente employees vinculados ao dispatcher logado
-            $employees = Employeer::with('user', 'dispatcher.user')
+            $employees = Employee::with('user', 'dispatcher.user')
                 ->where('dispatcher_id', $dispatchers->id)
                 ->get(); // <- coleção (NÃO paginate) para popular os selects
         }
@@ -506,9 +532,9 @@ class LoadImportController extends Controller
         if (!$dispatchers) {
             $carriers = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatchers->id)
+                ->where('dispatcher_id', $dispatchers->id)
                 ->paginate(10);
         }
 
@@ -516,7 +542,7 @@ class LoadImportController extends Controller
             $employees = collect();
         } else {
             // Somente employees vinculados ao dispatcher logado
-            $employees = Employeer::with('user', 'dispatcher.user')
+            $employees = Employee::with('user', 'dispatcher.user')
                 ->where('dispatcher_id', $dispatchers->id)
                 ->get(); // <- coleção (NÃO paginate) para popular os selects
         }
@@ -565,9 +591,9 @@ class LoadImportController extends Controller
         if (!$dispatchers) {
             $carriers = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatchers->id)
+                ->where('dispatcher_id', $dispatchers->id)
                 ->paginate(10);
         }
 

@@ -6,6 +6,7 @@ use App\Models\Deal;
 use App\Models\Dispatcher;
 use App\Models\Carrier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DealController extends Controller
 {
@@ -14,7 +15,16 @@ class DealController extends Controller
      */
     public function index()
     {
-        $deals = Deal::with(['dispatcher.user', 'carrier.user'])->paginate(10);
+        // Buscar apenas deals do dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            $deals = collect();
+        } else {
+            $deals = Deal::with(['dispatcher.user', 'carrier.user'])
+                ->where('dispatcher_id', $dispatcher->id)
+                ->paginate(10);
+        }
 
         return view('deal.index', compact('deals'));
     }
@@ -24,8 +34,21 @@ class DealController extends Controller
      */
     public function create()
     {
-        $dispatchers = Dispatcher::with("user")->get();
-        $carriers = Carrier::with("user")->get();
+        // Buscar apenas o dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            $dispatchers = collect();
+            $carriers = collect();
+        } else {
+            $dispatchers = collect([$dispatcher->load('user')]);
+            
+            // Buscar apenas carriers do dispatcher logado
+            $carriers = Carrier::with('user')
+                ->where('dispatcher_id', $dispatcher->id)
+                ->get();
+        }
+        
         return view('deal.create', compact('dispatchers', 'carriers'));
     }
 
@@ -34,11 +57,32 @@ class DealController extends Controller
      */
     public function store(Request $request)
     {
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            return back()->withErrors(['error' => 'Dispatcher não encontrado para este usuário.'])->withInput();
+        }
+
         $validated = $request->validate([
             'dispatcher_id' => 'required|exists:dispatchers,id',
             'carrier_id' => 'required|exists:carriers,id',
             'value' => 'required|numeric|min:0',
         ]);
+
+        // Validar se o dispatcher pertence ao usuário logado
+        if ($validated['dispatcher_id'] != $dispatcher->id) {
+            return back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        }
+
+        // Validar se o carrier pertence ao dispatcher
+        $carrier = Carrier::where('id', $validated['carrier_id'])
+            ->where('dispatcher_id', $dispatcher->id)
+            ->first();
+
+        if (!$carrier) {
+            return back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+        }
 
         // Verificar se já existe o vínculo
         $exists = Deal::where('dispatcher_id', $validated['dispatcher_id'])
@@ -54,8 +98,6 @@ class DealController extends Controller
 
         // Redirecionar com sucesso (opcional)
         return redirect()->back()->with('success', 'Deal criado com sucesso.');
-
-        // return redirect()->route('deals.index')->with('success', 'Negociação criada com sucesso!');
     }
 
     /**
@@ -63,7 +105,19 @@ class DealController extends Controller
      */
     public function show(string $id)
     {
-        $deal = Deal::with(['dispatcher', 'carrier'])->findOrFail($id);
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            abort(403, 'Dispatcher não encontrado para este usuário.');
+        }
+
+        // Buscar apenas deal do dispatcher logado
+        $deal = Deal::with(['dispatcher', 'carrier'])
+            ->where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+            
         return view('deal.show', compact('deal'));
     }
 
@@ -72,9 +126,26 @@ class DealController extends Controller
      */
     public function edit(string $id)
     {
-        $deal = Deal::findOrFail($id);
-        $dispatchers = Dispatcher::with("user")->get();
-        $carriers = Carrier::with("user")->get();
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            abort(403, 'Dispatcher não encontrado para este usuário.');
+        }
+
+        // Buscar apenas deal do dispatcher logado
+        $deal = Deal::where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+        
+        // Buscar apenas o dispatcher do usuário logado
+        $dispatchers = collect([$dispatcher->load('user')]);
+        
+        // Buscar apenas carriers do dispatcher logado
+        $carriers = Carrier::with('user')
+            ->where('dispatcher_id', $dispatcher->id)
+            ->get();
+        
         return view('deal.edit', compact('deal', 'dispatchers', 'carriers'));
     }
 
@@ -83,13 +154,38 @@ class DealController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            return back()->withErrors(['error' => 'Dispatcher não encontrado para este usuário.'])->withInput();
+        }
+
         $validated = $request->validate([
             'dispatcher_id' => 'required|exists:dispatchers,id',
             'carrier_id' => 'required|exists:carriers,id',
             'value' => 'required|numeric|min:0',
         ]);
 
-        $deal = Deal::findOrFail($id);
+        // Buscar apenas deal do dispatcher logado
+        $deal = Deal::where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+
+        // Validar se o dispatcher pertence ao usuário logado
+        if ($validated['dispatcher_id'] != $dispatcher->id) {
+            return back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        }
+
+        // Validar se o carrier pertence ao dispatcher
+        $carrier = Carrier::where('id', $validated['carrier_id'])
+            ->where('dispatcher_id', $dispatcher->id)
+            ->first();
+
+        if (!$carrier) {
+            return back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+        }
+
         $deal->update($validated);
 
         return redirect()->route('deals.index')->with('success', 'Negociação atualizada com sucesso!');
@@ -100,7 +196,18 @@ class DealController extends Controller
      */
     public function destroy(string $id)
     {
-        $deal = Deal::findOrFail($id);
+        // Buscar dispatcher do usuário logado
+        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        
+        if (!$dispatcher) {
+            abort(403, 'Dispatcher não encontrado para este usuário.');
+        }
+
+        // Buscar apenas deal do dispatcher logado
+        $deal = Deal::where('id', $id)
+            ->where('dispatcher_id', $dispatcher->id)
+            ->firstOrFail();
+            
         $deal->delete();
 
         return redirect()->route('deals.index')->with('success', 'Negociação removida com sucesso!');

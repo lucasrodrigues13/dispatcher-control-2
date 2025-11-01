@@ -23,7 +23,7 @@ use App\Models\Carrier;
 use App\Models\Customer;
 use App\Models\Driver;
 use App\Models\Dispatcher;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Comission;
 use App\Models\Deal;
 use App\Models\Subscription;
@@ -70,7 +70,7 @@ class ReportController extends Controller
             // For dropdowns
             'customers' => Customer::all(),
             'carriers' => Carrier::all(),
-            'employees' => Employeer::all(),
+            'employees' => Employee::all(),
         ];
 
         return view('reports.index', $data);
@@ -86,7 +86,7 @@ class ReportController extends Controller
             return $query->where('carrier_id', $carrierId);
         })->count();
 
-        $employeeCount = Employeer::count();
+        $employeeCount = Employee::count();
 
         $carrierCount = Carrier::when($carrierId, function($query, $carrierId) {
             return $query->where('id', $carrierId);

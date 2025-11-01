@@ -26,7 +26,6 @@ class UsageTrackingRepository
     public function checkLimits(User $user, string $resourceType)
     {
         $usage = $this->getCurrentUsage($user);
-        dd($usage);
         $plan = $user->subscription && $user->subscription->plan ? $user->subscription->plan : null;
 
         if (!$plan) {

@@ -566,7 +566,7 @@
                 <option value="" selected>Filter Employee</option>
                 @foreach($employees as $item)
                   <option value="{{ $item->id }}" {{ request('employee_id') == $item->id ? 'selected' : '' }}>
-                    {{ $item->user->name }}
+                    {{ $item->name }}
                   </option>
                 @endforeach
               </select>

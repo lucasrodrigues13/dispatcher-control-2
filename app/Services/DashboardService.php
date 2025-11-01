@@ -7,7 +7,7 @@ use App\Models\Load;
 use App\Models\TimeLineCharge;
 use App\Models\Customer;
 use App\Models\Driver;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Carrier;
 
 class DashboardService

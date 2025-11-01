@@ -9,7 +9,8 @@ docs/
 ├── README.md (este arquivo)
 ├── analises/
 │   ├── ANALISE_REGRAS_NEGOCIO.md
-│   └── PROBLEMAS_FILTRAGEM_CONTEXTO_USUARIO.md
+│   ├── PROBLEMAS_FILTRAGEM_CONTEXTO_USUARIO.md
+│   └── MODELS_E_MIGRATIONS_FALTANTES.md
 └── propostas/
     └── PROPOSTA_SISTEMA_PLANOS_CUSTOMIZADOS.md
 ```
@@ -21,6 +22,8 @@ Documentos que analisam requisitos, regras de negócio e identificam inconsistê
 - **`ANALISE_REGRAS_NEGOCIO.md`** - Análise detalhada das regras de negócio fornecidas pelo stakeholder, incluindo identificação de contradições e pontos que precisam de esclarecimento.
 
 - **`PROBLEMAS_FILTRAGEM_CONTEXTO_USUARIO.md`** - Análise completa de problemas de filtragem onde usuários veem dados de outros usuários ao invés de apenas seus próprios dados. Lista todos os controllers e métodos afetados.
+
+- **`MODELS_E_MIGRATIONS_FALTANTES.md`** - Análise do dump SQL comparado com os models e migrations existentes. Identifica quais migrations faltam e quais models precisam de ajustes.
 
 ### 💡 Propostas (`propostas/`)
 

@@ -9,7 +9,7 @@ use App\Models\Load;
 use App\Models\Dispatcher;
 use App\Models\Carrier;
 use App\Models\Container;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Services\BillingService;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -358,7 +358,7 @@ class LoadImportController extends Controller
         return 1;
         $dispatchers = Dispatcher::with("user")->get();
         $carriers = Carrier::with("user")->get();
-        $employees = Employeer::with("user")->get();
+        $employees = Employee::with("user")->get();
         $loads = Load::paginate(10);
         return view('load.index', compact('loads', 'dispatchers', 'carriers', 'employees')); // resources/views/loads/index.blade.php
     }

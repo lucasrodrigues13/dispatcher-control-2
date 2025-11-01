@@ -31,12 +31,12 @@ class Carrier extends Model
         'dot',
         'ein',
         'user_id',
-        'dispatcher_company_id',
+        'dispatcher_id',
     ];
 
     public function dispatchers()
     {
-        return $this->belongsTo(Dispatcher::class, 'dispatcher_company_id');
+        return $this->belongsTo(Dispatcher::class, 'dispatcher_id');
     }
 
     public function user()

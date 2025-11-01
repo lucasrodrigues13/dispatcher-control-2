@@ -30,6 +30,6 @@ class Comission extends Model
 
     public function employee()
     {
-        return $this->belongsTo(Employeer::class);
+        return $this->belongsTo(Employee::class);
     }
 }

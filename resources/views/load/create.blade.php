@@ -74,7 +74,7 @@
                                         <option value="" disabled selected>Select Carrier</option>
                                         @foreach($carriers as $item)
                                         <option value="{{ $item->id }}">
-                                            {{ $item->user ? $item->user->name : ($item->name ?? 'User #' . $item->id) }}
+                                            {{ $item->company_name }}
                                         </option>
                                         @endforeach
                                     </select>

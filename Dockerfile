@@ -10,12 +10,15 @@ RUN apk add mysql-client mariadb-connector-c
 COPY laravel-nginx.conf /opt/docker/etc/nginx/vhost.common.d/laravel-nginx.conf
 
 # Configure Xdebug 3.x for debugging
+# Tente com 'yes' primeiro. Se não funcionar, mude para 'trigger' e use cookie XDEBUG_SESSION
 RUN echo "xdebug.mode=debug" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
     echo "xdebug.start_with_request=yes" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
+    echo "xdebug.discover_client_host=false" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
     echo "xdebug.client_host=host.docker.internal" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
     echo "xdebug.client_port=9003" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
     echo "xdebug.log=/var/log/xdebug.log" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
-    echo "xdebug.log_level=0" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null
+    echo "xdebug.log_level=7" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null && \
+    echo "xdebug.connect_timeout_ms=200" | tee -a /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini > /dev/null
 
 RUN echo "post_max_size=120M" | tee -a /usr/local/etc/php/conf.d/98-webdevops.ini > /dev/null && \
     echo "upload_max_filesize=120M" | tee -a /usr/local/etc/php/conf.d/98-webdevops.ini > /dev/null

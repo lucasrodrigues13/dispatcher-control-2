@@ -32,7 +32,7 @@ class DriverController extends Controller
             $drivers = collect();
         } else {
             // Busca os carriers do dispatcher
-            $carriers = Carrier::where('dispatcher_company_id', $dispatcher->id)->pluck('id');
+            $carriers = Carrier::where('dispatcher_id', $dispatcher->id)->pluck('id');
 
             // Filtra os drivers pelos carriers do dispatcher
             $drivers = Driver::with(['user', 'carrier'])
@@ -60,7 +60,7 @@ class DriverController extends Controller
         $carriers = [];
         if ($dispatcher) {
             $carriers = Carrier::with('user')
-                ->where('dispatcher_company_id', $dispatcher->id)
+                ->where('dispatcher_id', $dispatcher->id)
                 ->get();
         }
 

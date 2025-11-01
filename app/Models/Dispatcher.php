@@ -38,14 +38,14 @@ class Dispatcher extends Model
      */
     public function carriers()
     {
-        return $this->hasMany(Customer::class, 'dispatcher_company_id');
+        return $this->hasMany(Carrier::class, 'dispatcher_id');
     }
 
     /**
-     * Relacionamento com os funcionários (caso precise criar isso futuramente).
+     * Relacionamento com os funcionários (employees).
      */
     public function employees()
     {
-        return $this->hasMany(Employee::class);
+        return $this->hasMany(Employee::class, 'dispatcher_id');
     }
 }

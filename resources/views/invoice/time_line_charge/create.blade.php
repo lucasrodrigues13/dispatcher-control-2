@@ -720,7 +720,7 @@
                             <div class="row mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">Dispatcher <span class="text-danger">*</span></label>
-                                    <select name="dispatcher_id" class="form-select form-select-lg" required>
+                                    <select name="dispatcher_id" class="form-select" required>
                                         <option value="">Select Dispatcher</option>
                                         @foreach ($dispatchers as $dispatcher)
                                             <option value="{{ $dispatcher->id }}">
@@ -732,14 +732,14 @@
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">Carrier</label>
                                     @if(request('carrier_id') === 'all')
-                                        <input type="text" class="form-control form-select-lg" readonly value="All Carriers">
+                                        <input type="text" class="form-control" readonly value="All Carriers">
                                     @else
                                         @php
                                             $selectedCarrier = $carriers->firstWhere('id', request('carrier_id'));
                                         @endphp
                                         <input type="text"
                                             id="carrier-display-field"
-                                            class="form-control form-select-lg"
+                                            class="form-control"
                                             readonly
                                             value="Select a Carrier">
                                     @endif
@@ -749,7 +749,7 @@
                                     <input type="date"
                                            name="due_date"
                                            id="due_date"
-                                           class="form-control form-control-lg"
+                                           class="form-control"
                                            required
                                            min="{{ date('Y-m-d') }}"
                                            value="{{ date('Y-m-d', strtotime('+30 days')) }}">
@@ -761,7 +761,7 @@
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Payment Terms</label>
-                                    <select name="payment_terms" class="form-select form-select-lg">
+                                    <select name="payment_terms" class="form-select">
                                         <option value="">Select Payment Terms</option>
                                         <option value="net_15">Net 15 days</option>
                                         <option value="net_30" selected>Net 30 days</option>

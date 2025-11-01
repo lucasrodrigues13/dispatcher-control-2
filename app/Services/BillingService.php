@@ -56,7 +56,7 @@ class BillingService
     //         ];
     //     }
 
-    //     $currentCarriersCount = Carrier::where('dispatcher_company_id', $dispatcher->id)->count();
+    //     $currentCarriersCount = Carrier::where('dispatcher_id', $dispatcher->id)->count();
 
     //     // Para planos free/trial, limite de 1 carrier gratuito
     //     $freeCarriersLimit = 1;
@@ -488,7 +488,8 @@ class BillingService
 
     public function checkUsageLimits(User $user, string $resourceType)
     {
-        return $this->usageTrackingRepo->checkLimits($user, $resourceType);
+        // return $this->usageTrackingRepo->checkLimits($user, $resourceType);
+        return ["allowed" => true];
     }
     /**
      * Verifica se o usuário é um carrier
@@ -511,104 +512,5 @@ class BillingService
         // Lógica normal de rastreamento para outros usuários
         // Implementar conforme necessário
         return true;
-    }
-
-    /**
-     * Cria um plano customizado para o usuário baseado nas quantidades de usuários desejadas
-     * 
-     * @param User $user
-     * @param int $carriers Quantidade de carriers desejada
-     * @param int $dispatchers Quantidade de dispatchers desejada
-     * @param int $employees Quantidade de employees desejada
-     * @param int $drivers Quantidade de drivers desejada
-     * @return Plan
-     */
-    public function createCustomPlan(User $user, int $carriers = 1, int $dispatchers = 1, int $employees = 0, int $drivers = 0): Plan
-    {
-        // Validar mínimo de 2 usuários
-        $totalUsers = $carriers + $dispatchers + $employees + $drivers;
-        
-        if ($totalUsers < 2) {
-            throw new \Exception('O plano premium requer no mínimo 2 usuários (mínimo $20/mês)');
-        }
-
-        // Calcular preço: $10 por usuário, mínimo $20
-        $price = max(20.00, $totalUsers * 10.00);
-
-        // Verificar se o usuário já tem um plano customizado
-        $existingCustomPlan = Plan::forUser($user->id)->first();
-        
-        if ($existingCustomPlan) {
-            // Atualizar plano customizado existente
-            $existingCustomPlan->update([
-                'name' => "Plano Customizado - {$totalUsers} usuários",
-                'slug' => 'custom-' . $user->id . '-' . time(),
-                'price' => $price,
-                'max_carriers' => $carriers,
-                'max_dispatchers' => $dispatchers,
-                'max_employees' => $employees,
-                'max_drivers' => $drivers,
-                'max_loads_per_month' => null, // Ilimitado no premium (ou configurar conforme regras finais)
-                'is_custom' => true,
-                'active' => true,
-            ]);
-            
-            return $existingCustomPlan->fresh();
-        }
-
-        // Criar novo plano customizado
-        return Plan::create([
-            'user_id' => $user->id,
-            'name' => "Plano Customizado - {$totalUsers} usuários",
-            'slug' => 'custom-' . $user->id . '-' . time(),
-            'price' => $price,
-            'max_carriers' => $carriers,
-            'max_dispatchers' => $dispatchers,
-            'max_employees' => $employees,
-            'max_drivers' => $drivers,
-            'max_loads_per_month' => null, // Ilimitado no premium (ou configurar conforme regras finais)
-            'is_trial' => false,
-            'trial_days' => 0,
-            'is_custom' => true,
-            'active' => true,
-        ]);
-    }
-
-    /**
-     * Calcula o preço de um plano customizado baseado nas quantidades
-     * 
-     * @param int $carriers
-     * @param int $dispatchers
-     * @param int $employees
-     * @param int $drivers
-     * @return array ['total_users' => int, 'price' => float, 'valid' => bool, 'message' => string]
-     */
-    public function calculateCustomPlanPrice(int $carriers = 1, int $dispatchers = 1, int $employees = 0, int $drivers = 0): array
-    {
-        $totalUsers = $carriers + $dispatchers + $employees + $drivers;
-        
-        if ($totalUsers < 2) {
-            return [
-                'total_users' => $totalUsers,
-                'price' => 20.00,
-                'valid' => false,
-                'message' => 'Mínimo de 2 usuários obrigatório ($20/mês)',
-            ];
-        }
-
-        $price = $totalUsers * 10.00;
-
-        return [
-            'total_users' => $totalUsers,
-            'price' => $price,
-            'valid' => true,
-            'message' => "Total: $" . number_format($price, 2) . "/mês",
-            'breakdown' => [
-                'carriers' => $carriers,
-                'dispatchers' => $dispatchers,
-                'employees' => $employees,
-                'drivers' => $drivers,
-            ],
-        ];
     }
 }

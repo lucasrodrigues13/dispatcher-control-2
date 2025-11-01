@@ -29,9 +29,9 @@ class CarrierController extends Controller
         if (!$dispatcher) {
             $carriers = collect();
         } else {
-            // Filtra os carriers pelo dispatcher_company_id
+            // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_company_id', $dispatcher->id)
+                ->where('dispatcher_id', $dispatcher->id)
                 ->paginate(10);
         }
 
@@ -77,15 +77,15 @@ class CarrierController extends Controller
             'is_auto_hauler'   => 'nullable|boolean',
             'is_towing'        => 'nullable|boolean',
             'is_driveaway'     => 'nullable|boolean',
-            'dispatcher_company_id' => 'nullable|exists:dispatchers,id',
+            'dispatcher_id' => 'nullable|exists:dispatchers,id',
         ]);
 
         // 2) Preenche dispatcher somente após passar no usage
-        if (empty($validated['dispatcher_company_id'])) {
+        if (empty($validated['dispatcher_id'])) {
             $authUser = Auth::user();
             $userDispatcher = Dispatcher::where('user_id', $authUser->id)->first();
             if ($userDispatcher) {
-                $validated['dispatcher_company_id'] = $userDispatcher->id;
+                $validated['dispatcher_id'] = $userDispatcher->id;
             }
         }
 
@@ -122,7 +122,7 @@ class CarrierController extends Controller
             'mc'               => $validated['mc'] ?? null,
             'dot'              => $validated['dot'] ?? null,
             'ein'              => $validated['ein'] ?? null,
-            'dispatcher_company_id' => $validated['dispatcher_company_id'],
+            'dispatcher_id' => $validated['dispatcher_id'],
         ]);
 
         // 6) Contabiliza uso
@@ -196,7 +196,7 @@ class CarrierController extends Controller
             'mc' => 'nullable|string|max:50',
             'dot' => 'nullable|string|max:50',
             'ein' => 'nullable|string|max:50',
-            'dispatcher_company_id' => 'required|exists:dispatchers,id',
+            'dispatcher_id' => 'required|exists:dispatchers,id',
 
             // Dados do usuário
             'name' => 'required|string|max:255',
@@ -242,7 +242,7 @@ class CarrierController extends Controller
                 'mc' => $validatedData['mc'] ?? $carrier->mc,
                 'dot' => $validatedData['dot'] ?? $carrier->dot,
                 'ein' => $validatedData['ein'] ?? $carrier->ein,
-                'dispatcher_company_id' => $validatedData['dispatcher_company_id'],
+                'dispatcher_id' => $validatedData['dispatcher_id'],
             ]);
 
             // Verificar se tem assinatura unlimited, se não tiver, criar

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Dispatcher;
 use App\Models\User;
 use App\Repositories\UsageTrackingRepository;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
 
-class EmployeerController extends Controller
+class EmployeeController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -31,7 +31,7 @@ class EmployeerController extends Controller
             $employeers = collect();
         } else {
             // Filtra os employees pelo dispatcher_id
-            $employeers = Employeer::with('user', 'dispatcher.user')
+            $employeers = Employee::with('user', 'dispatcher.user')
                 ->where('dispatcher_id', $dispatchers->id)
                 ->paginate(10);
         }
@@ -65,7 +65,7 @@ class EmployeerController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'dispatcher_company_id' => 'required|exists:dispatchers,id',
+            'dispatcher_id' => 'required|exists:dispatchers,id',
             'phone' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
             'ssn_tax_id' => 'nullable|string|max:255',
@@ -94,9 +94,9 @@ class EmployeerController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        Employeer::create([
+        Employee::create([
             'user_id'       => $user->id,
-            'dispatcher_id' => $request->dispatcher_company_id,
+            'dispatcher_id' => $request->dispatcher_id,
             'phone'         => $request->phone ?? null,
             'position'      => $request->position ?? null,
             'ssn_tax_id'    => $request->ssn_tax_id ?? null,
@@ -122,13 +122,13 @@ class EmployeerController extends Controller
      */
     public function edit($id)
     {
-        $employee    = Employeer::with('user')->findOrFail($id);
+        $employee    = Employee::with('user')->findOrFail($id);
         $dispatchers = Dispatcher::with('user')->get();
         return view('dispatcher.employeer.edit', compact('employee', 'dispatchers'));
     }
 
     public function getEmployee($id) {
-        $employees    = Employeer::with('user')->where("dispatcher_id", $id)->get();
+        $employees    = Employee::with('user')->where("dispatcher_id", $id)->get();
 
         return response()->json($employees);
     }
@@ -138,7 +138,7 @@ class EmployeerController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $employee = Employeer::findOrFail($id);
+        $employee = Employee::findOrFail($id);
         $user     = $employee->user;
 
         // Validação
@@ -147,7 +147,7 @@ class EmployeerController extends Controller
             'name'                  => 'required|string|max:255',
             'email'                 => "required|email|unique:users,email,{$user->id}",
             'password'              => 'nullable|string|min:8|confirmed',
-            // employeer
+            // employee
             'dispatcher_id'         => 'required|exists:dispatchers,id',
             'phone'                 => 'nullable|string|max:255',
             'position'              => 'nullable|string|max:255',
@@ -163,7 +163,7 @@ class EmployeerController extends Controller
                 : $user->password,
         ]);
 
-        // Atualiza employeer
+        // Atualiza employee
         $employee->update([
             'dispatcher_id' => $data['dispatcher_id'],
             'phone'         => $data['phone'] ?? null,
@@ -181,7 +181,7 @@ class EmployeerController extends Controller
      */
     public function destroy($id)
     {
-        $employee = Employeer::findOrFail($id);
+        $employee = Employee::findOrFail($id);
         // opcional: você pode querer deletar também o usuário associado:
         // $employee->user()->delete();
         $employee->delete();
@@ -191,3 +191,4 @@ class EmployeerController extends Controller
             ->with('success', 'Employee removido com sucesso.');
     }
 }
+

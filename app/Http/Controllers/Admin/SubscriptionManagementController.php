@@ -137,7 +137,7 @@ class SubscriptionManagementController extends Controller
                 // Adicionar carriers relacionados a este dispatcher
                 $relatedCarriers = $users->filter(function($u) use ($user) {
                     return $u->hasRole('Carrier') && 
-                           $u->carriers->where('dispatcher_company_id', $user->dispatchers->first()->id ?? null)->count() > 0;
+                           $u->carriers->where('dispatcher_id', $user->dispatchers->first()->id ?? null)->count() > 0;
                 });
                 
                 foreach ($relatedCarriers as $carrier) {

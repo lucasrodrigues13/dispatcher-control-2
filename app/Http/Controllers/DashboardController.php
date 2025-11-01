@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Carrier;
 use App\Models\Driver;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Load;
 use App\Models\Plan;
 
@@ -19,7 +19,7 @@ class DashboardController extends Controller
         //
         $total_carriers = Carrier::count();
         $total_drivers = Driver::count();
-        $total_employes = Employeer::count();
+        $total_employes = Employee::count();
         $total_loads = Load::count();
 
         $carriers = Carrier::with('user')->get();

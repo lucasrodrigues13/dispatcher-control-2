@@ -54,8 +54,8 @@
                 <tbody>
                   @forelse($employeers as $item)
                     <tr>
-                      <td>{{ $item->user ? $item->user->name : 'N/A' }}</td>
-                      <td>{{ $item->user->email }}</td>
+                      <td>{{ $item->name ?? 'N/A' }}</td>
+                      <td>{{ $item->email ?? 'N/A' }}</td>
                       <td>{{ $item->phone ?? 'N/A' }}</td>
                       <td>{{ $item->position ?? 'N/A' }}</td>
                       <td>{{ $item->ssn_tax_id ?? 'N/A' }}</td>

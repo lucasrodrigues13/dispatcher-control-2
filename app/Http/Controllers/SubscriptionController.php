@@ -25,9 +25,7 @@ class SubscriptionController extends Controller
     {
         $user         = auth()->user();
         $subscription = $user->subscription;
-        // Buscar apenas planos globais (não customizados)
-        $plans = Plan::global()
-            ->where('active', true)
+        $plans        = Plan::where('active', true)
             ->where('is_trial', false)
             ->get();
 
@@ -39,10 +37,7 @@ class SubscriptionController extends Controller
     {
         $user                 = auth()->user();
         $currentSubscription  = $user->subscription;
-        // Buscar apenas planos globais (não customizados)
-        $plans = Plan::global()
-            ->where('active', true)
-            ->get();
+        $plans                = Plan::where('active', true)->get();
 
         return view('subscription.plans', compact('plans', 'currentSubscription'));
     }

@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use App\Models\Customer;
 use App\Models\Carrier;
 use App\Models\Driver;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Load;
 use App\Models\TimeLineCharge;
 use App\Models\User;
@@ -152,7 +152,7 @@ class DashboardTestDataSeeder extends Seeder
         ];
 
         foreach ($names as $index => $name) {
-            $employee = Employeer::firstOrCreate([
+            $employee = Employee::firstOrCreate([
                 'user_id' => $user->id,
                 'phone' => '555-' . str_pad($index + 3000, 4, '0', STR_PAD_LEFT)
             ], [

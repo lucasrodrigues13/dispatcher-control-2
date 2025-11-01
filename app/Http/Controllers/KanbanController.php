@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Carrier;
 use App\Models\Container;
 use App\Models\Dispatcher;
-use App\Models\Employeer;
+use App\Models\Employee;
 use App\Models\Load;
 use Illuminate\Http\Request;
 
@@ -171,7 +171,7 @@ public function kanbaFilter(Request $request)
         ->where('user_id', auth()->id())
         ->first();
     $carriers = Carrier::with("user")->get();
-    $employees = Employeer::with("user")->get();
+    $employees = Employee::with("user")->get();
     $loads = $query->orderByDesc('id')->paginate(50);
 
     $containers = Container::with(['containerLoads.loadItem'])->get();
@@ -188,7 +188,7 @@ public function kanbaMode()
         ->where('user_id', auth()->id())
         ->first();
     $carriers = Carrier::with("user")->get();
-    $employees = Employeer::with("user")->get();
+    $employees = Employee::with("user")->get();
     $loads = Load::where("status_move", "no_moved")->paginate(10);
 
     $containers = Container::with(['containerLoads.loadItem'])->get();

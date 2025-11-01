@@ -1,16 +1,16 @@
 <?php
 
+use App\Http\Controllers\CommissionController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DispatcherController;
-use App\Http\Controllers\EmployeerController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\CarrierController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\BrokerController;
 use App\Http\Controllers\AttachementController;
 use App\Http\Controllers\DealController;
-use App\Http\Controllers\ComissionController;
 use App\Http\Controllers\LoadImportController;
 use App\Http\Controllers\ContainerController;
 use App\Http\Controllers\ContainerLoadController;
@@ -24,15 +24,11 @@ use App\Http\Controllers\TimeLineChargeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\relatoriosController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\ViewController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
-use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -79,7 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 
     Route::get('/profile', function () {
-    return view('profile', ['user' => auth()->user()]);
+        return view('profile', ['user' => auth()->user()]);
     })->name('profile');
 
     // Rota de logout explícita (opcional)
@@ -94,14 +90,14 @@ Route::middleware('auth')->group(function () {
 // Routas
 Route::middleware(['auth', 'verified'])->get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
-Route::get('/commissions', [ComissionController::class, 'index'])->name('commissions.index');
-Route::get('/commissions/add', [ComissionController::class, 'create'])->name('commissions.create');
-Route::post('/commissions', [ComissionController::class, 'store'])->name('commissions.store');
-Route::get('/commissions/{id}', [ComissionController::class, 'show'])->name('commissions.show');
-Route::get('/commissions/{id}/edit', [ComissionController::class, 'edit'])->name('commissions.edit');
-Route::put('/commissions/{id}', [ComissionController::class, 'update'])->name('commissions.update');
-Route::delete('/commissions/{id}', [ComissionController::class, 'destroy'])->name('commissions.destroy');
-Route::get('/deals/{id}/commissions', [ComissionController::class, 'commissions'])->name('deals.commissions');
+Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
+Route::get('/commissions/add', [CommissionController::class, 'create'])->name('commissions.create');
+Route::post('/commissions', [CommissionController::class, 'store'])->name('commissions.store');
+Route::get('/commissions/{id}', [CommissionController::class, 'show'])->name('commissions.show');
+Route::get('/commissions/{id}/edit', [CommissionController::class, 'edit'])->name('commissions.edit');
+Route::put('/commissions/{id}', [CommissionController::class, 'update'])->name('commissions.update');
+Route::delete('/commissions/{id}', [CommissionController::class, 'destroy'])->name('commissions.destroy');
+Route::get('/deals/{id}/commissions', [CommissionController::class, 'commissions'])->name('deals.commissions');
 
 Route::get('/attachments/list', [AttachementController::class, 'index'])->name('attachments.index');
 Route::get('/attachments/add', [AttachementController::class, 'create'])->name('attachments.create');
@@ -129,12 +125,12 @@ Route::middleware('auth')->group(function () {
 // Rotas de autenticação (ajuste para seu guard se necessário)
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', [EmailVerificationPromptController::class])
-    ->name('verification.notice');
+        ->name('verification.notice');
 
     Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
         $request->fulfill();
         return redirect()->intended('/');
-    })->middleware(['signed','throttle:6,1'])->name('verification.verify');
+    })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
 
     Route::post('/email/verification-notification', function (Request $request) {
         if ($request->user()->hasVerifiedEmail()) return back();
@@ -173,30 +169,30 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-    Route::post('/dispatchers', [DispatcherController::class, 'store'])->name('dispatchers.store');
-    Route::post('/dispatchers/dashboard', [DispatcherController::class, 'storeFromDashboard'])->name('dispatchers.store.dashboard');
-    Route::post('/employees', [EmployeerController::class, 'store'])->name('employees.store');
-    Route::post('/carriers', [CarrierController::class, 'store'])->name('carriers.store');
-    Route::post('/drivers', [DriverController::class, 'store'])->name('drivers.store');
-    Route::post('/brokers', [BrokerController::class, 'store'])->name('brokers.store');
-    Route::post('/deals', [DealController::class, 'store'])->name('deals.store');
+Route::post('/dispatchers', [DispatcherController::class, 'store'])->name('dispatchers.store');
+Route::post('/dispatchers/dashboard', [DispatcherController::class, 'storeFromDashboard'])->name('dispatchers.store.dashboard');
+Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
+Route::post('/carriers', [CarrierController::class, 'store'])->name('carriers.store');
+Route::post('/drivers', [DriverController::class, 'store'])->name('drivers.store');
+Route::post('/brokers', [BrokerController::class, 'store'])->name('brokers.store');
+Route::post('/deals', [DealController::class, 'store'])->name('deals.store');
 
 // Rotas protegidas por assinatura
 Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/dispatchers', [DispatcherController::class, 'index'])->name('dispatchers.index');
-    Route::get('/dispatchers/add', [DispatcherController::class, 'create'])->name('dispatchers.create') ;
+    Route::get('/dispatchers/add', [DispatcherController::class, 'create'])->name('dispatchers.create');
     Route::get('/dispatchers/{id}', [DispatcherController::class, 'show'])->name('dispatchers.show');
     Route::get('/dispatchers/{id}/edit', [DispatcherController::class, 'edit'])->name('dispatchers.edit');
     Route::put('/dispatchers/{id}', [DispatcherController::class, 'update'])->name('dispatchers.update');
     Route::delete('/dispatchers/{id}', [DispatcherController::class, 'destroy'])->name('dispatchers.destroy');
 
-    Route::get('/employees', [EmployeerController::class, 'index'])->name('employees.index');
-    Route::get('/employees/add', [EmployeerController::class, 'create'])->name('employees.create');
-    Route::get('/employees/{id}', [EmployeerController::class, 'show'])->name('employees.show');
-    Route::get('/employees/{id}/edit', [EmployeerController::class, 'edit'])->name('employees.edit');
-    Route::put('/employees/{id}', [EmployeerController::class, 'update'])->name('employees.update');
-    Route::delete('/employees/{id}', [EmployeerController::class, 'destroy'])->name('employees.destroy');
-    Route::get('/employees/{dispatcher_id}/getEmployee', [EmployeerController::class, 'getEmployee'])->name('employees.getEmployee');
+    Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/employees/add', [EmployeeController::class, 'create'])->name('employees.create');
+    Route::get('/employees/{id}', [EmployeeController::class, 'show'])->name('employees.show');
+    Route::get('/employees/{id}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
+    Route::put('/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
+    Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+    Route::get('/employees/{dispatcher_id}/getEmployee', [EmployeeController::class, 'getEmployee'])->name('employees.getEmployee');
 
     Route::get('/carriers', [CarrierController::class, 'index'])->name('carriers.index');
     Route::get('/carriers/add', [CarrierController::class, 'create'])->name('carriers.create');
@@ -289,15 +285,15 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
         ->name('mode.filter');
     Route::get('/loads/mode/search', [KanbanController::class, 'kanbaSearch'])
         ->name('mode.search');
-        Route::put('/loads/update-ajax/{id}', [KanbanController::class, 'updateLoadAjax'])
-    ->name('loads.update.ajax');
+    Route::put('/loads/update-ajax/{id}', [KanbanController::class, 'updateLoadAjax'])
+        ->name('loads.update.ajax');
     Route::get('/loads/card-fields-config', [KanbanController::class, 'getCardFieldsConfig'])
         ->name('loads.card.fields.config');
     Route::post('/loads/card-fields-config', [KanbanController::class, 'saveCardFieldsConfig'])
         ->name('loads.card.fields.save');
-        // Rota para obter lista de drivers
+    // Rota para obter lista de drivers
     Route::get('/loads/get-drivers-list', [KanbanController::class, 'getDriversList'])
-    ->name('loads.drivers.list');
+        ->name('loads.drivers.list');
 
 
     // kanba Container
@@ -340,7 +336,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/charges_setups/{id}/edit', [ChargeSetupController::class, 'edit'])->name('charges_setups.edit');
     Route::put('/charges_setups/{id}', [ChargeSetupController::class, 'update'])->name('charges_setups.update');
     Route::delete('/charges_setups/{id}', [ChargeSetupController::class, 'destroy'])->name('charges_setups.destroy');
-Route::get('/charge-setups/by-carrier/{carrierId}', [ChargeSetupController::class, 'getSetupByCarrier'])
+    Route::get('/charge-setups/by-carrier/{carrierId}', [ChargeSetupController::class, 'getSetupByCarrier'])
         ->name('charge_setups.by_carrier');
     Route::get('/charge-setups/all-carriers', [ChargeSetupController::class, 'getAllCarriersSetup'])
         ->name('charge_setups.all_carriers');
@@ -372,66 +368,62 @@ Route::get('/charge-setups/by-carrier/{carrierId}', [ChargeSetupController::clas
 
 
     Route::prefix('api/vin')->group(function () {
-    Route::post('/decode', [App\Http\Controllers\VinDecoderController::class, 'decodeVin'])
-        ->name('vin.decode');
+        Route::post('/decode', [App\Http\Controllers\VinDecoderController::class, 'decodeVin'])
+            ->name('vin.decode');
 
-    Route::post('/validate', [App\Http\Controllers\VinDecoderController::class, 'validateVin'])
-        ->name('vin.validate');
-});
+        Route::post('/validate', [App\Http\Controllers\VinDecoderController::class, 'validateVin'])
+            ->name('vin.validate');
+    });
 
 
 
-// Rotas do Admin - Gestão de Subscrições
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    // Rotas do Admin - Gestão de Subscrições
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
 
-    // Gestão de Subscrições
-    Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
-        Route::get('/', [SubscriptionManagementController::class, 'index'])
-             ->name('index');
+        // Gestão de Subscrições
+        Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+            Route::get('/', [SubscriptionManagementController::class, 'index'])
+                ->name('index');
 
-        Route::get('/{user}', [SubscriptionManagementController::class, 'show'])
-             ->name('show');
+            Route::get('/{user}', [SubscriptionManagementController::class, 'show'])
+                ->name('show');
 
-        Route::post('/{user}/block', [SubscriptionManagementController::class, 'blockSubscription'])
-             ->name('block');
+            Route::post('/{user}/block', [SubscriptionManagementController::class, 'blockSubscription'])
+                ->name('block');
 
-        Route::post('/{user}/unblock', [SubscriptionManagementController::class, 'unblockSubscription'])
-             ->name('unblock');
+            Route::post('/{user}/unblock', [SubscriptionManagementController::class, 'unblockSubscription'])
+                ->name('unblock');
 
-        Route::post('/{user}/change-plan', [SubscriptionManagementController::class, 'changePlan'])
-             ->name('change-plan');
+            Route::post('/{user}/change-plan', [SubscriptionManagementController::class, 'changePlan'])
+                ->name('change-plan');
 
-        Route::post('/{user}/extend', [SubscriptionManagementController::class, 'extendSubscription'])
-             ->name('extend');
+            Route::post('/{user}/extend', [SubscriptionManagementController::class, 'extendSubscription'])
+                ->name('extend');
 
-        Route::delete('/{user}/delete', [SubscriptionManagementController::class, 'deleteUser'])
-             ->name('delete');
+            Route::delete('/{user}/delete', [SubscriptionManagementController::class, 'deleteUser'])
+                ->name('delete');
 
-        Route::get('/export/users', [SubscriptionManagementController::class, 'exportUsers'])
-             ->name('export');
+            Route::get('/export/users', [SubscriptionManagementController::class, 'exportUsers'])
+                ->name('export');
+        });
     });
 });
 
 
 
-});
+
+Route::post('/webhook/stripe', [WebhookController::class, 'handle']);
 
 
+// Subscription payment routes
+Route::post('/api/subscription/create-payment-intent', [SubscriptionController::class, 'createPaymentIntent']);
+Route::post('/api/subscription/process-payment', [SubscriptionController::class, 'processPayment']);
 
-
-    Route::post('/webhook/stripe', [WebhookController::class, 'handle']);
-
-
-    // Subscription payment routes
-    Route::post('/api/subscription/create-payment-intent', [SubscriptionController::class, 'createPaymentIntent']);
-    Route::post('/api/subscription/process-payment', [SubscriptionController::class, 'processPayment']);
-
-    // Existing payment routes
-    Route::post('/api/payments/create-intent', [PaymentController::class, 'createIntent']);
-    Route::post('/api/payments/confirm-intent', [PaymentController::class, 'confirmIntent']);
-    Route::post('/api/payments/refund', [PaymentController::class, 'refund']);
+// Existing payment routes
+Route::post('/api/payments/create-intent', [PaymentController::class, 'createIntent']);
+Route::post('/api/payments/confirm-intent', [PaymentController::class, 'confirmIntent']);
+Route::post('/api/payments/refund', [PaymentController::class, 'refund']);
 
 Route::get('/payments/index', [PaymentController::class, 'index']);
 
-require __DIR__.'/auth.php';
-
+require __DIR__ . '/auth.php';

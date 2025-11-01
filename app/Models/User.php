@@ -60,7 +60,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function employees()
     {
-        return $this->hasMany(Employeer::class); // Note que é "Employeer" conforme seu model
+        return $this->hasMany(Employee::class);
     }
 
     public function drivers()
