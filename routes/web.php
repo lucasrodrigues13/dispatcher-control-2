@@ -216,14 +216,9 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
 
     Route::delete('/loads/delete-all', [LoadImportController::class, 'destroyAll'])->name('loads.destroyAll');
 
-    // Listagem de todos os loads
+    // Listagem de todos os loads (com filtros integrados)
     Route::get('/loads', [LoadImportController::class, 'index'])
         ->name('loads.index');
-
-
-    Route::get('/loads', [LoadImportController::class, 'filter'])
-        ->name('loads.filter');
-
 
     Route::get('/loads/search', [LoadImportController::class, 'search'])
         ->name('loads.search');

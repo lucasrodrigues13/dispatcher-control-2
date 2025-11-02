@@ -434,9 +434,8 @@ class LoadImportController extends Controller
     /**
      * 5. LISTAR todos os Loads em tabela
      */
-    public function index()
+    public function index(Request $request)
     {
-
         $dispatchers = Dispatcher::with('user')
             ->where('user_id', auth()->id())
             ->first();
@@ -459,28 +458,10 @@ class LoadImportController extends Controller
                 ->get(); // <- coleção (NÃO paginate) para popular os selects
         }
 
-        //$userId = Auth::id(); // ou Auth::user()->id
-
-        // Buscar o dispatcher_id relacionado ao user_id autenticado
-        //$dispatcher = Dispatcher::where('user_id', $userId)->first();
-
-        //if ($dispatcher) {
-            // Buscar as loads do dispatcher logado
-            $loads = Load::paginate(50);
-        //} else {
-            // Se o dispatcher não existir, retornar lista vazia
-        //    $loads = collect(); // ou new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
-        //}
-
-        return view('load.index', compact('loads', 'dispatchers', 'carriers', 'employees')); // resources/views/loads/index.blade.php
-    }
-
-    public function filter(Request $request)
-    {
-
-
+        // Construir query com filtros
         $query = Load::query();
 
+        // Aplicar filtros se fornecidos
         if ($request->filled('load_id')) {
             $query->where('load_id', 'like', '%' . $request->load_id . '%');
         }
@@ -525,45 +506,8 @@ class LoadImportController extends Controller
             $query->where('driver', 'like', '%' . $request->driver . '%');
         }
 
-        $dispatchers = Dispatcher::with('user')
-            ->where('user_id', auth()->id())
-            ->first();
-
-        if (!$dispatchers) {
-            $carriers = collect();
-        } else {
-            // Filtra os carriers pelo dispatcher_id
-            $carriers = Carrier::with(['dispatchers.user', 'user'])
-                ->where('dispatcher_id', $dispatchers->id)
-                ->paginate(10);
-        }
-
-        if (!$dispatchers) {
-            $employees = collect();
-        } else {
-            // Somente employees vinculados ao dispatcher logado
-            $employees = Employee::with('user', 'dispatcher.user')
-                ->where('dispatcher_id', $dispatchers->id)
-                ->get(); // <- coleção (NÃO paginate) para popular os selects
-        }
-
-        //$userId = Auth::id(); // ou Auth::user()->id
-
-        // Buscar o dispatcher_id relacionado ao user_id autenticado
-        //$dispatcher = Dispatcher::where('user_id', $userId)->first();
-
-        //if ($dispatcher) {
-            // Buscar as loads do dispatcher logado
-          //  $query = \App\Models\Load::where('dispatcher_id', $dispatcher->id);
-
-            // Ordena e pagina
-            $loads = $query->orderByDesc('id')->paginate(50);
-
-        //} else {
-            // Se o dispatcher não existir, retornar lista vazia
-          //  $loads = collect(); // ou new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
-        //}
-
+        // Paginar resultados
+        $loads = $query->orderByDesc('id')->paginate(50);
 
         return view('load.index', compact('loads', 'dispatchers', 'carriers', 'employees'));
     }

@@ -524,7 +524,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form action="{{ route('loads.filter') }}" method="GET" class="mb-4">
+        <form action="{{ route('loads.index') }}" method="GET" class="mb-4">
           <div class="row g-2">
             <div class="col-md-3">
               <input type="text" name="load_id" class="form-control" placeholder="Load ID" value="{{ request('load_id') }}">
