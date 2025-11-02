@@ -28,11 +28,6 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Auth\EmailVerificationPromptController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
-use App\Http\Controllers\Auth\PasswordController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 Route::post('/logout', function () {
     Auth::logout();
@@ -109,34 +104,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/salvar_permissions_roles', [adminController::class, 'salvar_permissions_roles'])->name('salvar_permissions_roles');
 });
 
-// Rotas de autenticação (ajuste para seu guard se necessário)
-Route::middleware('auth')->group(function () {
-    Route::get('verify-email', [EmailVerificationPromptController::class])
-        ->name('verification.notice');
-
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return redirect()->intended('/');
-    })->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
-
-    Route::post('/email/verification-notification', function (Request $request) {
-        if ($request->user()->hasVerifiedEmail()) return back();
-        $request->user()->sendEmailVerificationNotification();
-        return back()->with('resent', true);
-    })->middleware(['throttle:6,1'])->name('verification.send');
-
-    Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
-        ->name('password.confirm');
-
-    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
-
-    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
-
-    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
-        ->name('logout');
-});
-
-// routes/web.php
+// Rotas de autenticação estão definidas em routes/auth.php
 
 // Rotas públicas de assinatura
 Route::middleware(['auth'])->group(function () {
@@ -217,9 +185,6 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::post('/importar-loads', [LoadImportController::class, 'importar'])
         ->name('loads.importar');
 
-    Route::get('/list-loads', [LoadImportController::class, 'index'])
-        ->name('loads.index');
-
     // Importação via Excel
     Route::get('/loads/import', [LoadImportController::class, 'upload'])
         ->name('loads.import.form');
@@ -291,14 +256,6 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/mode/container/{id}/edit', [ContainerController::class, 'edit'])->name('container.edit');
     Route::put('/mode/container/{id}', [ContainerController::class, 'update'])->name('container.update');
     Route::delete('/mode/container/{id}', [ContainerController::class, 'destroy'])->name('container.destroy');
-
-    Route::get('/mode/container_loads/list', [ContainerLoadController::class, 'index'])->name('container_loads.index');
-    Route::get('/mode/container_loads/add', [ContainerLoadController::class, 'create'])->name('container_loads.create');
-    Route::post('/mode/container_loads/store', [ContainerLoadController::class, 'store'])->name('container_loads.store');
-    Route::get('/mode/container_loads/{id}', [ContainerLoadController::class, 'show'])->name('container_loads.show');
-    Route::get('/mode/container_loads/{id}/edit', [ContainerLoadController::class, 'edit'])->name('container_loads.edit');
-    Route::put('/mode/container_loads/{id}', [ContainerLoadController::class, 'update'])->name('container_loads.update');
-    Route::delete('/mode/container_loads/{id}', [ContainerLoadController::class, 'destroy'])->name('container_loads.destroy');
 
     Route::get('/mode/container_loads/list', [ContainerLoadController::class, 'index'])->name('container_loads.index');
     Route::get('/mode/container_loads/add', [ContainerLoadController::class, 'create'])->name('container_loads.create');
