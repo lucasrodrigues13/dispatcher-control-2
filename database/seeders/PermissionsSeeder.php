@@ -14,79 +14,78 @@ class PermissionsSeeder extends Seeder
     public function run(): void
     {
         $permissions = [
-            // Permissões de usuários
-            ['name' => 'users.index', 'description' => 'Ver lista de usuários'],
-            ['name' => 'users.create', 'description' => 'Criar usuários'],
-            ['name' => 'users.edit', 'description' => 'Editar usuários'],
-            ['name' => 'users.delete', 'description' => 'Deletar usuários'],
-            ['name' => 'users.view', 'description' => 'Visualizar detalhes de usuários'],
+            // Permissões de visualização
+            ['name' => 'pode_visualizar_dashboard', 'description' => 'pode_visualizar_dashboard'],
+            ['name' => 'pode_visualizar_despesas_diarias', 'description' => 'pode_visualizar_despesas_diarias'],
+            ['name' => 'pode_visualizar_upload', 'description' => 'pode_visualizar_upload'],
+            ['name' => 'pode_visualizar_despesa', 'description' => 'pode_visualizar_despesa'],
+            ['name' => 'pode_visualizar_documento', 'description' => 'pode_visualizar_documento'],
+            ['name' => 'pode_visualizar_faturamentos_diarios', 'description' => 'pode_visualizar_faturamentos_diarios'],
+            ['name' => 'pode_visualizar_suporte', 'description' => 'pode_visualizar_suporte'],
+            ['name' => 'pode_visualizar_relatorio', 'description' => 'pode_visualizar_relatorio'],
+            ['name' => 'pode_visualizar_permissao', 'description' => 'pode_visualizar_permissao'],
+            ['name' => 'pode_visualizar_usuario', 'description' => 'pode_visualizar_usuario'],
+            ['name' => 'pode_visualizar_dispatchers', 'description' => 'pode_visualizar_dispatchers'],
+            ['name' => 'pode_visualizar_employees', 'description' => 'pode_visualizar_employees'],
+            ['name' => 'pode_visualizar_carriers', 'description' => 'pode_visualizar_carriers'],
+            ['name' => 'pode_visualizar_drivers', 'description' => 'pode_visualizar_drivers'],
+            ['name' => 'pode_visualizar_brokers', 'description' => 'pode_visualizar_brokers'],
+            ['name' => 'pode_visualizar_deals', 'description' => 'pode_visualizar_deals'],
+            ['name' => 'pode_visualizar_commissions', 'description' => 'pode_visualizar_commissions'],
+            ['name' => 'pode_visualizar_loads', 'description' => 'pode_visualizar_loads'],
+            ['name' => 'pode_visualizar_invoices.create', 'description' => 'pode_visualizar_invoices.create'],
+            ['name' => 'pode_visualizar_invoices.index', 'description' => 'pode_visualizar_invoices.index'],
+            ['name' => 'pode_visualizar_charges_setups.index', 'description' => 'pode_visualizar_charges_setups.index'],
+            ['name' => 'pode_visualizar_permissions_roles', 'description' => 'pode_visualizar_permissions_roles'],
+            ['name' => 'pode_visualizar_roles_users', 'description' => 'pode_visualizar_roles_users'],
             
-            // Permissões de cargas (loads)
-            ['name' => 'loads.index', 'description' => 'Ver lista de cargas'],
-            ['name' => 'loads.create', 'description' => 'Criar cargas'],
-            ['name' => 'loads.edit', 'description' => 'Editar cargas'],
-            ['name' => 'loads.delete', 'description' => 'Deletar cargas'],
-            ['name' => 'loads.view', 'description' => 'Visualizar detalhes de cargas'],
+            // Permissões de registro (criação)
+            ['name' => 'pode_registrar_employees', 'description' => 'pode_registrar_employees'],
+            ['name' => 'pode_registrar_dashboard', 'description' => 'pode_registrar_dashboard'],
+            ['name' => 'pode_registrar_dispatchers', 'description' => 'pode_registrar_dispatchers'],
+            ['name' => 'pode_registrar_carriers', 'description' => 'pode_registrar_carriers'],
+            ['name' => 'pode_registrar_drivers', 'description' => 'pode_registrar_drivers'],
+            ['name' => 'pode_registrar_brokers', 'description' => 'pode_registrar_brokers'],
+            ['name' => 'pode_registrar_deals', 'description' => 'pode_registrar_deals'],
+            ['name' => 'pode_registrar_commissions', 'description' => 'pode_registrar_commissions'],
+            ['name' => 'pode_registrar_loads', 'description' => 'pode_registrar_loads'],
+            ['name' => 'pode_registrar_invoices.create', 'description' => 'pode_registrar_invoices.create'],
+            ['name' => 'pode_registrar_invoices.index', 'description' => 'pode_registrar_invoices.index'],
+            ['name' => 'pode_registrar_charges_setups.index', 'description' => 'pode_registrar_charges_setups.index'],
+            ['name' => 'pode_registrar_permissions_roles', 'description' => 'pode_registrar_permissions_roles'],
+            ['name' => 'pode_registrar_roles_users', 'description' => 'pode_registrar_roles_users'],
             
-            // Permissões de transportadoras (carriers)
-            ['name' => 'carriers.index', 'description' => 'Ver lista de transportadoras'],
-            ['name' => 'carriers.create', 'description' => 'Criar transportadoras'],
-            ['name' => 'carriers.edit', 'description' => 'Editar transportadoras'],
-            ['name' => 'carriers.delete', 'description' => 'Deletar transportadoras'],
-            ['name' => 'carriers.view', 'description' => 'Visualizar detalhes de transportadoras'],
+            // Permissões de edição
+            ['name' => 'pode_editar_dashboard', 'description' => 'pode_editar_dashboard'],
+            ['name' => 'pode_editar_dispatchers', 'description' => 'pode_editar_dispatchers'],
+            ['name' => 'pode_editar_employees', 'description' => 'pode_editar_employees'],
+            ['name' => 'pode_editar_carriers', 'description' => 'pode_editar_carriers'],
+            ['name' => 'pode_editar_drivers', 'description' => 'pode_editar_drivers'],
+            ['name' => 'pode_editar_brokers', 'description' => 'pode_editar_brokers'],
+            ['name' => 'pode_editar_deals', 'description' => 'pode_editar_deals'],
+            ['name' => 'pode_editar_commissions', 'description' => 'pode_editar_commissions'],
+            ['name' => 'pode_editar_loads', 'description' => 'pode_editar_loads'],
+            ['name' => 'pode_editar_invoices.create', 'description' => 'pode_editar_invoices.create'],
+            ['name' => 'pode_editar_invoices.index', 'description' => 'pode_editar_invoices.index'],
+            ['name' => 'pode_editar_charges_setups.index', 'description' => 'pode_editar_charges_setups.index'],
+            ['name' => 'pode_editar_permissions_roles', 'description' => 'pode_editar_permissions_roles'],
+            ['name' => 'pode_editar_roles_users', 'description' => 'pode_editar_roles_users'],
             
-            // Permissões de clientes (customers)
-            ['name' => 'customers.index', 'description' => 'Ver lista de clientes'],
-            ['name' => 'customers.create', 'description' => 'Criar clientes'],
-            ['name' => 'customers.edit', 'description' => 'Editar clientes'],
-            ['name' => 'customers.delete', 'description' => 'Deletar clientes'],
-            ['name' => 'customers.view', 'description' => 'Visualizar detalhes de clientes'],
-            
-            // Permissões de funcionários (employees)
-            ['name' => 'employees.index', 'description' => 'Ver lista de funcionários'],
-            ['name' => 'employees.create', 'description' => 'Criar funcionários'],
-            ['name' => 'employees.edit', 'description' => 'Editar funcionários'],
-            ['name' => 'employees.delete', 'description' => 'Deletar funcionários'],
-            ['name' => 'employees.view', 'description' => 'Visualizar detalhes de funcionários'],
-            
-            // Permissões de motoristas (drivers)
-            ['name' => 'drivers.index', 'description' => 'Ver lista de motoristas'],
-            ['name' => 'drivers.create', 'description' => 'Criar motoristas'],
-            ['name' => 'drivers.edit', 'description' => 'Editar motoristas'],
-            ['name' => 'drivers.delete', 'description' => 'Deletar motoristas'],
-            ['name' => 'drivers.view', 'description' => 'Visualizar detalhes de motoristas'],
-            
-            // Permissões de corretores (brokers)
-            ['name' => 'brokers.index', 'description' => 'Ver lista de corretores'],
-            ['name' => 'brokers.create', 'description' => 'Criar corretores'],
-            ['name' => 'brokers.edit', 'description' => 'Editar corretores'],
-            ['name' => 'brokers.delete', 'description' => 'Deletar corretores'],
-            ['name' => 'brokers.view', 'description' => 'Visualizar detalhes de corretores'],
-            
-            // Permissões de faturas (invoices)
-            ['name' => 'invoices.index', 'description' => 'Ver lista de faturas'],
-            ['name' => 'invoices.create', 'description' => 'Criar faturas'],
-            ['name' => 'invoices.edit', 'description' => 'Editar faturas'],
-            ['name' => 'invoices.delete', 'description' => 'Deletar faturas'],
-            ['name' => 'invoices.view', 'description' => 'Visualizar detalhes de faturas'],
-            
-            // Permissões de relatórios
-            ['name' => 'reports.index', 'description' => 'Ver relatórios'],
-            ['name' => 'reports.view', 'description' => 'Visualizar relatórios'],
-            ['name' => 'reports.export', 'description' => 'Exportar relatórios'],
-            
-            // Permissões de dashboard
-            ['name' => 'dashboard.view', 'description' => 'Visualizar dashboard'],
-            
-            // Permissões administrativas
-            ['name' => 'admin.access', 'description' => 'Acesso à área administrativa'],
-            ['name' => 'admin.roles', 'description' => 'Gerenciar roles'],
-            ['name' => 'admin.permissions', 'description' => 'Gerenciar permissões'],
-            ['name' => 'admin.settings', 'description' => 'Gerenciar configurações do sistema'],
-            
-            // Permissões de assinaturas
-            ['name' => 'subscriptions.view', 'description' => 'Visualizar assinaturas'],
-            ['name' => 'subscriptions.manage', 'description' => 'Gerenciar assinaturas'],
+            // Permissões de eliminação (deletar)
+            ['name' => 'pode_eliminar_dashboard', 'description' => 'pode_eliminar_dashboard'],
+            ['name' => 'pode_eliminar_dispatchers', 'description' => 'pode_eliminar_dispatchers'],
+            ['name' => 'pode_eliminar_employees', 'description' => 'pode_eliminar_employees'],
+            ['name' => 'pode_eliminar_carriers', 'description' => 'pode_eliminar_carriers'],
+            ['name' => 'pode_eliminar_drivers', 'description' => 'pode_eliminar_drivers'],
+            ['name' => 'pode_eliminar_brokers', 'description' => 'pode_eliminar_brokers'],
+            ['name' => 'pode_eliminar_deals', 'description' => 'pode_eliminar_deals'],
+            ['name' => 'pode_eliminar_commissions', 'description' => 'pode_eliminar_commissions'],
+            ['name' => 'pode_eliminar_loads', 'description' => 'pode_eliminar_loads'],
+            ['name' => 'pode_eliminar_invoices.create', 'description' => 'pode_eliminar_invoices.create'],
+            ['name' => 'pode_eliminar_invoices.index', 'description' => 'pode_eliminar_invoices.index'],
+            ['name' => 'pode_eliminar_charges_setups.index', 'description' => 'pode_eliminar_charges_setups.index'],
+            ['name' => 'pode_eliminar_permissions_roles', 'description' => 'pode_eliminar_permissions_roles'],
+            ['name' => 'pode_eliminar_roles_users', 'description' => 'pode_eliminar_roles_users'],
         ];
 
         foreach ($permissions as $permission) {
@@ -97,6 +96,7 @@ class PermissionsSeeder extends Seeder
         }
 
         $this->command->info('Permissions criadas com sucesso!');
+        $this->command->info('Total: ' . count($permissions) . ' permissions');
     }
 }
 

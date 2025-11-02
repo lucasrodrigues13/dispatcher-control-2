@@ -54,8 +54,14 @@ class AdminUserSeeder extends Seeder
 
         // Atribuir todas as permissions ao role Admin
         if ($permissions->count() > 0) {
+            // Usar sync para garantir que todas as permissions sejam atribuídas
+            // sync remove as que não estão na lista e adiciona as novas
             $adminRole->permissions()->sync($permissions->pluck('id'));
-            $this->command->info('Todas as permissions atribuídas ao role Admin!');
+            
+            $totalPermissions = $adminRole->permissions()->count();
+            $this->command->info("✅ Todas as permissions atribuídas ao role Admin! ({$totalPermissions} permissions)");
+        } else {
+            $this->command->warn("⚠️  Nenhuma permission encontrada. Execute PermissionsSeeder primeiro!");
         }
 
         $this->command->info('Usuários admin criados com sucesso!');
@@ -70,18 +76,9 @@ class AdminUserSeeder extends Seeder
     private function assignRole(User $user, Role $role): void
     {
         // Verificar se o usuário já tem essa role
-        $existingRole = DB::table('roles_users')
-            ->where('user_id', $user->id)
-            ->where('role_id', $role->id)
-            ->first();
-
-        if (!$existingRole) {
-            DB::table('roles_users')->insert([
-                'user_id' => $user->id,
-                'role_id' => $role->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if (!$user->roles()->where('roles.id', $role->id)->exists()) {
+            // Usar o relacionamento do Eloquent (mais elegante)
+            $user->roles()->attach($role->id);
             $this->command->info("Role '{$role->name}' atribuída ao usuário '{$user->email}'");
         } else {
             $this->command->info("Usuário '{$user->email}' já possui a role '{$role->name}'");

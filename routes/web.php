@@ -58,7 +58,6 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard Routes
     Route::get('/reports', [ReportController::class, 'index'])->name('report');
-    Route::get('/reports/export', [ReportController::class, 'export'])->name('report.export');
     Route::get('/reports/chart-data', [ReportController::class, 'getChartData'])->name('report.chart-data');
 
     // Alternative routes for different sections (optional)
