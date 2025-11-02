@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
 
 class BrokerController extends Controller
@@ -96,8 +97,17 @@ class BrokerController extends Controller
         $roles->role_id = $role->id;
         $roles->save();
 
-        // Enviar email com credenciais
-        Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        // Enviar email com credenciais (com tratamento de erro para não quebrar o fluxo)
+        try {
+            Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        } catch (\Exception $e) {
+            Log::warning('Falha ao enviar email de credenciais', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            // Não interrompe o fluxo - o broker foi criado com sucesso
+        }
 
         // Se veio do fluxo de registro via auth, dispara evento e faz login
         if ($request->register_type === "auth_register") {

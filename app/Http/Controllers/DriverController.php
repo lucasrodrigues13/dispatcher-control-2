@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Auth\Events\Registered;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
 
@@ -118,7 +119,17 @@ class DriverController extends Controller
 
         app(UsageTrackingRepository::class)->incrementUsage(Auth::user(), 'driver');
 
-        Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        // Envia email com credenciais (com tratamento de erro para não quebrar o fluxo)
+        try {
+            Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        } catch (\Exception $e) {
+            Log::warning('Falha ao enviar email de credenciais', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            // Não interrompe o fluxo - o driver foi criado com sucesso
+        }
 
         if ($request->register_type === "auth_register") {
             event(new Registered($user));

@@ -141,8 +141,17 @@ class CarrierController extends Controller
         $billingService = app(BillingService::class);
         $billingService->createTrialSubscription($user);
 
-        // 9) E-mail
-        Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        // 9) E-mail (com tratamento de erro para não quebrar o fluxo)
+        try {
+            Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        } catch (\Exception $e) {
+            Log::warning('Falha ao enviar email de credenciais', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            // Não interrompe o fluxo - o carrier foi criado com sucesso
+        }
 
         // 10) Fluxo opcional
         if ($request->register_type === "auth_register") {

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Providers\RouteServiceProvider;
 use App\Services\BillingService;
 use Illuminate\Auth\Events\Registered;
@@ -117,14 +118,22 @@ class DispatcherController extends Controller
         $roles->save();
 
         if ($request->register_type === "auth_register") {
-            $user->sendEmailVerificationNotification();
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Exception $e) {
+                Log::warning('Falha ao enviar email de verificação', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $e->getMessage()
+                ]);
+            }
             Auth::login($user);
-            return response()->json(['success' => true, 'message' => 'Verification email sent.']);
+            return response()->json(['success' => true, 'message' => 'User created successfully.']);
         }
 
         return redirect()
             ->route('dispatchers.create')
-            ->with('success', "Dispatcher created. A verification email was sent to {$user->email}.")
+            ->with('success', "Dispatcher created successfully.")
             ->with('created_user_id', $user->id);
     }
 
@@ -228,8 +237,17 @@ class DispatcherController extends Controller
         $billingService = app(BillingService::class);
         $billingService->createTrialSubscription($user);
 
-        // Envia email com credenciais
-        Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        // Envia email com credenciais (com tratamento de erro para não quebrar o fluxo)
+        try {
+            Mail::to($user->email)->queue(new NewCarrierCredentialsMail($user, $plainPassword));
+        } catch (\Exception $e) {
+            Log::warning('Falha ao enviar email de credenciais', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            // Não interrompe o fluxo - o dispatcher foi criado com sucesso
+        }
 
         return redirect()
             ->route('dispatchers.index')
