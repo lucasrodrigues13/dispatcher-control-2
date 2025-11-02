@@ -25,9 +25,9 @@ class CarrierController extends Controller
         // Busca o dispatcher do usuário logado
         $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
 
-        // Se não existir dispatcher, retorna vazio
+        // Se não existir dispatcher, retorna paginação vazia
         if (!$dispatcher) {
-            $carriers = collect();
+            $carriers = Carrier::whereRaw('1 = 0')->paginate(10);
         } else {
             // Filtra os carriers pelo dispatcher_id
             $carriers = Carrier::with(['dispatchers.user', 'user'])

@@ -27,9 +27,9 @@ class DriverController extends Controller
         // Busca o dispatcher do usuário logado
         $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
 
-        // Se não existir dispatcher, retorna vazio
+        // Se não existir dispatcher, retorna paginação vazia
         if (!$dispatcher) {
-            $drivers = collect();
+            $drivers = Driver::whereRaw('1 = 0')->paginate(10);
         } else {
             // Busca os carriers do dispatcher
             $carriers = Carrier::where('dispatcher_id', $dispatcher->id)->pluck('id');

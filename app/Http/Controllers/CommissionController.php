@@ -22,7 +22,7 @@ class CommissionController extends Controller
         $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
         
         if (!$dispatcher) {
-            $commissions = collect();
+            $commissions = Comission::whereRaw('1 = 0')->paginate(15);
         } else {
             // Listar apenas comissões do dispatcher logado
             $commissions = Comission::with(['dispatcher.user', 'deal.carrier.user', 'employee'])

@@ -26,9 +26,9 @@ class EmployeeController extends Controller
         // Busca o dispatcher do usuário logado
         $dispatchers = Dispatcher::where('user_id', Auth::id())->first();
 
-        // Se não existir dispatcher, retorna vazio
+        // Se não existir dispatcher, retorna paginação vazia
         if (!$dispatchers) {
-            $employeers = collect();
+            $employeers = Employee::whereRaw('1 = 0')->paginate(10);
         } else {
             // Filtra os employees pelo dispatcher_id
             $employeers = Employee::with('user', 'dispatcher.user')
