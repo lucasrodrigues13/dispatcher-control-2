@@ -110,6 +110,9 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/subscription/plans', [SubscriptionController::class, 'plans'])->name('subscription.plans');
+    Route::get('/subscription/build-plan', [SubscriptionController::class, 'buildPlan'])->name('subscription.build-plan');
+    Route::post('/subscription/build-plan', [SubscriptionController::class, 'storeCustomPlan'])->name('subscription.store-custom-plan');
+    Route::post('/subscription/calculate-price', [SubscriptionController::class, 'calculatePrice'])->name('subscription.calculate-price');
     Route::get('/subscription/checkout', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
     Route::post('/subscription/upgrade', [SubscriptionController::class, 'upgrade'])->name('subscription.upgrade');
     Route::get('/subscription/success', [SubscriptionController::class, 'success'])->name('subscription.success');

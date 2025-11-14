@@ -15,7 +15,7 @@
                     <p>You now have full access to all features included in your plan.</p>
 
                     <div class="d-grid gap-2 mt-4">
-                        <a href="{{ route('dashboard') }}" class="btn btn-primary">
+                        <a href="{{ route('dashboard.index') }}" class="btn btn-primary">
                             <i class="fas fa-tachometer-alt"></i> Go to Dashboard
                         </a>
                         <a href="{{ route('subscription.index') }}" class="btn btn-outline-primary">

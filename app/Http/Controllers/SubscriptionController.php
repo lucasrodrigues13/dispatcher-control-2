@@ -252,4 +252,162 @@ class SubscriptionController extends Controller
 
         return back()->with('error', 'Não foi possível reativar a assinatura.');
     }
+
+    /**
+     * ⭐ NOVO: Mostra tela "Montar Seu Plano"
+     */
+    public function buildPlan()
+    {
+        $user = auth()->user();
+        $currentSubscription = $user->subscription;
+        $currentPlan = $currentSubscription ? $currentSubscription->plan : null;
+
+        // Contar usuários atuais
+        $dispatcher = $user->dispatchers()->first();
+        $dispatcherId = $dispatcher ? $dispatcher->id : null;
+        
+        $carrierIds = \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->pluck('id');
+        
+        $currentCounts = [
+            'carriers' => \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->count(),
+            'dispatchers' => $dispatcher ? 1 : 0,
+            'employees' => \App\Models\Employee::where('dispatcher_id', $dispatcherId)->count(),
+            'drivers' => \App\Models\Driver::whereIn('carrier_id', $carrierIds)->count(),
+            'brokers' => \App\Models\Broker::where('user_id', $user->id)->count(),
+        ];
+
+        return view('subscription.build-plan', compact('currentPlan', 'currentCounts'));
+    }
+
+    /**
+     * ⭐ NOVO: API - Calcula preço em tempo real
+     */
+    public function calculatePrice(Request $request): JsonResponse
+    {
+        $request->validate([
+            'carriers' => 'integer|min:0',
+            'dispatchers' => 'integer|min:0',
+            'employees' => 'integer|min:0',
+            'drivers' => 'integer|min:0',
+            'brokers' => 'integer|min:0',
+        ]);
+
+        $carriers = (int) ($request->input('carriers', 0));
+        $dispatchers = (int) ($request->input('dispatchers', 0));
+        $employees = (int) ($request->input('employees', 0));
+        $drivers = (int) ($request->input('drivers', 0));
+        $brokers = (int) ($request->input('brokers', 0));
+
+        $totalUsers = $carriers + $dispatchers + $employees + $drivers + $brokers;
+
+        // Mínimo 2 usuários
+        if ($totalUsers < 2) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Mínimo de 2 usuários obrigatório',
+                'total_users' => $totalUsers,
+                'price' => 0,
+            ]);
+        }
+
+        // $10 por usuário
+        $pricePerUser = 10.00;
+        $totalPrice = $totalUsers * $pricePerUser;
+
+        return response()->json([
+            'success' => true,
+            'total_users' => $totalUsers,
+            'price_per_user' => $pricePerUser,
+            'total_price' => $totalPrice,
+            'formatted_price' => '$' . number_format($totalPrice, 2, '.', ','),
+        ]);
+    }
+
+    /**
+     * ⭐ NOVO: Processa criação do plano customizado
+     */
+    public function storeCustomPlan(Request $request)
+    {
+        $request->validate([
+            'carriers' => 'required|integer|min:0',
+            'dispatchers' => 'required|integer|min:0',
+            'employees' => 'required|integer|min:0',
+            'drivers' => 'required|integer|min:0',
+            'brokers' => 'required|integer|min:0',
+        ]);
+
+        $user = auth()->user();
+        
+        $carriers = (int) $request->input('carriers');
+        $dispatchers = (int) $request->input('dispatchers');
+        $employees = (int) $request->input('employees');
+        $drivers = (int) $request->input('drivers');
+        $brokers = (int) $request->input('brokers');
+
+        $totalUsers = $carriers + $dispatchers + $employees + $drivers + $brokers;
+
+        // Validar mínimo de 2 usuários
+        if ($totalUsers < 2) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Mínimo de 2 usuários obrigatório ($20/mês)'])
+                ->withInput();
+        }
+
+        // Calcular preço
+        $pricePerUser = 10.00;
+        $totalPrice = $totalUsers * $pricePerUser;
+
+        try {
+            // Verificar se já existe plano customizado para este usuário
+            $existingCustomPlan = Plan::where('user_id', $user->id)
+                ->where('is_custom', true)
+                ->first();
+
+            if ($existingCustomPlan) {
+                // Atualizar plano existente
+                $existingCustomPlan->update([
+                    'name' => "Plano Customizado - {$totalUsers} usuários",
+                    'price' => $totalPrice,
+                    'max_carriers' => $carriers,
+                    'max_dispatchers' => $dispatchers,
+                    'max_employees' => $employees,
+                    'max_drivers' => $drivers,
+                    'max_brokers' => $brokers,
+                    'max_loads_per_month' => null, // Ilimitado para premium
+                ]);
+                $plan = $existingCustomPlan;
+            } else {
+                // Criar novo plano customizado
+                $plan = Plan::create([
+                    'user_id' => $user->id,
+                    'name' => "Plano Customizado - {$totalUsers} usuários",
+                    'slug' => 'custom-user-' . $user->id . '-' . time(),
+                    'price' => $totalPrice,
+                    'max_carriers' => $carriers,
+                    'max_dispatchers' => $dispatchers,
+                    'max_employees' => $employees,
+                    'max_drivers' => $drivers,
+                    'max_brokers' => $brokers,
+                    'max_loads_per_month' => null, // Ilimitado para premium
+                    'is_custom' => true,
+                    'active' => true,
+                ]);
+            }
+
+            // Redirecionar para checkout com o plano customizado
+            return redirect()->route('subscription.checkout', ['plan_id' => $plan->id])
+                ->with('success', 'Plano configurado! Complete o pagamento para ativar.');
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao criar plano customizado', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'data' => $request->all(),
+            ]);
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Erro ao criar plano: ' . $e->getMessage()])
+                ->withInput();
+        }
+    }
 }

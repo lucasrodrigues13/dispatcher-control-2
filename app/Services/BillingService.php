@@ -313,20 +313,231 @@ class BillingService
         return $subscription->trial_ends_at->isFuture();
     }
 
-    public function createTrialSubscription(User $user)
+    /**
+     * ⭐ NOVO: Cria subscription freemium automática para novos usuários
+     */
+    public function createFreemiumSubscription(User $user)
     {
-        // Ajuste este filtro conforme seu modelo: aqui buscamos o primeiro plano com trial_days > 0
-        $plan = Plan::where('trial_days', '>', 0)->first();
+        $plan = Plan::where('slug', 'freemium')->whereNull('user_id')->first();
 
-        if (! $plan) {
-            throw new \Exception('Nenhum plano de trial configurado.');
+        if (!$plan) {
+            throw new \Exception('Plano freemium não encontrado. Execute o seeder primeiro.');
         }
 
-        // Chama seu método genérico de criação/atualização
+        // Verifica se já tem subscription
+        if ($user->subscription) {
+            return $user->subscription;
+        }
+
+        // Cria subscription freemium
         return $this->createOrUpdateSubscription($user, $plan, [
-            'status' => 'trial',
-            // não há pagamento, mas você pode passar outros metadados se precisar
+            'status' => 'active',
+            'amount' => 0.00,
         ]);
+    }
+
+    /**
+     * ⭐ NOVO: Verifica se usuário está no primeiro mês promocional (30 dias)
+     */
+    public function isFirstMonth(User $user): bool
+    {
+        $subscription = $user->subscription;
+
+        if (!$subscription || !$subscription->started_at) {
+            return false;
+        }
+
+        // Primeiro mês = 30 dias a partir de started_at
+        $firstMonthEnd = $subscription->started_at->copy()->addDays(30);
+        
+        return now()->isBefore($firstMonthEnd);
+    }
+
+    /**
+     * ⭐ NOVO: Verifica limite de cargas e bloqueia se exceder
+     */
+    public function checkLoadLimit(User $user): array
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription || !$subscription->plan) {
+            return [
+                'allowed' => false,
+                'message' => 'Você precisa de uma assinatura ativa.',
+                'suggest_upgrade' => true,
+            ];
+        }
+
+        $plan = $subscription->plan;
+
+        // ⭐ Primeiro mês: cargas ilimitadas
+        if ($this->isFirstMonth($user)) {
+            return [
+                'allowed' => true,
+                'is_first_month' => true,
+                'message' => 'Primeiro mês promocional: cargas ilimitadas!',
+            ];
+        }
+
+        // Após primeiro mês: verificar limite
+        $usage = $this->usageTrackingRepo->getCurrentUsage($user);
+        $loadsUsed = $usage ? $usage->loads_count : 0;
+        $maxLoads = $plan->max_loads_per_month;
+
+        // Se max_loads_per_month é null, significa ilimitado
+        if ($maxLoads === null) {
+            return ['allowed' => true];
+        }
+
+        // Verifica se excedeu limite
+        if ($loadsUsed >= $maxLoads) {
+            return [
+                'allowed' => false,
+                'message' => "Você atingiu o limite de {$maxLoads} cargas/mês. Upgrade para Premium para cargas ilimitadas.",
+                'suggest_upgrade' => true,
+                'loads_used' => $loadsUsed,
+                'max_loads' => $maxLoads,
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'loads_used' => $loadsUsed,
+            'max_loads' => $maxLoads,
+            'remaining' => $maxLoads - $loadsUsed,
+        ];
+    }
+
+    /**
+     * ⭐ NOVO: Verifica limite de usuários e bloqueia se exceder
+     */
+    public function checkUserLimit(User $user, string $userType = null): array
+    {
+        $subscription = $user->subscription;
+        
+        if (!$subscription || !$subscription->plan) {
+            return [
+                'allowed' => false,
+                'message' => 'Você precisa de uma assinatura ativa.',
+                'suggest_upgrade' => true,
+            ];
+        }
+
+        $plan = $subscription->plan;
+
+        // Contar usuários ativos do usuário
+        $dispatcher = $user->dispatchers()->first();
+        $dispatcherId = $dispatcher ? $dispatcher->id : null;
+
+        // Carriers vinculados ao dispatcher
+        $carriersCount = \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->count();
+        
+        // Dispatcher (o próprio usuário)
+        $dispatchersCount = $dispatcher ? 1 : 0;
+        
+        // Employees vinculados ao dispatcher
+        $employeesCount = \App\Models\Employee::where('dispatcher_id', $dispatcherId)->count();
+        
+        // Drivers: contar através dos carriers do dispatcher
+        $carrierIds = \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->pluck('id');
+        $driversCount = \App\Models\Driver::whereIn('carrier_id', $carrierIds)->count();
+        
+        // Brokers vinculados ao user
+        $brokersCount = \App\Models\Broker::where('user_id', $user->id)->count();
+
+        $totalUsers = $carriersCount + $dispatchersCount + $employeesCount + $driversCount + $brokersCount;
+
+        // Limites do plano
+        $maxCarriers = $plan->max_carriers ?? 0;
+        $maxDispatchers = $plan->max_dispatchers ?? 0;
+        $maxEmployees = $plan->max_employees ?? 0;
+        $maxDrivers = $plan->max_drivers ?? 0;
+        $maxBrokers = $plan->max_brokers ?? 0;
+
+        $maxTotal = $maxCarriers + $maxDispatchers + $maxEmployees + $maxDrivers + $maxBrokers;
+
+        // ⭐ Primeiro mês: permite 2 usuários (carrier + dispatcher)
+        if ($this->isFirstMonth($user)) {
+            if ($totalUsers >= 2) {
+                return [
+                    'allowed' => false,
+                    'message' => 'Primeiro mês: limite de 2 usuários atingido. Upgrade para adicionar mais.',
+                    'suggest_upgrade' => true,
+                    'users_count' => $totalUsers,
+                    'max_users' => 2,
+                ];
+            }
+            return [
+                'allowed' => true,
+                'is_first_month' => true,
+                'users_count' => $totalUsers,
+                'max_users' => 2,
+            ];
+        }
+
+        // Após primeiro mês: verificar limites
+        // Se maxTotal é 0 ou null, significa ilimitado
+        if ($maxTotal === 0 || $maxTotal === null) {
+            return ['allowed' => true];
+        }
+
+        // Verifica limite específico se userType foi informado
+        if ($userType) {
+            $currentCount = match($userType) {
+                'carrier' => $carriersCount,
+                'dispatcher' => $dispatchersCount,
+                'employee' => $employeesCount,
+                'driver' => $driversCount,
+                'broker' => $brokersCount,
+                default => 0,
+            };
+
+            $maxCount = match($userType) {
+                'carrier' => $maxCarriers,
+                'dispatcher' => $maxDispatchers,
+                'employee' => $maxEmployees,
+                'driver' => $maxDrivers,
+                'broker' => $maxBrokers,
+                default => 0,
+            };
+
+            if ($currentCount >= $maxCount) {
+                return [
+                    'allowed' => false,
+                    'message' => "Limite de {$userType}s atingido ({$maxCount}). Upgrade para adicionar mais.",
+                    'suggest_upgrade' => true,
+                    'current_count' => $currentCount,
+                    'max_count' => $maxCount,
+                ];
+            }
+        }
+
+        // Verifica limite total
+        if ($totalUsers >= $maxTotal) {
+            return [
+                'allowed' => false,
+                'message' => "Limite total de usuários atingido ({$maxTotal}). Upgrade para adicionar mais.",
+                'suggest_upgrade' => true,
+                'users_count' => $totalUsers,
+                'max_users' => $maxTotal,
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'users_count' => $totalUsers,
+            'max_users' => $maxTotal,
+            'remaining' => $maxTotal - $totalUsers,
+        ];
+    }
+
+    /**
+     * ⭐ MANTIDO: Método antigo para compatibilidade (pode ser removido depois)
+     */
+    public function createTrialSubscription(User $user)
+    {
+        // Redireciona para createFreemiumSubscription
+        return $this->createFreemiumSubscription($user);
     }
 
     /**

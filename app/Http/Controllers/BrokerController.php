@@ -67,6 +67,22 @@ class BrokerController extends Controller
             DB::beginTransaction();
 
             // Criar o usuário
+            // ⭐ NOVO: Verificar limite de usuários antes de criar broker
+            $billingService = app(BillingService::class);
+            $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'broker');
+
+            if (!$userLimitCheck['allowed']) {
+                // Se sugerir upgrade, redirecionar para montar plano
+                if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                    return redirect()->route('subscription.build-plan')
+                        ->with('error', $userLimitCheck['message']);
+                }
+                
+                return redirect()->back()
+                    ->withErrors(['error' => $userLimitCheck['message']])
+                    ->withInput();
+            }
+
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,

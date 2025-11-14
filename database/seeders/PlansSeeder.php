@@ -8,38 +8,26 @@ class PlansSeeder extends Seeder
 {
     public function run()
     {
+        // ⭐ Plano Freemium (automático para novos usuários)
         Plan::updateOrCreate(
-            ['slug' => 'trial'],
+            ['slug' => 'freemium'],
             [
-                'name' => 'Trial',
+                'name' => 'Freemium',
                 'price' => 0.00,
-                'max_loads_per_month' => null,
-                'max_loads_per_week' => 50,
-                'max_carriers' => 1,
-                'max_employees' => 0,
-                'max_drivers' => 0,
-                'is_trial' => true,
-                'trial_days' => 30,
-                'active' => true,
-            ]
-        );
-
-        Plan::updateOrCreate(
-            ['slug' => 'dispatcher-pro'],
-            [
-                'name' => 'Dispatcher Pro',
-                'price' => 10.00,
-                'max_loads_per_month' => null,
+                'max_loads_per_month' => 75,  // Limite após primeiro mês
                 'max_loads_per_week' => null,
                 'max_carriers' => 1,
+                'max_dispatchers' => 1,
                 'max_employees' => 0,
                 'max_drivers' => 0,
+                'max_brokers' => 0,
                 'is_trial' => false,
+                'is_custom' => false,
                 'trial_days' => 0,
                 'active' => true,
             ]
         );
 
-        $this->command->info('Plans criados com sucesso!');
+        $this->command->info('Plano Freemium criado com sucesso!');
     }
 }

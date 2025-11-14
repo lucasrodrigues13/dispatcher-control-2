@@ -79,6 +79,22 @@ class EmployeeController extends Controller
                 ->withInput();
         }
 
+        // ⭐ NOVO: Verificar limite de usuários antes de criar employee
+        $billingService = app(BillingService::class);
+        $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'employee');
+
+        if (!$userLimitCheck['allowed']) {
+            // Se sugerir upgrade, redirecionar para montar plano
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message']);
+            }
+            
+            return redirect()->back()
+                ->withErrors(['error' => $userLimitCheck['message']])
+                ->withInput();
+        }
+
         Employee::create([
             'dispatcher_id' => $request->dispatcher_id,
             'name'          => $request->name,

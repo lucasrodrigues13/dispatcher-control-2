@@ -62,6 +62,25 @@ class LoadImportController extends Controller
 
             Log::info('Arquivo salvo em: ' . $destination);
 
+            // ⭐ NOVO: Verificar limite de cargas antes de importar
+            $billingService = app(BillingService::class);
+            $loadLimitCheck = $billingService->checkLoadLimit(Auth::user());
+
+            if (!$loadLimitCheck['allowed']) {
+                // Remove arquivo se já foi salvo
+                if (file_exists($destination)) {
+                    unlink($destination);
+                }
+                
+                // Se sugerir upgrade, redirecionar para montar plano
+                if ($loadLimitCheck['suggest_upgrade'] ?? false) {
+                    return redirect()->route('subscription.build-plan')
+                        ->with('error', $loadLimitCheck['message']);
+                }
+                
+                return redirect()->back()
+                    ->withErrors(['erro' => $loadLimitCheck['message']]);
+            }
 
             // Importa usando o caminho completo
             $import = new LoadsImport(
@@ -238,14 +257,20 @@ class LoadImportController extends Controller
         ];
 
 
-        // Verificar limites antes de criar
+        // ⭐ NOVO: Verificar limite de cargas antes de criar
         $billingService = app(BillingService::class);
-        $usageCheck = $billingService->checkUsageLimits(auth()->user());
+        $loadLimitCheck = $billingService->checkLoadLimit(auth()->user());
 
-        if (!$usageCheck['allowed']) {
-            return redirect()->route('subscription.plans')
-                ->with('error', 'You have reached your plan limits. Please upgrade to continue.')
-                ->with('usage_info', $usageCheck);
+        if (!$loadLimitCheck['allowed']) {
+            // Se sugerir upgrade, redirecionar para montar plano
+            if ($loadLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $loadLimitCheck['message']);
+            }
+            
+            return redirect()->back()
+                ->withErrors(['erro' => $loadLimitCheck['message']])
+                ->withInput();
         }
 
         // ⭐ NOVO: Verificar se existe (incluindo deletados) antes de criar/atualizar

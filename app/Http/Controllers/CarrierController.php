@@ -96,6 +96,22 @@ class CarrierController extends Controller
             DB::beginTransaction();
 
             // Cria usuário
+            // ⭐ NOVO: Verificar limite de usuários antes de criar carrier
+            $billingService = app(BillingService::class);
+            $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'carrier');
+
+            if (!$userLimitCheck['allowed']) {
+                // Se sugerir upgrade, redirecionar para montar plano
+                if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                    return redirect()->route('subscription.build-plan')
+                        ->with('error', $userLimitCheck['message']);
+                }
+                
+                return redirect()->back()
+                    ->withErrors(['error' => $userLimitCheck['message']])
+                    ->withInput();
+            }
+
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
