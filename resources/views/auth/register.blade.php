@@ -340,7 +340,7 @@
                         <!-- Dispatcher Form -->
                         <div id="Dispatcher" style="display: none;">
                             <h2 class="mb-4 text-center">Dispatcher Information</h2>
-                            <form method="POST" action="{{ route('dispatchers.store') }}" onsubmit="return validateForm('Dispatcher')">
+                            <form method="POST" action="{{ route('dispatchers.store') }}" onsubmit="event.preventDefault(); return validateForm('Dispatcher');">
                                 @csrf
                                 <input type="hidden" name="register_type" value="auth_register">
                                 <div class="row">
@@ -991,38 +991,94 @@
 
                 const form = document.querySelector(`#${role} form`);
                 const formData = new FormData(form);
+                
+                console.log('Enviando requisição para:', form.action);
+                console.log('Dados do formulário:', Object.fromEntries(formData));
+                
                 fetch(form.action, {
                     method: 'POST',
                     body: formData,
+                    credentials: 'include', // Importante para manter sessão/cookies
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        window.location.href = '/verify-email';
-                    } else {
-                        const errorBox = document.getElementById('error-message');
-                        if (data.errors) {
-                            errorBox.textContent = Object.values(data.errors).flat().join(' ');
-                        } else {
-                            errorBox.textContent = data.message || 'An error occurred. Please try again.';
-                        }
-                        errorBox.classList.remove('d-none');
+                .then(async response => {
+                    // Verificar se a resposta é JSON
+                    const contentType = response.headers.get('content-type');
+                    
+                    // Se for um redirect, seguir o redirect
+                    if (response.status >= 300 && response.status < 400) {
+                        const redirectUrl = response.headers.get('Location') || response.url;
+                        window.location.href = redirectUrl;
+                        return null;
+                    }
+                    
+                    // Ler o texto da resposta (só pode ser lido uma vez)
+                    const text = await response.text();
+                    
+                    // Se não for JSON, logar para debug
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error('Resposta não-JSON recebida:', text.substring(0, 500));
+                        throw new Error('Resposta inválida do servidor. Esperado JSON.');
+                    }
 
-                        // Reabilitar botão
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = 'Continue<i class="bi bi-check2 ms-2"></i>';
-                        }
+                    // Tentar fazer parse do JSON
+                    let data;
+                    try {
+                        data = text ? JSON.parse(text) : null;
+                    } catch (e) {
+                        console.error('Erro ao fazer parse do JSON:', e, 'Texto recebido:', text.substring(0, 200));
+                        throw new Error('Resposta inválida do servidor: não é JSON válido');
+                    }
+                    
+                    if (!response.ok) {
+                        // Erro de validação ou outro erro (status 422, 500, etc)
+                        throw { data, status: response.status };
+                    }
+                    
+                    return data;
+                })
+                .then(data => {
+                    console.log('Resposta recebida:', data);
+                    
+                    if (data && data.success) {
+                        // Aguardar um pouco para garantir que a sessão foi estabelecida
+                        // e usar replace para evitar problemas de cache
+                        console.log('Sucesso! Redirecionando para /verify-email');
+                        setTimeout(() => {
+                            window.location.replace(data.redirect_url || '/verify-email');
+                        }, 300);
+                    } else if (data === null) {
+                        // Redirect já foi tratado
+                        console.log('Redirect já tratado');
+                        return;
+                    } else {
+                        console.error('Resposta sem success:', data);
+                        throw { data, status: 200 };
                     }
                 })
                 .catch(error => {
+                    console.error('Erro no fetch:', error);
+                    
                     const errorBox = document.getElementById('error-message');
-                    errorBox.textContent = 'Error submitting the form: ' + error.message;
+                    
+                    // Tratar erros de validação do Laravel
+                    if (error.data && error.data.errors) {
+                        const errorMessages = Object.values(error.data.errors).flat();
+                        errorBox.textContent = errorMessages.join(' ');
+                    } else if (error.data && error.data.message) {
+                        errorBox.textContent = error.data.message;
+                    } else if (error.message) {
+                        errorBox.textContent = 'Error submitting the form: ' + error.message;
+                    } else {
+                        errorBox.textContent = 'An error occurred. Please try again.';
+                    }
+                    
                     errorBox.classList.remove('d-none');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
 
                     // Reabilitar botão
                     if (submitBtn) {

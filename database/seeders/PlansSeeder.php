@@ -25,6 +25,7 @@ class PlansSeeder extends Seeder
                 'is_custom' => false,
                 'trial_days' => 0,
                 'active' => true,
+                'user_id' => null, // Plano global, não customizado (importante para BillingService)
             ]
         );
 

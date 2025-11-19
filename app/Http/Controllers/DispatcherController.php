@@ -128,7 +128,15 @@ class DispatcherController extends Controller
                 ]);
             }
             Auth::login($user);
-            return response()->json(['success' => true, 'message' => 'User created successfully.']);
+            
+            // Regenerar sessão após login para segurança
+            $request->session()->regenerate();
+            
+            return response()->json([
+                'success' => true, 
+                'message' => 'User created successfully.',
+                'redirect_url' => url('/verify-email')
+            ]);
         }
 
         return redirect()
