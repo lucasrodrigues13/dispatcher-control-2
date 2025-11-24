@@ -36,17 +36,52 @@ jobs:
             cd /var/www/dispatcher-control
             
             # 1. Fazer pull das mudanças
-            echo "[1/7] Fazendo git pull..."
+            echo "[1/9] Fazendo git pull..."
             git pull origin main
             echo ""
             
             # 2. Verificar e instalar dependências
-            echo "[2/7] Verificando dependências..."
+            echo "[2/9] Verificando dependências..."
             composer install --no-dev --optimize-autoloader --no-interaction --quiet
             echo ""
             
-            # 3. Limpar TODOS os caches
-            echo "[3/7] Limpando caches..."
+            # 3. Verificar migrations pendentes antes de executar
+            echo "[3/9] Verificando migrations pendentes..."
+            MIGRATIONS_PENDING=$(php artisan migrate:status | grep -c "Pending" || echo "0")
+            echo "  → Migrations pendentes: $MIGRATIONS_PENDING"
+            echo ""
+            
+            # 3.1. Executar migrations
+            echo "[4/9] Executando migrations..."
+            php artisan migrate --force
+            echo ""
+            
+            # 3.2. Verificar se precisa rodar seeds (apenas se houver mudanças)
+            echo "[5/9] Verificando se precisa executar seeds..."
+            SEED_NEEDED=false
+            
+            # Verificar se há arquivos de migration ou seeder modificados no último commit
+            if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -E "(database/migrations|database/seeders)" > /dev/null; then
+                SEED_NEEDED=true
+                echo "  → Arquivos de migration/seeder modificados detectados"
+            fi
+            
+            # Se havia migrations pendentes, provavelmente precisa rodar seeds
+            if [ "$MIGRATIONS_PENDING" -gt 0 ]; then
+                SEED_NEEDED=true
+                echo "  → Novas migrations foram executadas"
+            fi
+            
+            if [ "$SEED_NEEDED" = true ]; then
+                echo "  → Executando seeds..."
+                php artisan db:seed --force
+            else
+                echo "  → Nenhuma alteração detectada, pulando seeds"
+            fi
+            echo ""
+            
+            # 6. Limpar TODOS os caches
+            echo "[6/9] Limpando caches..."
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear
@@ -54,23 +89,23 @@ jobs:
             php artisan event:clear
             echo ""
             
-            # 4. Recriar cache de rotas
-            echo "[4/7] Recriando cache de rotas..."
+            # 7. Recriar cache de rotas
+            echo "[7/9] Recriando cache de rotas..."
             php artisan route:cache
             echo ""
             
-            # 5. Recriar cache de configuração
-            echo "[5/7] Recriando cache de configuração..."
+            # 8. Recriar cache de configuração
+            echo "[8/9] Recriando cache de configuração..."
             php artisan config:cache
             echo ""
             
-            # 6. Otimizar aplicação
-            echo "[6/7] Otimizando aplicação..."
+            # 9. Otimizar aplicação
+            echo "[9/9] Otimizando aplicação..."
             php artisan optimize
             echo ""
             
-            # 7. Verificar e corrigir permissões
-            echo "[7/7] Verificando permissões..."
+            # 10. Verificar e corrigir permissões
+            echo "[10/10] Verificando permissões..."
             chown -R www-data:www-data storage bootstrap/cache
             chmod -R 775 storage bootstrap/cache
             echo ""
