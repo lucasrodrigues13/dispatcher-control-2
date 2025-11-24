@@ -45,6 +45,17 @@
             vertical-align: middle;
             margin-left: 3px;
         }
+        
+        /* Garantir que flash messages apareçam abaixo do header fixo */
+        /* O main-header tem position: fixed e z-index: 1001, altura ~70px */
+        .flash-messages-container {
+            margin-top: 70px; /* Compensar altura do header fixo */
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            clear: both;
+            position: relative;
+            z-index: 1;
+        }
     </style>
 
     <!-- Font Awesome CDN (fallback para ícones) -->
@@ -80,16 +91,7 @@
   </head>
   <body>
     <div class="wrapper">
-      <!-- Warning Alert at the top -->
-      @if(session('warning'))
-        <div class="top-alert">
-          <div class="alert alert-warning alert-dismissible fade show text-center mb-0" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            {{ session('warning') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        </div>
-      @endif
+      {{-- Flash Messages removidas do topo - agora aparecem no conteúdo da página --}}
 
       @include('layouts.sidebar')
 
@@ -506,6 +508,12 @@
             </div>
           </nav>
           <!-- End Navbar -->
+        </div>
+        <!-- End Main Header -->
+
+        {{-- Flash Messages - aparecem abaixo da navbar, antes do conteúdo --}}
+        <div class="container-fluid px-4 flash-messages-container">
+            <x-flash-messages />
         </div>
 
         @yield('conteudo')

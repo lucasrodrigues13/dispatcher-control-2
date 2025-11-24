@@ -27,8 +27,28 @@ class BrokerController extends Controller
 
     public function create()
     {
+        $authUser = Auth::user();
+        $adminTenantService = app(\App\Services\AdminTenantService::class);
+        
+        // ⭐ NOVO: Se for admin, verificar se está visualizando um tenant específico
+        if ($authUser->isAdmin()) {
+            if ($adminTenantService->isViewingAll()) {
+                return redirect()->back()
+                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+            }
+            
+            // Obter o tenant selecionado para validação
+            $viewingTenantId = $adminTenantService->getViewingTenantId();
+            $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
+            
+            if (!$viewingTenant) {
+                return redirect()->back()
+                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+            }
+        }
+        
         // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
-        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+        $owners = $authUser->isAdmin() ? User::getAvailableOwners() : collect();
         
         return view('broker.create', compact('owners'));
     }
@@ -78,8 +98,33 @@ class BrokerController extends Controller
 
             // Criar o usuário
             // ⭐ NOVO: Verificar limite de usuários antes de criar broker
+            $authUser = Auth::user();
+            $adminTenantService = app(\App\Services\AdminTenantService::class);
+            
+            // Se for admin, usar tenant selecionado para validação
+            if ($authUser->isAdmin()) {
+                if ($adminTenantService->isViewingAll()) {
+                    DB::rollBack();
+                    return redirect()->back()
+                        ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                }
+                
+                $viewingTenantId = $adminTenantService->getViewingTenantId();
+                $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
+                
+                if (!$viewingTenant) {
+                    DB::rollBack();
+                    return redirect()->back()
+                        ->with('error', 'Tenant selecionado não encontrado.');
+                }
+                
+                $userForValidation = $viewingTenant;
+            } else {
+                $userForValidation = $authUser;
+            }
+            
             $billingService = app(BillingService::class);
-            $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'broker');
+            $userLimitCheck = $billingService->checkUserLimit($userForValidation, 'broker');
 
             if (!$userLimitCheck['allowed']) {
                 // Se sugerir upgrade, redirecionar para montar plano
@@ -93,27 +138,33 @@ class BrokerController extends Controller
                     ->withInput();
             }
 
-            // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
-            $authUser = Auth::user();
-            $targetOwnerId = $authUser->getOwnerId(); // Default para tenant atual
-            
-            if ($authUser->isAdmin() && $request->filled('owner_id')) {
-                // Se admin e owner_id fornecido, validar e usar
-                $selectedOwner = User::find($request->owner_id);
-                if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
-                    $targetOwnerId = $selectedOwner->id;
+            // ⭐ NOVO: Se for admin, usar tenant selecionado; senão, usar getOwnerId()
+            if ($authUser->isAdmin()) {
+                // Se admin forneceu owner_id no request, validar; senão, usar o tenant selecionado
+                if ($request->filled('owner_id')) {
+                    $selectedOwner = User::find($request->owner_id);
+                    if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
+                        $targetOwnerId = $selectedOwner->id;
+                    } else {
+                        DB::rollBack();
+                        return redirect()->back()
+                            ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                            ->withInput();
+                    }
                 } else {
+                    // Usar o tenant selecionado como owner
+                    $targetOwnerId = $viewingTenant->id;
+                }
+            } else {
+                $targetOwnerId = $authUser->getOwnerId();
+                
+                // Validar permissão
+                if (!$authUser->canManageTenant()) {
+                    DB::rollBack();
                     return redirect()->back()
-                        ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                        ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
                         ->withInput();
                 }
-            }
-            
-            // Validar permissão
-            if (!$authUser->canManageTenant()) {
-                return redirect()->back()
-                    ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
-                    ->withInput();
             }
             
             $ownerId = $targetOwnerId;

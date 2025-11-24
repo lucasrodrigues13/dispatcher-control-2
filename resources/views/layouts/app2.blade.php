@@ -255,6 +255,17 @@
         position: fixed; right: 20px !important; bottom: 30px;
         z-index: 99;
       }
+      
+      /* Garantir que flash messages apareçam abaixo do header fixo */
+      /* O main-header tem position: fixed e z-index: 1001, altura ~70px */
+      .flash-messages-container {
+          margin-top: 70px; /* Compensar altura do header fixo */
+          padding-top: 1rem;
+          padding-bottom: 0.5rem;
+          clear: both;
+          position: relative;
+          z-index: 1;
+      }
     </style>
 
     <!-- Fonts and icons -->
@@ -324,7 +335,84 @@
           <nav
             class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
           >
-            <div class="container-fluid">
+            <div class="container-fluid d-flex align-items-center">
+              {{-- ⭐ NOVO: Dropdown de seleção de tenant para admins - TOTALMENTE À ESQUERDA --}}
+              @if(auth()->user()->isAdmin())
+              <div class="me-auto">
+                @php
+                    $adminTenantService = app(\App\Services\AdminTenantService::class);
+                    $viewingTenantId = $adminTenantService->getViewingTenantId();
+                    $viewingTenant = $viewingTenantId ? \App\Models\User::find($viewingTenantId) : null;
+                    $owners = \App\Models\User::getAvailableOwners();
+                @endphp
+                <div class="dropdown">
+                    <a
+                        class="btn dropdown-toggle admin-tenant-selector"
+                        href="#"
+                        id="tenantDropdown"
+                        role="button"
+                        data-bs-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; font-weight: 600; padding: 10px 20px; border-radius: 8px; min-width: 220px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3); border: 2px solid #ffc107; transition: all 0.3s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px;"
+                        onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(255, 193, 7, 0.5)';"
+                        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(255, 193, 7, 0.3)';"
+                    >
+                        <div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px;">
+                            <i class="fas fa-shield-alt" style="flex-shrink: 0; font-size: 1rem; line-height: 1;"></i>
+                            <span class="text-truncate" style="flex: 1; text-align: left; line-height: 1.5; display: flex; align-items: center;">
+                                @if($viewingTenant)
+                                    {{ $viewingTenant->name }}
+                                @else
+                                    All Tenants
+                                @endif
+                            </span>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-start animated fadeIn" aria-labelledby="tenantDropdown" style="min-width: 280px; margin-top: 8px; border: 1px solid #ffc107;">
+                        <li>
+                            <div class="dropdown-title" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; padding: 12px 16px; font-weight: 600; border-radius: 4px 4px 0 0;">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>Admin Master Mode</strong>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider m-0"></li>
+                        <li>
+                            <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
+                                @csrf
+                                <input type="hidden" name="tenant_id" value="all">
+                                @php
+                                    $fontWeight = !$viewingTenant ? '600' : '400';
+                                @endphp
+                                <button type="submit" class="dropdown-item {{ !$viewingTenant ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ $fontWeight }}; padding: 10px 16px;">
+                                    <i class="fas fa-globe me-2"></i>
+                                    <strong>All Tenants</strong>
+                                    <small class="text-muted d-block ms-4" style="font-size: 0.85em;">View all data without filters</small>
+                                </button>
+                            </form>
+                        </li>
+                        @foreach($owners as $owner)
+                        <li>
+                            <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
+                                @csrf
+                                <input type="hidden" name="tenant_id" value="{{ $owner->id }}">
+                                @php
+                                    $isActive = $viewingTenant && $viewingTenant->id == $owner->id;
+                                    $fontWeight = $isActive ? '600' : '400';
+                                @endphp
+                                <button type="submit" class="dropdown-item {{ $isActive ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ $fontWeight }}; padding: 10px 16px;">
+                                    <i class="fas fa-user-tie me-2"></i>
+                                    <strong>{{ $owner->name }}</strong>
+                                    <small class="text-muted d-block ms-4" style="font-size: 0.85em;">{{ $owner->email }}</small>
+                                </button>
+                            </form>
+                        </li>
+                        @endforeach
+                    </ul>
+                </div>
+              </div>
+              @endif
+              
               <nav
                 class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
               >
@@ -592,6 +680,12 @@
             </div>
           </nav>
           <!-- End Navbar -->
+        </div>
+        <!-- End Main Header -->
+
+        {{-- Flash Messages - aparecem abaixo da navbar, antes do conteúdo --}}
+        <div class="container-fluid px-4 flash-messages-container">
+            <x-flash-messages />
         </div>
 
         <style>

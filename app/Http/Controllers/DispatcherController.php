@@ -36,8 +36,50 @@ class DispatcherController extends Controller
     // Form de criação
     public function create()
     {
+        $authUser = Auth::user();
+        $adminTenantService = app(\App\Services\AdminTenantService::class);
+        
+        // ⭐ NOVO: Se for admin, verificar se está visualizando um tenant específico
+        if ($authUser->isAdmin()) {
+            if ($adminTenantService->isViewingAll()) {
+                return redirect()->back()
+                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+            }
+            
+            // Obter o tenant selecionado para validação
+            $viewingTenantId = $adminTenantService->getViewingTenantId();
+            $viewingTenant = $viewingTenantId ? \App\Models\User::find($viewingTenantId) : null;
+            
+            if (!$viewingTenant) {
+                return redirect()->back()
+                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+            }
+            
+            // Usar o tenant selecionado para validação
+            $userForValidation = $viewingTenant;
+        } else {
+            $userForValidation = $authUser;
+        }
+        
+        // ⭐ VALIDAÇÃO PRIMEIRO: Verificar limite ANTES de qualquer coisa
+        $billingService = app(BillingService::class);
+        $userLimitCheck = $billingService->checkUserLimit($userForValidation, 'dispatcher');
+        
+        // Se não tiver permissão, SEMPRE redirecionar ANTES de mostrar formulário
+        if (!($userLimitCheck['allowed'] ?? false)) {
+            // Se sugerir upgrade, redirecionar para tela de planos
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message'] ?? 'Limite atingido. Faça upgrade do seu plano.');
+            }
+            
+            // Caso contrário, voltar para página anterior com erro
+            return redirect()->back()
+                ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar dispatchers.');
+        }
+        
         // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
-        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+        $owners = $authUser->isAdmin() ? User::getAvailableOwners() : collect();
         
         return view('dispatcher.self.create', compact('owners'));
     }
@@ -167,26 +209,36 @@ class DispatcherController extends Controller
     public function storeFromDashboard(Request $request)
     {
         $authUser = Auth::user();
+        $adminTenantService = app(\App\Services\AdminTenantService::class);
         
-        // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
+        // ⭐ NOVO: Se for admin, verificar se está visualizando um tenant específico
         if ($authUser->isAdmin()) {
-            $rules = [
-                'owner_id' => 'required|exists:users,id',
-            ];
-            $validator = Validator::make($request->all(), $rules);
-            if ($validator->fails()) {
+            if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->withErrors($validator)
-                    ->withInput();
+                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
             }
-            $ownerId = $request->owner_id;
             
-            // Validar que o owner_id selecionado é realmente um owner (não admin)
-            $selectedOwner = User::find($ownerId);
-            if (!$selectedOwner || !$selectedOwner->is_owner || $selectedOwner->is_admin) {
+            // Obter o tenant selecionado
+            $viewingTenantId = $adminTenantService->getViewingTenantId();
+            $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
+            
+            if (!$viewingTenant) {
                 return redirect()->back()
-                    ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
-                    ->withInput();
+                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+            }
+            
+            // Se admin forneceu owner_id no request, validar; senão, usar o tenant selecionado
+            if ($request->filled('owner_id')) {
+                $selectedOwner = User::find($request->owner_id);
+                if (!$selectedOwner || !$selectedOwner->is_owner || $selectedOwner->is_admin) {
+                    return redirect()->back()
+                        ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                        ->withInput();
+                }
+                $ownerId = $selectedOwner->id;
+            } else {
+                // Usar o tenant selecionado como owner
+                $ownerId = $viewingTenant->id;
             }
         } else {
             // Obter owner do tenant (comportamento normal)
@@ -247,9 +299,16 @@ class DispatcherController extends Controller
         }
 
         // ⭐ NOVO: Verificar limite de dispatchers antes de criar
-        // Se for admin, verificar limite do owner selecionado; senão, do usuário logado
+        // Se for admin, usar o tenant selecionado para validação; senão, do usuário logado
         $billingService = app(BillingService::class);
-        $userToCheck = $authUser->isAdmin() ? User::find($ownerId) : $authUser;
+        
+        if ($authUser->isAdmin()) {
+            // Usar o tenant selecionado (ou owner_id do request se fornecido)
+            $userToCheck = User::find($ownerId);
+        } else {
+            $userToCheck = $authUser;
+        }
+        
         $userLimitCheck = $billingService->checkUserLimit($userToCheck, 'dispatcher');
 
         if (!$userLimitCheck['allowed']) {
