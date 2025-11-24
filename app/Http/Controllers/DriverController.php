@@ -80,6 +80,9 @@ class DriverController extends Controller
                 ->get();
         }
 
+        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
+        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+
         // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
         $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
         $showUpgradeModal = false;
@@ -89,7 +92,7 @@ class DriverController extends Controller
             $showUpgradeModal = true;
         }
 
-        return view('carrier.driver.create', compact('carriers', 'showUpgradeModal', 'usageCheck'));
+        return view('carrier.driver.create', compact('carriers', 'showUpgradeModal', 'usageCheck', 'owners'));
     }
 
     /**
@@ -97,10 +100,21 @@ class DriverController extends Controller
      */
     public function store(Request $request)
     {
-        // Validação dos dados
-        // Obter owner do tenant
+        // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
         $authUser = Auth::user();
-        $ownerId = $authUser->getOwnerId();
+        $targetOwnerId = $authUser->getOwnerId(); // Default para tenant atual
+        
+        if ($authUser->isAdmin() && $request->filled('owner_id')) {
+            // Se admin e owner_id fornecido, validar e usar
+            $selectedOwner = User::find($request->owner_id);
+            if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
+                $targetOwnerId = $selectedOwner->id;
+            } else {
+                return redirect()->back()
+                    ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                    ->withInput();
+            }
+        }
         
         // Validar permissão
         if (!$authUser->canManageTenant()) {
@@ -109,13 +123,22 @@ class DriverController extends Controller
                 ->withInput();
         }
         
-        $validated = $request->validate([
+        $ownerId = $targetOwnerId;
+        
+        $validationRules = [
             'name'         => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
             'carrier_id'   => 'required|exists:carriers,id',
             'phone'        => 'required|string|max:20',
             'ssn_tax_id'   => 'required|string|max:50',
-        ]);
+        ];
+        
+        // ⭐ NOVO: Se for admin, adicionar validação de owner_id
+        if (Auth::user()->isAdmin()) {
+            $validationRules['owner_id'] = 'required|exists:users,id';
+        }
+        
+        $validated = $request->validate($validationRules);
 
         // Validar que carrier pertence ao tenant
         $carrier = Carrier::find($validated['carrier_id']);
@@ -186,7 +209,7 @@ class DriverController extends Controller
                 'email_verified_at' => now(),
                 'owner_id' => $ownerId, // Vincular ao owner do tenant
                 'is_owner' => false,
-                'is_subadmin' => false,
+                'is_subowner' => false,
             ]);
 
             // Cria o driver (vinculado ao user_id)

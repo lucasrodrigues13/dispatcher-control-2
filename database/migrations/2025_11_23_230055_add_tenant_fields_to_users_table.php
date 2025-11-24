@@ -22,7 +22,7 @@ return new class extends Migration
                 ->onDelete('restrict'); // Impede deletar owner se houver dependentes
             
             $table->boolean('is_owner')->default(false)->after('owner_id');
-            $table->boolean('is_subadmin')->default(false)->after('is_owner');
+            $table->boolean('is_subowner')->default(false)->after('is_owner');
             
             $table->index('owner_id');
         });
@@ -36,7 +36,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['owner_id']);
             $table->dropIndex(['owner_id']);
-            $table->dropColumn(['owner_id', 'is_owner', 'is_subadmin']);
+            $table->dropColumn(['owner_id', 'is_owner', 'is_subowner']);
         });
     }
 };

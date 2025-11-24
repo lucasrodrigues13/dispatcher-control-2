@@ -69,6 +69,9 @@ Route::middleware('auth')->group(function () {
 
 // Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
+// ⭐ NOVO: Rota para admin alternar tenant em visualização
+Route::middleware(['auth'])->post('/admin/switch-tenant', [\App\Http\Controllers\AdminTenantController::class, 'switchTenant'])->name('admin.switch-tenant');
+
 // Routas
 Route::middleware(['auth', 'verified'])->get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 

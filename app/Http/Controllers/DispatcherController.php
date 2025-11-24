@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Dispatcher;
 use App\Models\RolesUsers;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\UsageTracking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,8 +24,11 @@ class DispatcherController extends Controller
     // Lista com paginação
     public function index()
     {
+        // ⭐ CORRIGIDO: Removido filtro manual - TenantScope já filtra automaticamente
+        // Se admin estiver visualizando um tenant específico, o scope filtra por owner_id
+        // Se admin estiver visualizando "All", o scope não aplica filtro
+        // Se usuário normal, o scope filtra pelo owner_id dele
         $dispatchers = Dispatcher::with('user')
-            ->where('user_id', Auth::id()) // Filtra pelo usuário logado
             ->paginate(10);
         return view('dispatcher.self.index', compact('dispatchers'));
     }
@@ -32,7 +36,10 @@ class DispatcherController extends Controller
     // Form de criação
     public function create()
     {
-        return view('dispatcher.self.create');
+        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
+        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+        
+        return view('dispatcher.self.create', compact('owners'));
     }
 
     public function store(Request $request)
@@ -118,12 +125,16 @@ class DispatcherController extends Controller
         //     return back()->with('error', $usageCheck['message']);
         // }
 
-        $role = DB::table('roles')->where('name', 'Dispatcher')->first();
+        // ⭐ CORRIGIDO: Buscar ou criar role Dispatcher e atribuir ao usuário
+        $role = \App\Models\Role::firstOrCreate(
+            ['name' => 'Dispatcher'],
+            ['description' => 'Despachante que gerencia cargas e transportadoras']
+        );
 
-        $roles = new RolesUsers();
-        $roles->user_id = $user->id;
-        $roles->role_id = $role->id;
-        $roles->save();
+        // Verificar se o usuário já tem essa role antes de atribuir
+        if (!$user->roles()->where('roles.id', $role->id)->exists()) {
+            $user->roles()->attach($role->id);
+        }
 
         if ($request->register_type === "auth_register") {
             try {
@@ -155,15 +166,38 @@ class DispatcherController extends Controller
 
     public function storeFromDashboard(Request $request)
     {
-        // Obter owner do tenant
         $authUser = Auth::user();
-        $ownerId = $authUser->getOwnerId();
         
-        // Validar permissão
-        if (!$authUser->canManageTenant()) {
-            return redirect()->back()
-                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
-                ->withInput();
+        // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
+        if ($authUser->isAdmin()) {
+            $rules = [
+                'owner_id' => 'required|exists:users,id',
+            ];
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+            $ownerId = $request->owner_id;
+            
+            // Validar que o owner_id selecionado é realmente um owner (não admin)
+            $selectedOwner = User::find($ownerId);
+            if (!$selectedOwner || !$selectedOwner->is_owner || $selectedOwner->is_admin) {
+                return redirect()->back()
+                    ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                    ->withInput();
+            }
+        } else {
+            // Obter owner do tenant (comportamento normal)
+            $ownerId = $authUser->getOwnerId();
+            
+            // Validar permissão
+            if (!$authUser->canManageTenant()) {
+                return redirect()->back()
+                    ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                    ->withInput();
+            }
         }
         
         // Validação condicional baseada no tipo
@@ -213,8 +247,10 @@ class DispatcherController extends Controller
         }
 
         // ⭐ NOVO: Verificar limite de dispatchers antes de criar
+        // Se for admin, verificar limite do owner selecionado; senão, do usuário logado
         $billingService = app(BillingService::class);
-        $userLimitCheck = $billingService->checkUserLimit($authUser, 'dispatcher');
+        $userToCheck = $authUser->isAdmin() ? User::find($ownerId) : $authUser;
+        $userLimitCheck = $billingService->checkUserLimit($userToCheck, 'dispatcher');
 
         if (!$userLimitCheck['allowed']) {
             // Se sugerir upgrade, redirecionar para montar plano
@@ -252,7 +288,7 @@ class DispatcherController extends Controller
             'email_verified_at' => now(),
             'owner_id' => $ownerId, // Vincular ao owner do tenant
             'is_owner' => false, // Não é owner, é dispatcher dentro do tenant
-            'is_subadmin' => false,
+                'is_subowner' => false,
         ]);
 
         // Cria o dispatcher (não-owner dentro do tenant)
@@ -274,12 +310,16 @@ class DispatcherController extends Controller
             'departament'  => $request->input('departament'),
         ]);
 
-        // Atribui role
-        $role = DB::table('roles')->where('name', 'Dispatcher')->first();
-        $roles = new RolesUsers();
-        $roles->user_id = $user->id;
-        $roles->role_id = $role->id;
-        $roles->save();
+        // ⭐ CORRIGIDO: Buscar ou criar role Dispatcher e atribuir ao usuário
+        $role = Role::firstOrCreate(
+            ['name' => 'Dispatcher'],
+            ['description' => 'Despachante que gerencia cargas e transportadoras']
+        );
+
+        // Verificar se o usuário já tem essa role antes de atribuir
+        if (!$user->roles()->where('roles.id', $role->id)->exists()) {
+            $user->roles()->attach($role->id);
+        }
 
         // Cria subscription de trial
         $billingService = app(BillingService::class);

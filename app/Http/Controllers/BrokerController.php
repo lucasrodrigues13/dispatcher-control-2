@@ -27,13 +27,16 @@ class BrokerController extends Controller
 
     public function create()
     {
-        return view('broker.create');
+        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
+        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+        
+        return view('broker.create', compact('owners'));
     }
 
     public function store(Request $request)
     {
         // Validação básica
-        $validator = Validator::make($request->all(), [
+        $validationRules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'license_number' => 'nullable|string',
@@ -46,7 +49,14 @@ class BrokerController extends Controller
             'fee_percent' => 'nullable|numeric|min:0|max:100',
             'payment_terms' => 'nullable|string',
             'payment_method' => 'nullable|string',
-        ], [
+        ];
+        
+        // ⭐ NOVO: Se for admin, adicionar validação de owner_id
+        if (Auth::user()->isAdmin()) {
+            $validationRules['owner_id'] = 'required|exists:users,id';
+        }
+        
+        $validator = Validator::make($request->all(), $validationRules, [
             'email.unique' => 'This email already exists...',
         ]);
 
@@ -83,9 +93,21 @@ class BrokerController extends Controller
                     ->withInput();
             }
 
-            // Obter owner do tenant
+            // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
             $authUser = Auth::user();
-            $ownerId = $authUser->getOwnerId();
+            $targetOwnerId = $authUser->getOwnerId(); // Default para tenant atual
+            
+            if ($authUser->isAdmin() && $request->filled('owner_id')) {
+                // Se admin e owner_id fornecido, validar e usar
+                $selectedOwner = User::find($request->owner_id);
+                if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
+                    $targetOwnerId = $selectedOwner->id;
+                } else {
+                    return redirect()->back()
+                        ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                        ->withInput();
+                }
+            }
             
             // Validar permissão
             if (!$authUser->canManageTenant()) {
@@ -94,6 +116,8 @@ class BrokerController extends Controller
                     ->withInput();
             }
             
+            $ownerId = $targetOwnerId;
+            
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -101,7 +125,7 @@ class BrokerController extends Controller
                 'must_change_password' => true,
                 'owner_id' => $ownerId, // Vincular ao owner do tenant
                 'is_owner' => false,
-                'is_subadmin' => false,
+                'is_subowner' => false,
             ]);
 
             // Criar o broker vinculado ao usuário criado

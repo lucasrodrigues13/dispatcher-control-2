@@ -27,7 +27,7 @@ class AdminUserSeeder extends Seeder
         // Buscar todas as permissions
         $permissions = Permission::all();
 
-        // Criar usuário admin 1 (como owner)
+        // ⭐ CORRIGIDO: Criar usuário admin 1 (Admin master, não é owner de tenant)
         $user1 = User::updateOrCreate(
             ['email' => 'alexandre.brito.engenharia@gmail.com'],
             [
@@ -35,13 +35,14 @@ class AdminUserSeeder extends Seeder
                 'password' => Hash::make('dispatcher123'),
                 'email_verified_at' => now(),
                 'must_change_password' => false,
-                'owner_id' => null, // Owner não tem owner
-                'is_owner' => true, // Marca como owner
-                'is_subadmin' => false,
+                'owner_id' => null, // Admin não tem owner
+                'is_owner' => false, // ⭐ CORRIGIDO: Admin não é owner de tenant
+                'is_subowner' => false,
+                'is_admin' => true, // ⭐ NOVO: Marca como Admin master
             ]
         );
 
-        // Criar usuário admin 2 (como owner)
+        // ⭐ CORRIGIDO: Criar usuário admin 2 (Admin master, não é owner de tenant)
         $user2 = User::updateOrCreate(
             ['email' => 'flucasrodrigues@hotmail.com'],
             [
@@ -49,9 +50,10 @@ class AdminUserSeeder extends Seeder
                 'password' => Hash::make('dispatcher123'),
                 'email_verified_at' => now(),
                 'must_change_password' => false,
-                'owner_id' => null, // Owner não tem owner
-                'is_owner' => true, // Marca como owner
-                'is_subadmin' => false,
+                'owner_id' => null, // Admin não tem owner
+                'is_owner' => false, // ⭐ CORRIGIDO: Admin não é owner de tenant
+                'is_subowner' => false,
+                'is_admin' => true, // ⭐ NOVO: Marca como Admin master
             ]
         );
 
@@ -59,7 +61,8 @@ class AdminUserSeeder extends Seeder
         $this->assignRole($user1, $adminRole);
         $this->assignRole($user2, $adminRole);
 
-        // Atribuir role Dispatcher aos usuários (para que sejam dispatchers owners)
+        // ⭐ NOVO: Buscar ou criar role Dispatcher ANTES de atribuir aos usuários
+        // Isso garante que a variável $dispatcherRole esteja disponível para atribuir permissões depois
         $dispatcherRole = Role::firstOrCreate(
             ['name' => 'Dispatcher'],
             ['description' => 'Dispatcher owner do tenant']
@@ -88,6 +91,13 @@ class AdminUserSeeder extends Seeder
             
             $totalPermissions = $adminRole->permissions()->count();
             $this->command->info("✅ Todas as permissions atribuídas ao role Admin! ({$totalPermissions} permissions)");
+            
+            // ⭐ NOVO: Atribuir todas as permissions ao role Dispatcher também
+            // Dispatchers owners devem ter acesso completo ao sistema dentro do seu tenant
+            $dispatcherRole->permissions()->sync($permissions->pluck('id'));
+            
+            $totalDispatcherPermissions = $dispatcherRole->permissions()->count();
+            $this->command->info("✅ Todas as permissions atribuídas ao role Dispatcher! ({$totalDispatcherPermissions} permissions)");
         } else {
             $this->command->warn("⚠️  Nenhuma permission encontrada. Execute PermissionsSeeder primeiro!");
         }

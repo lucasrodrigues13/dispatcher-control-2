@@ -17,7 +17,25 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        //
+        $user = auth()->user();
+        $adminTenantService = app(\App\Services\AdminTenantService::class);
+        
+        // ⭐ NOVO: Se for admin, verificar se está visualizando um tenant específico
+        $viewingTenant = null;
+        $isAdminViewingAll = false;
+        
+        if ($user->isAdmin()) {
+            $viewingTenantId = $adminTenantService->getViewingTenantId();
+            $isAdminViewingAll = $adminTenantService->isViewingAll();
+            
+            if ($viewingTenantId) {
+                $viewingTenant = \App\Models\User::find($viewingTenantId);
+                // Usar dados do tenant selecionado
+                $user = $viewingTenant;
+            }
+        }
+
+        // Contar recursos (já filtrados pelo TenantScope se necessário)
         $total_carriers = Carrier::count();
         $total_drivers = Driver::count();
         $total_employes = Employee::count();
@@ -25,12 +43,38 @@ class DashboardController extends Controller
 
         $carriers = Carrier::with('user')->get();
 
-        $user         = auth()->user();
         $resourceType = 'carrier';
-        $subscription = $user->subscription;
-        $plans        = Plan::where('active', true)
-                            ->where('is_trial', false)
-                            ->get();
+        
+        // ⭐ NOVO: Se for admin, criar um plano "Admin" virtual
+        if (auth()->user()->isAdmin()) {
+            if ($isAdminViewingAll) {
+                // Criar plano Admin virtual quando visualizando todos
+                $subscription = (object) [
+                    'plan' => (object) [
+                        'name' => 'Admin Plan',
+                        'slug' => 'admin',
+                        'description' => 'Full system access - Viewing all tenants',
+                        'price' => 0,
+                        'billing_cycle' => 'N/A',
+                        'max_dispatchers' => 'Unlimited',
+                        'max_employees' => 'Unlimited',
+                        'max_carriers' => 'Unlimited',
+                        'max_drivers' => 'Unlimited',
+                        'max_brokers' => 'Unlimited',
+                        'max_loads_per_month' => 'Unlimited',
+                    ],
+                ];
+            } else {
+                // Quando visualizando um tenant específico, usar subscription do tenant
+                $subscription = $user->subscription;
+            }
+        } else {
+            $subscription = $user->subscription;
+        }
+        
+        $plans = Plan::where('active', true)
+                    ->where('is_trial', false)
+                    ->get();
 
         $billingService = app(\App\Services\BillingService::class);
         
@@ -55,6 +99,8 @@ class DashboardController extends Controller
             "plans",
             "usageStats",
             "usageCheck",
+            "viewingTenant",
+            "isAdminViewingAll",
         ));
 
     }

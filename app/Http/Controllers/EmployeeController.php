@@ -66,6 +66,9 @@ class EmployeeController extends Controller
             ->where('user_id', auth()->id())
             ->first();
 
+        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
+        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
+
         // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
         $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
         $showUpgradeModal = false;
@@ -75,7 +78,7 @@ class EmployeeController extends Controller
             $showUpgradeModal = true;
         }
 
-        return view('dispatcher.employee.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck'));
+        return view('dispatcher.employee.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck', 'owners'));
     }
 
     /**
@@ -84,14 +87,21 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         // 1) Validação dos dados
-        $validator = Validator::make($request->all(), [
+        $validationRules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email',
             'dispatcher_id' => 'required|exists:dispatchers,id',
             'phone' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
             'ssn_tax_id' => 'nullable|string|max:255',
-        ], [
+        ];
+        
+        // ⭐ NOVO: Se for admin, adicionar validação de owner_id
+        if (Auth::user()->isAdmin()) {
+            $validationRules['owner_id'] = 'required|exists:users,id';
+        }
+        
+        $validator = Validator::make($request->all(), $validationRules, [
             'email.unique' => 'This email already exists...',
         ]);
 
@@ -101,9 +111,21 @@ class EmployeeController extends Controller
                 ->withInput();
         }
 
-        // Obter dispatcher do owner do tenant
+        // ⭐ NOVO: Se for admin, usar owner_id do request; senão, usar getOwnerId()
         $authUser = Auth::user();
-        $ownerId = $authUser->getOwnerId();
+        $targetOwnerId = $authUser->getOwnerId(); // Default para tenant atual
+        
+        if ($authUser->isAdmin() && $request->filled('owner_id')) {
+            // Se admin e owner_id fornecido, validar e usar
+            $selectedOwner = User::find($request->owner_id);
+            if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
+                $targetOwnerId = $selectedOwner->id;
+            } else {
+                return redirect()->back()
+                    ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
+                    ->withInput();
+            }
+        }
         
         // Validar permissão
         if (!$authUser->canManageTenant()) {
@@ -111,6 +133,8 @@ class EmployeeController extends Controller
                 ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
                 ->withInput();
         }
+        
+        $ownerId = $targetOwnerId;
         
         // Obter dispatcher do owner
         $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)

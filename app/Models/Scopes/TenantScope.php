@@ -20,6 +20,26 @@ class TenantScope implements Scope
         }
 
         $user = Auth::user();
+
+        // ⭐ NOVO: Se for Admin master, verificar se está visualizando um tenant específico
+        if ($user->isAdmin()) {
+            $adminTenantService = app(\App\Services\AdminTenantService::class);
+            
+            // Se estiver visualizando todos (ou não selecionou nenhum), não aplicar filtro
+            if ($adminTenantService->isViewingAll()) {
+                return;
+            }
+            
+            // Se estiver visualizando um tenant específico, aplicar filtro para aquele tenant
+            $viewingTenantId = $adminTenantService->getViewingTenantId();
+            if ($viewingTenantId) {
+                $this->applyTenantFilter($builder, $model, $viewingTenantId);
+            }
+            
+            return;
+        }
+
+        // Para usuários normais, aplicar filtro normalmente
         $ownerId = $user->getOwnerId();
 
         if (!$ownerId) {
@@ -43,9 +63,21 @@ class TenantScope implements Scope
             \App\Models\User::class,
         ])) {
             $builder->where(function ($query) use ($ownerId) {
-                $query->where('owner_id', $ownerId)
-                      ->orWhere('id', $ownerId); // Incluir o próprio owner
+                // Incluir usuários do tenant (owner_id = $ownerId) OU o próprio owner (id = $ownerId)
+                $query->where(function ($q) use ($ownerId) {
+                    $q->where('owner_id', $ownerId)
+                      ->orWhere('id', $ownerId);
+                })
+                // ⭐ CORRIGIDO: Excluir Admins masters (is_admin = true)
+                // Isso garante que dispatchers owners não vejam os dois usuários Admin do seed
+                ->where('is_admin', false);
             });
+            return;
+        }
+
+        // Dispatcher: filtra diretamente pelo owner_id
+        if ($modelClass === \App\Models\Dispatcher::class) {
+            $builder->where('owner_id', $ownerId);
             return;
         }
 

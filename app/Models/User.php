@@ -21,7 +21,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at',
         'owner_id',
         'is_owner',
-        'is_subadmin',
+        'is_subowner',
+        'is_admin',
     ];
 
     protected $hidden = [
@@ -33,7 +34,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_owner' => 'boolean',
-        'is_subadmin' => 'boolean',
+        'is_subowner' => 'boolean',
+        'is_admin' => 'boolean',
     ];
 
     public function roles()
@@ -118,9 +120,9 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->is_owner === true;
     }
 
-    public function isSubadmin(): bool
+    public function isSubowner(): bool
     {
-        return $this->is_subadmin === true;
+        return $this->is_subowner === true;
     }
 
     /**
@@ -149,10 +151,44 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Verifica se pode realizar ação administrativa
+     * Admins também podem gerenciar qualquer tenant
      */
     public function canManageTenant(): bool
     {
-        return $this->isOwner() || $this->isSubadmin();
+        return $this->isOwner() || $this->isSubowner() || $this->isAdmin();
+    }
+
+    /**
+     * Lista todos os owners disponíveis (para admins criarem usuários vinculados)
+     * Retorna apenas dispatchers owners (is_owner = true e não são admins)
+     * ⭐ IMPORTANTE: Usa DB::table() diretamente para garantir que NENHUM filtro seja aplicado
+     * Isso permite que admins vejam TODOS os owners disponíveis no dropdown,
+     * independente do tenant selecionado no momento
+     */
+    public static function getAvailableOwners()
+    {
+        // ⭐ CORRIGIDO: Usar DB::table() diretamente para ignorar qualquer scope ou filtro
+        // Isso garante que sempre retorne TODOS os owners, mesmo quando admin está visualizando um tenant específico
+        $userIds = \Illuminate\Support\Facades\DB::table('users')
+            ->where('is_owner', true)
+            ->where('is_admin', false)
+            ->whereNull('owner_id')
+            ->pluck('id')
+            ->toArray();
+        
+        // Verificar quais têm dispatcher associado
+        $usersWithDispatcher = \Illuminate\Support\Facades\DB::table('dispatchers')
+            ->whereIn('user_id', $userIds)
+            ->pluck('user_id')
+            ->toArray();
+        
+        // Buscar os usuários diretamente pelos IDs usando findMany (não aplica scopes)
+        $users = static::findMany($usersWithDispatcher);
+        
+        // Carregar relacionamento dispatchers manualmente
+        $users->load('dispatchers');
+        
+        return $users;
     }
 
      public function loads()
@@ -181,6 +217,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isDispatcher(): bool
     {
         return $this->hasRole('Dispatcher');
+    }
+
+    /**
+     * Verifica se é um Admin master (os dois usuários do seed)
+     * Admins masters têm is_admin = true e is_owner = false
+     */
+    public function isAdmin(): bool
+    {
+        return $this->is_admin === true;
     }
 
     // Métodos de verificação de assinatura

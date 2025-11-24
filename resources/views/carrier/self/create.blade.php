@@ -41,6 +41,28 @@
                         <form action="{{ route('carriers.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
 
+                            {{-- ⭐ NOVO: Campo de seleção de owner para admins --}}
+                            @if(auth()->user()->isAdmin() && isset($owners) && $owners->count() > 0)
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="owner_id">Owner <span class="text-danger">*</span></label>
+                                        <select name="owner_id" id="owner_id" class="form-control" required>
+                                            <option value="" selected disabled>Select Owner</option>
+                                            @foreach($owners as $owner)
+                                                <option value="{{ $owner->id }}" {{ old('owner_id') == $owner->id ? 'selected' : '' }}>
+                                                    {{ $owner->name }} ({{ $owner->email }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('owner_id')
+                                            <div class="text-danger small">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="name" class="form-label">User Name <span class="text-danger">*</label>

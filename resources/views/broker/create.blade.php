@@ -51,6 +51,28 @@
                         <form method="POST" action="{{ route('brokers.store') }}">
                             @csrf
 
+                            {{-- ⭐ NOVO: Campo de seleção de owner para admins --}}
+                            @if(auth()->user()->isAdmin() && isset($owners) && $owners->count() > 0)
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="owner_id">Owner <span class="text-danger">*</span></label>
+                                        <select name="owner_id" id="owner_id" class="form-control" required>
+                                            <option value="" selected disabled>Select Owner</option>
+                                            @foreach($owners as $owner)
+                                                <option value="{{ $owner->id }}" {{ old('owner_id') == $owner->id ? 'selected' : '' }}>
+                                                    {{ $owner->name }} ({{ $owner->email }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('owner_id')
+                                            <div class="text-danger small">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+
                             <div class="row">
                                 {{-- Campos do usuário --}}
                                 <div class="mb-3 col-md-6">
