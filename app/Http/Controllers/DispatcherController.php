@@ -60,10 +60,16 @@ class DispatcherController extends Controller
         ]);
 
         $userName = $request->input('name') ?: $request->input('company_name');
+        
+        // Marcar usuário como owner se for registro público (auth_register)
+        $isOwner = $request->register_type === "auth_register";
+        
         $user = User::create([
             'name'     => $userName,
             'email'    => $request->input('email'),
             'password' => Hash::make($request->input('password')),
+            'is_owner' => $isOwner,
+            'owner_id' => null, // Owner não tem owner
         ]);
 
         // Desativado por enquanto
@@ -82,6 +88,8 @@ class DispatcherController extends Controller
 
         $dispatcher = Dispatcher::create([
             'user_id'      => $user->id,
+            'owner_id'     => $isOwner ? $user->id : null, // Owner aponta para si mesmo
+            'is_owner'     => $isOwner,
             'type'         => $request->input('type'),
             'company_name' => $request->input('company_name'),
             'ssn_itin'     => $request->input('ssn_itin'),
@@ -147,6 +155,17 @@ class DispatcherController extends Controller
 
     public function storeFromDashboard(Request $request)
     {
+        // Obter owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                ->withInput();
+        }
+        
         // Validação condicional baseada no tipo
         $rules = [
             'type' => 'required|in:Individual,Company',
@@ -193,6 +212,22 @@ class DispatcherController extends Controller
                 ->withInput();
         }
 
+        // ⭐ NOVO: Verificar limite de dispatchers antes de criar
+        $billingService = app(BillingService::class);
+        $userLimitCheck = $billingService->checkUserLimit($authUser, 'dispatcher');
+
+        if (!$userLimitCheck['allowed']) {
+            // Se sugerir upgrade, redirecionar para montar plano
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message']);
+            }
+            
+            return redirect()->back()
+                ->withErrors(['error' => $userLimitCheck['message']])
+                ->withInput();
+        }
+
         // Gera senha automática baseada no nome ou company_name
         $nameForPassword = $request->type === 'Individual'
             ? $request->input('name')
@@ -215,11 +250,16 @@ class DispatcherController extends Controller
             'password' => Hash::make($plainPassword),
             'must_change_password' => true,
             'email_verified_at' => now(),
+            'owner_id' => $ownerId, // Vincular ao owner do tenant
+            'is_owner' => false, // Não é owner, é dispatcher dentro do tenant
+            'is_subadmin' => false,
         ]);
 
-        // Cria o dispatcher
+        // Cria o dispatcher (não-owner dentro do tenant)
         $dispatcher = Dispatcher::create([
             'user_id'      => $user->id,
+            'owner_id'     => $ownerId, // Vincular ao owner
+            'is_owner'     => false, // Não é owner
             'type'         => $request->input('type'),
             'company_name' => $request->input('company_name'),
             'ssn_itin'     => $request->input('ssn_itin'),

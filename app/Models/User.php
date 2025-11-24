@@ -19,6 +19,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'must_change_password',
         'email_verified_at',
+        'owner_id',
+        'is_owner',
+        'is_subadmin',
     ];
 
     protected $hidden = [
@@ -29,6 +32,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_owner' => 'boolean',
+        'is_subadmin' => 'boolean',
     ];
 
     public function roles()
@@ -87,6 +92,67 @@ class User extends Authenticatable implements MustVerifyEmail
     public function dispatchers()
     {
         return $this->hasOne(Dispatcher::class);
+    }
+
+    /**
+     * Relacionamento com o owner (dispatcher principal)
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Usuários vinculados a este owner
+     */
+    public function tenants()
+    {
+        return $this->hasMany(User::class, 'owner_id');
+    }
+
+    /**
+     * Métodos de verificação de tenant
+     */
+    public function isOwner(): bool
+    {
+        return $this->is_owner === true;
+    }
+
+    public function isSubadmin(): bool
+    {
+        return $this->is_subadmin === true;
+    }
+
+    /**
+     * Retorna o ID do tenant (owner_id se não for owner, ou id se for owner)
+     */
+    public function getTenantId(): ?int
+    {
+        if ($this->isOwner()) {
+            return $this->id;
+        }
+        
+        return $this->owner_id;
+    }
+
+    /**
+     * Retorna o owner_id (sempre retorna o ID do owner, mesmo se for o próprio owner)
+     */
+    public function getOwnerId(): ?int
+    {
+        if ($this->isOwner()) {
+            return $this->id;
+        }
+        
+        return $this->owner_id;
+    }
+
+    /**
+     * Verifica se pode realizar ação administrativa
+     */
+    public function canManageTenant(): bool
+    {
+        return $this->isOwner() || $this->isSubadmin();
     }
 
      public function loads()
@@ -169,7 +235,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // Verificar limites específicos por ação
         $billingService = app(\App\Services\BillingService::class);
-        $usageLimits = $billingService->checkUsageLimits($this);
+        // checkUsageLimits requer resourceType, usando 'load' como padrão
+        $usageLimits = $billingService->checkUsageLimits($this, 'load');
 
         return $usageLimits['allowed'] ?? false;
     }

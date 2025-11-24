@@ -229,7 +229,7 @@
         <p>{{ $usageCheck['message'] ?? 'Você atingiu o limite do seu plano. Atualize para adicionar mais carriers.' }}</p>
       </div>
       <div class="modal-footer">
-        <a href="{{ route('subscription.plans') }}" class="btn btn-primary">Atualizar Plano</a>
+        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">Atualizar Plano</a>
       </div>
     </div>
   </div>

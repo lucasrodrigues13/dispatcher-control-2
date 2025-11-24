@@ -58,12 +58,17 @@ class DealController extends Controller
      */
     public function store(Request $request)
     {
-        // Buscar dispatcher do usuário logado
-        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        // Obter owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
         
-        if (!$dispatcher) {
-            return back()->withErrors(['error' => 'Dispatcher não encontrado para este usuário.'])->withInput();
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return back()->withErrors(['error' => 'Você não tem permissão para criar este registro.'])->withInput();
         }
+        
+        // Obter dispatchers do tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
 
         $validated = $request->validate([
             'dispatcher_id' => 'required|exists:dispatchers,id',
@@ -71,18 +76,18 @@ class DealController extends Controller
             'value' => 'required|numeric|min:0',
         ]);
 
-        // Validar se o dispatcher pertence ao usuário logado
-        if ($validated['dispatcher_id'] != $dispatcher->id) {
-            return back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        // Validar se o dispatcher pertence ao tenant
+        if (!in_array($validated['dispatcher_id'], $tenantDispatchers->toArray())) {
+            return back()->withErrors(['dispatcher_id' => 'Dispatcher não pertence ao seu tenant.'])->withInput();
         }
 
-        // Validar se o carrier pertence ao dispatcher
+        // Validar se o carrier pertence ao dispatcher do tenant
         $carrier = Carrier::where('id', $validated['carrier_id'])
-            ->where('dispatcher_id', $dispatcher->id)
+            ->whereIn('dispatcher_id', $tenantDispatchers)
             ->first();
 
         if (!$carrier) {
-            return back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+            return back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence ao seu tenant.'])->withInput();
         }
 
         // Verificar se já existe o vínculo

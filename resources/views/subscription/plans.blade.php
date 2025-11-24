@@ -26,16 +26,24 @@
 
                         <ul class="list-unstyled mt-4">
                             <li class="mb-2">
-                                <i class="fas fa-truck text-success"></i>
-                                {{ $plan->max_carriers }} Carrier{{ $plan->max_carriers > 1 ? 's' : '' }}
+                                <i class="fas fa-user-tie text-success"></i>
+                                {{ $plan->max_dispatchers ?? 1 }} Dispatcher{{ ($plan->max_dispatchers ?? 1) != 1 ? 's' : '' }}
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-users text-success"></i>
                                 {{ $plan->max_employees }} Employee{{ $plan->max_employees != 1 ? 's' : '' }}
                             </li>
                             <li class="mb-2">
+                                <i class="fas fa-truck text-success"></i>
+                                {{ $plan->max_carriers }} Carrier{{ $plan->max_carriers > 1 ? 's' : '' }}
+                            </li>
+                            <li class="mb-2">
                                 <i class="fas fa-user text-success"></i>
                                 {{ $plan->max_drivers }} Driver{{ $plan->max_drivers != 1 ? 's' : '' }}
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-handshake text-success"></i>
+                                {{ $plan->max_brokers ?? 0 }} Broker{{ ($plan->max_brokers ?? 0) != 1 ? 's' : '' }}
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-boxes text-success"></i>
@@ -90,9 +98,11 @@
                                     <h6>Plan Summary</h6>
                                     <ul class="list-unstyled">
                                         <li>Base price: ${{ number_format($plan->price, 2) }}/month</li>
-                                        <li>{{ $plan->max_carriers }} Carrier(s) included</li>
+                                        <li>{{ $plan->max_dispatchers ?? 1 }} Dispatcher(s) included</li>
                                         <li>{{ $plan->max_employees }} Employee(s) included</li>
+                                        <li>{{ $plan->max_carriers }} Carrier(s) included</li>
                                         <li>{{ $plan->max_drivers }} Driver(s) included</li>
+                                        <li>{{ $plan->max_brokers ?? 0 }} Broker(s) included</li>
                                     </ul>
                                 </div>
 

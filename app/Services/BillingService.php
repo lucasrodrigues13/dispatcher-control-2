@@ -173,22 +173,172 @@ class BillingService
 
     // // Métodos existentes mantidos...
 
-  public function createOrUpdateSubscription(User $user, Plan $plan, array $paymentData = [])
+    /**
+     * ⭐ NOVO: Calcula valor proporcional para upgrade de plano
+     * Retorna o valor a ser cobrado proporcional aos dias restantes
+     */
+    public function calculateProratedUpgradeAmount(Subscription $currentSubscription, Plan $newPlan): array
+    {
+        // Se não tem data de expiração, não é upgrade proporcional
+        if (!$currentSubscription->expires_at) {
+            return [
+                'is_upgrade' => false,
+                'amount' => $newPlan->price,
+                'full_amount' => $newPlan->price,
+                'prorated_amount' => 0,
+                'days_remaining' => 0,
+                'days_in_period' => 30,
+            ];
+        }
+
+        $currentPlan = $currentSubscription->plan;
+
+        // ⭐ NOVO: Se o plano atual é freemium, não calcular proporcional - deve pagar preço cheio
+        // Freemium deve ser interrompido imediatamente e iniciar plano pago com novo período de 30 dias
+        if ($currentPlan && ($currentPlan->slug === 'freemium' || ($currentPlan->price ?? 0) == 0)) {
+            return [
+                'is_upgrade' => false,
+                'amount' => $newPlan->price,
+                'full_amount' => $newPlan->price,
+                'prorated_amount' => 0,
+                'days_remaining' => 0,
+                'days_in_period' => 30,
+                'is_from_freemium' => true, // Flag para identificar que vem do freemium
+            ];
+        }
+
+        $currentAmount = $currentSubscription->amount ?? $currentPlan->price ?? 0;
+        $newAmount = $newPlan->price;
+
+        // Se o novo plano é mais barato ou igual, não precisa calcular proporcional
+        if ($newAmount <= $currentAmount) {
+            return [
+                'is_upgrade' => false,
+                'amount' => $newAmount,
+                'full_amount' => $newAmount,
+                'prorated_amount' => 0,
+                'days_remaining' => 0,
+                'days_in_period' => 30,
+            ];
+        }
+
+        // Calcular dias restantes até expires_at
+        $now = now();
+        $expiresAt = $currentSubscription->expires_at;
+
+        // Se já expirou, não é upgrade proporcional
+        if ($expiresAt->isPast()) {
+            return [
+                'is_upgrade' => false,
+                'amount' => $newAmount,
+                'full_amount' => $newAmount,
+                'prorated_amount' => 0,
+                'days_remaining' => 0,
+                'days_in_period' => 30,
+            ];
+        }
+
+        // ⭐ CORRIGIDO: Calcular dias restantes até o vencimento incluindo o dia de HOJE
+        // Usar startOfDay para garantir que contamos dias completos
+        $nowStart = $now->copy()->startOfDay();
+        $expiresAtStart = $expiresAt->copy()->addDay()->startOfDay();
+        $daysRemaining = $nowStart->diffInDays($expiresAtStart, false);
+
+        // ⭐ CORRIGIDO: Se o plano foi criado/atualizado hoje e vence em aproximadamente 30 dias,
+        // garantir que contamos 30 dias completos (incluindo hoje)
+        // Verificar se o plano foi criado/atualizado hoje ou muito recentemente
+        $lastUpdated = $currentSubscription->updated_at ?? $currentSubscription->created_at;
+        $lastUpdatedStart = $lastUpdated->copy()->startOfDay();
+        $daysSinceUpdate = $nowStart->diffInDays($lastUpdatedStart, false);
+
+        // Se foi atualizado hoje (mesmo dia) e a diferença até o vencimento é próxima de 30 dias,
+        // considerar período completo de 30 dias
+        if ($daysSinceUpdate == 0 && $daysRemaining >= 29 && $daysRemaining <= 31) {
+            $daysRemaining = 30; // Garantir 30 dias completos quando plano foi fechado hoje
+        }
+
+        // Se restam menos de 1 dia completo, não calcular proporcional - cobrar valor cheio
+        if ($daysRemaining < 1) {
+            return [
+                'is_upgrade' => false,
+                'amount' => $newAmount,
+                'full_amount' => $newAmount,
+                'prorated_amount' => 0,
+                'days_remaining' => 0,
+                'days_in_period' => 30,
+            ];
+        }
+
+        // ⭐ CORRIGIDO: O período padrão é 30 dias (ciclo mensal)
+        $daysInPeriod = 30; // Período padrão mensal
+
+        // Diferença de preço (quanto está sendo adicionado - apenas os novos recursos)
+        $priceDifference = $newAmount - $currentAmount;
+
+        // ⭐ CORRIGIDO: SEMPRE calcular valor proporcional baseado nos dias restantes até o vencimento
+        // A proporcionalidade deve ser aplicada apenas à DIFERENÇA (novos recursos adicionados),
+        // não ao valor total do plano
+        // Exemplo: Se faltam 30 dias e adiciona $20, cobra ($20 * 30) / 30 = $20 (valor cheio da diferença)
+        // Exemplo: Se faltam 15 dias e adiciona $20, cobra ($20 * 15) / 30 = $10 (proporcional da diferença)
+        $proratedAmount = ($priceDifference * $daysRemaining) / $daysInPeriod;
+
+        // ⭐ CORRIGIDO: Se o valor proporcional calculado é maior que a diferença (não deveria acontecer),
+        // limitar ao valor da diferença
+        if ($proratedAmount > $priceDifference) {
+            $proratedAmount = $priceDifference;
+        }
+
+        // ⭐ CORRIGIDO: Se o valor proporcional é muito próximo da diferença (diferença < $0.01),
+        // considerar como valor cheio da diferença para evitar problemas de arredondamento
+        if (abs($proratedAmount - $priceDifference) < 0.01) {
+            $proratedAmount = $priceDifference;
+        }
+
+        return [
+            'is_upgrade' => true, // Sempre marcar como upgrade quando há diferença de preço
+            'amount' => round($proratedAmount, 2), // Valor proporcional da diferença a ser cobrado agora
+            'full_amount' => $newAmount, // Valor completo do novo plano (para referência)
+            'prorated_amount' => round($proratedAmount, 2), // Valor proporcional calculado
+            'current_amount' => $currentAmount, // Valor atual do plano
+            'price_difference' => $priceDifference, // Diferença entre novo e atual
+            'days_remaining' => max(0, $daysRemaining), // Dias restantes até vencimento
+            'days_in_period' => $daysInPeriod, // Período total (30 dias)
+            'expires_at' => $expiresAt, // Data de vencimento
+        ];
+    }
+
+    public function createOrUpdateSubscription(User $user, Plan $plan, array $paymentData = [])
     {
         $existingSubscription = $user->subscription;
         $amount = $paymentData['amount'] ?? $plan->price;
 
+        // ⭐ NOVO: Se é upgrade e tem expires_at preservado, manter a data original
+        $preserveExpiresAt = $paymentData['preserve_expires_at'] ?? false;
+        $originalExpiresAt = $preserveExpiresAt && $existingSubscription ? $existingSubscription->expires_at : null;
+
         if ($existingSubscription) {
             // Atualizar assinatura existente
-            $existingSubscription->update([
+            $updateData = [
                 'plan_id' => $plan->id,
                 'status' => $paymentData['status'] ?? 'active',
                 'payment_method' => $paymentData['payment_method'] ?? 'stripe',
                 'stripe_payment_id' => $paymentData['stripe_payment_id'] ?? null,
-                'amount'            => $amount,
-                'expires_at' => $this->calculateExpirationDate($plan),
+                'amount' => $plan->price, // Sempre atualizar para o valor completo do novo plano
                 'updated_at' => now(),
-            ]);
+            ];
+
+            // ⭐ NOVO: Se é upgrade proporcional, manter expires_at original
+            if ($preserveExpiresAt && $originalExpiresAt) {
+                $updateData['expires_at'] = $originalExpiresAt;
+            } else {
+                $updateData['expires_at'] = $this->calculateExpirationDate($plan);
+            }
+
+            $existingSubscription->update($updateData);
+
+            // ⭐ CORRIGIDO: Recarregar subscription com relacionamento plan para garantir dados atualizados
+            $existingSubscription->refresh();
+            $existingSubscription->load('plan');
 
             return $existingSubscription;
         } else {
@@ -296,7 +446,7 @@ class BillingService
         }
 
         return $subscription->status === 'active' &&
-               ($subscription->expires_at === null || $subscription->expires_at->isFuture());
+            ($subscription->expires_at === null || $subscription->expires_at->isFuture());
     }
 
     /**
@@ -349,7 +499,7 @@ class BillingService
 
         // Primeiro mês = 30 dias a partir de started_at
         $firstMonthEnd = $subscription->started_at->copy()->addDays(30);
-        
+
         return now()->isBefore($firstMonthEnd);
     }
 
@@ -358,8 +508,13 @@ class BillingService
      */
     public function checkLoadLimit(User $user): array
     {
-        $subscription = $user->subscription;
-        
+        // ⭐ CORRIGIDO: Identificar o usuário principal (Dispatcher) que possui a subscription
+        $mainUser = $this->getMainUser($user);
+
+        // ⭐ CORRIGIDO: Recarregar subscription do banco para garantir dados atualizados
+        $mainUser->unsetRelation('subscription');
+        $subscription = $mainUser->subscription()->with('plan')->first();
+
         if (!$subscription || !$subscription->plan) {
             return [
                 'allowed' => false,
@@ -370,8 +525,8 @@ class BillingService
 
         $plan = $subscription->plan;
 
-        // ⭐ Primeiro mês: cargas ilimitadas
-        if ($this->isFirstMonth($user)) {
+        // ⭐ Primeiro mês: cargas ilimitadas (sempre permite)
+        if ($this->isFirstMonth($mainUser)) {
             return [
                 'allowed' => true,
                 'is_first_month' => true,
@@ -380,16 +535,21 @@ class BillingService
         }
 
         // Após primeiro mês: verificar limite
-        $usage = $this->usageTrackingRepo->getCurrentUsage($user);
+        $usage = $this->usageTrackingRepo->getCurrentUsage($mainUser);
         $loadsUsed = $usage ? $usage->loads_count : 0;
         $maxLoads = $plan->max_loads_per_month;
 
-        // Se max_loads_per_month é null, significa ilimitado
-        if ($maxLoads === null) {
-            return ['allowed' => true];
+        // Se max_loads_per_month é null ou 0, significa ilimitado
+        if ($maxLoads === null || $maxLoads === 0) {
+            return [
+                'allowed' => true,
+                'loads_used' => $loadsUsed,
+                'max_loads' => null,
+            ];
         }
 
-        // Verifica se excedeu limite
+        // ⭐ IMPORTANTE: Só bloqueia se JÁ excedeu o limite
+        // Se ainda tem espaço (loadsUsed < maxLoads), permite importação
         if ($loadsUsed >= $maxLoads) {
             return [
                 'allowed' => false,
@@ -400,6 +560,7 @@ class BillingService
             ];
         }
 
+        // Ainda tem espaço disponível
         return [
             'allowed' => true,
             'loads_used' => $loadsUsed,
@@ -409,12 +570,122 @@ class BillingService
     }
 
     /**
+     * ⭐ NOVO: Identifica o usuário principal (Dispatcher) que possui a subscription
+     * Se o usuário passado for um Carrier/Broker, busca o Dispatcher principal
+     */
+    public function getMainUser(User $user): User
+    {
+        // ⭐ CORRIGIDO: Sempre buscar o Dispatcher principal, mesmo sem subscription
+
+        // Se o usuário já é um Dispatcher, verificar se tem registro na tabela dispatchers
+        if ($user->isDispatcher()) {
+            $dispatcher = \App\Models\Dispatcher::where('user_id', $user->id)->first();
+            if ($dispatcher) {
+                // É um Dispatcher válido, retorna ele mesmo
+                return $user;
+            }
+        }
+
+        // Se é Carrier, buscar o Dispatcher através do relacionamento
+        if ($user->isCarrier()) {
+            $carrier = \App\Models\Carrier::where('user_id', $user->id)->first();
+            if ($carrier && $carrier->dispatcher_id) {
+                $dispatcher = \App\Models\Dispatcher::find($carrier->dispatcher_id);
+                if ($dispatcher && $dispatcher->user) {
+                    return $dispatcher->user;
+                }
+            }
+        }
+
+        // Se é Broker, buscar o Dispatcher principal
+        // ⭐ CORRIGIDO: Broker.user_id agora aponta para o Dispatcher principal (após correção no BrokerController)
+        // Quando um Broker User está logado, o Broker (entidade) tem user_id que aponta para o dispatcher principal
+        $broker = \App\Models\Broker::where('user_id', $user->id)->first();
+        if ($broker && $broker->user_id) {
+            // Verificar se Broker.user_id aponta para um Dispatcher
+            $dispatcherUser = \App\Models\User::find($broker->user_id);
+            if ($dispatcherUser && $dispatcherUser->isDispatcher()) {
+                return $dispatcherUser;
+            }
+
+            // Se Broker.user_id aponta para o próprio User Broker (dados antigos),
+            // buscar através de quem tem esse Broker vinculado
+            // Buscar Dispatcher que tem brokers com user_id apontando para ele
+            $dispatcherWithBroker = \App\Models\Dispatcher::whereHas('user', function ($query) use ($broker) {
+                $query->where('id', $broker->user_id);
+            })->first();
+
+            if ($dispatcherWithBroker && $dispatcherWithBroker->user) {
+                return $dispatcherWithBroker->user;
+            }
+        }
+
+        // ⭐ NOVO: Buscar Dispatcher que tem brokers vinculados através do user_id do Broker
+        // Se Broker.user_id aponta para o próprio User Broker (dados antigos), buscar Dispatcher que tem esse Broker
+        if ($broker) {
+            // Buscar Dispatcher que tem brokers com user_id apontando para o dispatcher
+            // Mas como Broker.user_id aponta para o próprio User Broker, precisamos buscar de outra forma
+            // Buscar todos os Dispatchers e ver qual tem esse Broker vinculado através do email
+            $allDispatchers = \App\Models\Dispatcher::with('user')->get();
+            foreach ($allDispatchers as $dispatcher) {
+                $dispatcherUser = $dispatcher->user;
+                if ($dispatcherUser) {
+                    $dispatcherUserId = $dispatcherUser->id ?? null;
+                    if ($dispatcherUserId) {
+                        // Buscar brokers desse dispatcher
+                        $brokersOfDispatcher = \App\Models\Broker::where('user_id', $dispatcherUserId)->get();
+                        foreach ($brokersOfDispatcher as $brokerOfDispatcher) {
+                            $brokerUser = $brokerOfDispatcher->user;
+                            $brokerUserId = $brokerUser->id ?? null;
+                            // Verificar se o Broker tem o mesmo ID do usuário logado
+                            if ($brokerUserId && $brokerUserId === $user->id) {
+                                return $dispatcherUser;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Se é Employee, buscar através do dispatcher
+        $employee = \App\Models\Employee::where('email', $user->email)->first();
+        if ($employee && $employee->dispatcher_id) {
+            $dispatcher = \App\Models\Dispatcher::find($employee->dispatcher_id);
+            if ($dispatcher && $dispatcher->user) {
+                return $dispatcher->user;
+            }
+        }
+
+        // Se é Driver, buscar através do carrier -> dispatcher
+        $driver = \App\Models\Driver::where('email', $user->email)->first();
+        if ($driver && $driver->carrier_id) {
+            $carrier = \App\Models\Carrier::find($driver->carrier_id);
+            if ($carrier && $carrier->dispatcher_id) {
+                $dispatcher = \App\Models\Dispatcher::find($carrier->dispatcher_id);
+                if ($dispatcher && $dispatcher->user) {
+                    return $dispatcher->user;
+                }
+            }
+        }
+
+        // Se não encontrou dispatcher, retorna o próprio usuário
+        // (assumindo que é um dispatcher sem registro na tabela dispatchers ainda)
+        return $user;
+    }
+
+    /**
      * ⭐ NOVO: Verifica limite de usuários e bloqueia se exceder
      */
     public function checkUserLimit(User $user, string $userType = null): array
     {
-        $subscription = $user->subscription;
-        
+        // ⭐ CORRIGIDO: Identificar o usuário principal (Dispatcher) que possui a subscription
+        $mainUser = $this->getMainUser($user);
+
+        // ⭐ CORRIGIDO: Recarregar subscription do banco para garantir dados atualizados
+        // Forçar recarregamento do relacionamento para evitar cache
+        $mainUser->unsetRelation('subscription');
+        $subscription = $mainUser->subscription()->with('plan')->first();
+
         if (!$subscription || !$subscription->plan) {
             return [
                 'allowed' => false,
@@ -425,27 +696,34 @@ class BillingService
 
         $plan = $subscription->plan;
 
-        // Contar usuários ativos do usuário
-        $dispatcher = $user->dispatchers()->first();
+        // Contar usuários ativos do dispatcher principal
+        $dispatcher = \App\Models\Dispatcher::where('user_id', $mainUser->id)->first();
         $dispatcherId = $dispatcher ? $dispatcher->id : null;
+        $ownerId = $mainUser->getOwnerId();
 
-        // Carriers vinculados ao dispatcher
-        $carriersCount = \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->count();
-        
-        // Dispatcher (o próprio usuário)
-        $dispatchersCount = $dispatcher ? 1 : 0;
-        
-        // Employees vinculados ao dispatcher
-        $employeesCount = \App\Models\Employee::where('dispatcher_id', $dispatcherId)->count();
-        
-        // Drivers: contar através dos carriers do dispatcher
-        $carrierIds = \App\Models\Carrier::where('dispatcher_id', $dispatcherId)->pluck('id');
+        // Carriers vinculados ao dispatcher do tenant
+        $carriersCount = \App\Models\Carrier::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->count();
+
+        // Dispatchers do tenant
+        $dispatchersCount = \App\Models\Dispatcher::where('owner_id', $ownerId)->count();
+
+        // Employees vinculados ao dispatcher do tenant
+        $employeesCount = \App\Models\Employee::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->count();
+
+        // Drivers: contar através dos carriers do tenant
+        $carrierIds = \App\Models\Carrier::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->pluck('id');
         $driversCount = \App\Models\Driver::whereIn('carrier_id', $carrierIds)->count();
-        
-        // Brokers vinculados ao user
-        $brokersCount = \App\Models\Broker::where('user_id', $user->id)->count();
 
-        $totalUsers = $carriersCount + $dispatchersCount + $employeesCount + $driversCount + $brokersCount;
+        // Brokers vinculados ao tenant
+        $brokersCount = \App\Models\Broker::whereHas('user', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->count();
 
         // Limites do plano
         $maxCarriers = $plan->max_carriers ?? 0;
@@ -454,36 +732,10 @@ class BillingService
         $maxDrivers = $plan->max_drivers ?? 0;
         $maxBrokers = $plan->max_brokers ?? 0;
 
-        $maxTotal = $maxCarriers + $maxDispatchers + $maxEmployees + $maxDrivers + $maxBrokers;
-
-        // ⭐ Primeiro mês: permite 2 usuários (carrier + dispatcher)
-        if ($this->isFirstMonth($user)) {
-            if ($totalUsers >= 2) {
-                return [
-                    'allowed' => false,
-                    'message' => 'Primeiro mês: limite de 2 usuários atingido. Upgrade para adicionar mais.',
-                    'suggest_upgrade' => true,
-                    'users_count' => $totalUsers,
-                    'max_users' => 2,
-                ];
-            }
-            return [
-                'allowed' => true,
-                'is_first_month' => true,
-                'users_count' => $totalUsers,
-                'max_users' => 2,
-            ];
-        }
-
-        // Após primeiro mês: verificar limites
-        // Se maxTotal é 0 ou null, significa ilimitado
-        if ($maxTotal === 0 || $maxTotal === null) {
-            return ['allowed' => true];
-        }
-
-        // Verifica limite específico se userType foi informado
+        // ⭐ VALIDAÇÃO POR TIPO ESPECÍFICO (prioridade)
+        // Se userType foi informado, validar APENAS esse tipo específico
         if ($userType) {
-            $currentCount = match($userType) {
+            $currentCount = match ($userType) {
                 'carrier' => $carriersCount,
                 'dispatcher' => $dispatchersCount,
                 'employee' => $employeesCount,
@@ -492,7 +744,7 @@ class BillingService
                 default => 0,
             };
 
-            $maxCount = match($userType) {
+            $maxCount = match ($userType) {
                 'carrier' => $maxCarriers,
                 'dispatcher' => $maxDispatchers,
                 'employee' => $maxEmployees,
@@ -501,33 +753,68 @@ class BillingService
                 default => 0,
             };
 
-            if ($currentCount >= $maxCount) {
+            // Se maxCount é null, significa ilimitado para esse tipo
+            if ($maxCount === null) {
+                return [
+                    'allowed' => true,
+                    'is_unlimited' => true,
+                    'current_count' => $currentCount,
+                    'max_count' => null,
+                ];
+            }
+
+            // Se maxCount é 0, significa que o plano NÃO permite criar esse tipo
+            if ($maxCount === 0) {
+                $typeName = ucfirst($userType);
                 return [
                     'allowed' => false,
-                    'message' => "Limite de {$userType}s atingido ({$maxCount}). Upgrade para adicionar mais.",
+                    'message' => "Seu plano atual não permite criar mais usuários. Upgrade para adicionar {$typeName}s.",
+                    'suggest_upgrade' => true,
+                    'current_count' => $currentCount,
+                    'max_count' => 0,
+                    'resource_type' => $userType,
+                ];
+            }
+
+            // Verificar se já atingiu o limite específico
+            if ($currentCount >= $maxCount) {
+                $typeName = ucfirst($userType);
+                return [
+                    'allowed' => false,
+                    'message' => "Limite de {$typeName}s atingido ({$currentCount}/{$maxCount}). Upgrade para adicionar mais.",
                     'suggest_upgrade' => true,
                     'current_count' => $currentCount,
                     'max_count' => $maxCount,
+                    'resource_type' => $userType,
                 ];
             }
-        }
 
-        // Verifica limite total
-        if ($totalUsers >= $maxTotal) {
+            // Ainda tem espaço disponível para esse tipo específico
             return [
-                'allowed' => false,
-                'message' => "Limite total de usuários atingido ({$maxTotal}). Upgrade para adicionar mais.",
-                'suggest_upgrade' => true,
-                'users_count' => $totalUsers,
-                'max_users' => $maxTotal,
+                'allowed' => true,
+                'current_count' => $currentCount,
+                'max_count' => $maxCount,
+                'remaining' => $maxCount - $currentCount,
+                'resource_type' => $userType,
             ];
         }
+
+        // Se não foi informado userType, retornar informações gerais (para compatibilidade)
+        $totalUsers = $carriersCount + $dispatchersCount + $employeesCount + $driversCount + $brokersCount;
+        $maxTotal = $maxCarriers + $maxDispatchers + $maxEmployees + $maxDrivers + $maxBrokers;
 
         return [
             'allowed' => true,
             'users_count' => $totalUsers,
             'max_users' => $maxTotal,
             'remaining' => $maxTotal - $totalUsers,
+            'details' => [
+                'carriers' => ['used' => $carriersCount, 'limit' => $maxCarriers],
+                'dispatchers' => ['used' => $dispatchersCount, 'limit' => $maxDispatchers],
+                'employees' => ['used' => $employeesCount, 'limit' => $maxEmployees],
+                'drivers' => ['used' => $driversCount, 'limit' => $maxDrivers],
+                'brokers' => ['used' => $brokersCount, 'limit' => $maxBrokers],
+            ],
         ];
     }
 
@@ -621,30 +908,75 @@ class BillingService
      */
     public function getUsageStats(User $user)
     {
-        $subscription = $user->subscription;
+        // ⭐ CORRIGIDO: Identificar o usuário principal (Dispatcher) que possui a subscription
+        $mainUser = $this->getMainUser($user);
+
+        // ⭐ CORRIGIDO: Recarregar subscription do banco para garantir dados atualizados
+        $mainUser->unsetRelation('subscription');
+        $subscription = $mainUser->subscription()->with('plan')->first();
+
         if (!$subscription || !$subscription->plan) {
             return null;
         }
         $plan = $subscription->plan;
-        $usage = $this->usageTrackingRepo->getCurrentUsage($user);
+        $usage = $this->usageTrackingRepo->getCurrentUsage($mainUser);
+        
+        // ⭐ CORRIGIDO: Usar a mesma lógica de contagem do checkUserLimit
+        // Contar diretamente do banco ao invés de confiar na tabela usage_tracking
+        $ownerId = $mainUser->getOwnerId();
+
+        // Contar dispatchers usados (dispatchers do tenant)
+        $dispatchersUsed = \App\Models\Dispatcher::where('owner_id', $ownerId)->count();
+
+        // Contar employees usados (employees vinculados ao dispatcher do tenant)
+        $employeesUsed = \App\Models\Employee::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->count();
+
+        // Contar carriers usados (carriers vinculados ao dispatcher do tenant)
+        $carriersUsed = \App\Models\Carrier::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->count();
+
+        // Contar drivers usados (drivers através dos carriers do tenant)
+        $carrierIds = \App\Models\Carrier::whereHas('dispatcher', function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->pluck('id');
+        $driversUsed = \App\Models\Driver::whereIn('carrier_id', $carrierIds)->count();
+
+        // Contar brokers usados (brokers do tenant)
+        $brokersUsed = \App\Models\Broker::whereHas('user', function ($query) use ($ownerId) {
+            $query->where('owner_id', $ownerId);
+        })->count();
+
+        // Contar loads do mês atual (usar usage_tracking apenas para loads)
+        $loadsThisMonth = $usage ? $usage->loads_count : 0;
 
         // Se for plano ilimitado
         if ($plan->slug === 'carrier-unlimited') {
             return [
-                'carriers' => [
-                    'used' => $usage ? $usage->carriers_count : 0,
+                'dispatchers' => [
+                    'used' => $dispatchersUsed,
                     'limit' => null,
                 ],
                 'employees' => [
-                    'used' => $usage ? $usage->employees_count : 0,
+                    'used' => $employeesUsed,
+                    'limit' => null,
+                ],
+                'carriers' => [
+                    'used' => $carriersUsed,
                     'limit' => null,
                 ],
                 'drivers' => [
-                    'used' => $usage ? $usage->drivers_count : 0,
+                    'used' => $driversUsed,
+                    'limit' => null,
+                ],
+                'brokers' => [
+                    'used' => $brokersUsed,
                     'limit' => null,
                 ],
                 'loads_this_month' => [
-                    'used' => $usage ? $usage->loads_count : 0,
+                    'used' => $loadsThisMonth,
                     'limit' => null,
                 ],
             ];
@@ -654,48 +986,56 @@ class BillingService
         $isTrial = $subscription->trial_ends_at && $subscription->trial_ends_at->isFuture();
 
         return [
-            'carriers' => [
-                'used' => $usage ? $usage->carriers_count : 0,
-                'limit' => $plan->max_carriers,
+            'dispatchers' => [
+                'used' => $dispatchersUsed,
+                'limit' => $plan->max_dispatchers,
             ],
             'employees' => [
-                'used' => $usage ? $usage->employees_count : 0,
+                'used' => $employeesUsed,
                 'limit' => $plan->max_employees,
             ],
+            'carriers' => [
+                'used' => $carriersUsed,
+                'limit' => $plan->max_carriers,
+            ],
             'drivers' => [
-                'used' => $usage ? $usage->drivers_count : 0,
+                'used' => $driversUsed,
                 'limit' => $plan->max_drivers,
             ],
+            'brokers' => [
+                'used' => $brokersUsed,
+                'limit' => $plan->max_brokers ?? 0,
+            ],
             'loads_this_month' => [
-                'used' => $usage ? $usage->loads_count : 0,
+                'used' => $loadsThisMonth,
                 'limit' => $isTrial ? null : $plan->max_loads_per_month, // ilimitado no trial
             ],
         ];
     }
 
     public function calculateMonthlyBilling(User $user)
-        {
-            $month = now()->month;
-            $subscription = $user->subscription;
-            $plan = $subscription->plan;
-            $monthlyLoads = $plan->max_loads_per_month;
-            $usage = $this->usageTrackingRepo->getCurrentUsage($user);
+    {
+        $month = now()->month;
+        $subscription = $user->subscription;
+        $plan = $subscription->plan;
+        $monthlyLoads = $plan->max_loads_per_month;
+        $usage = $this->usageTrackingRepo->getCurrentUsage($user);
 
-            // Mês 1 = Trial gratuito
-            // if ($user->subscription->started_at->month === $month &&
-            //     $user->subscription->started_at->year === now()->year) {
-            //     return ['plan' => 'trial', 'cost' => 0];
-            // }
+        // Mês 1 = Trial gratuito
+        // if ($user->subscription->started_at->month === $month &&
+        //     $user->subscription->started_at->year === now()->year) {
+        //     return ['plan' => 'trial', 'cost' => 0];
+        // }
 
-            // Mês 2+ = Verificar limite
-            if ($usage->loads_count == $monthlyLoads) {
-                return [
-                    'allowed' => true,
-                    'suggest_upgrade' => true,
-                    'message' => 'You have reached the employee limit for your plan. Please upgrade to add more.',
-                ];
-            }
+        // Mês 2+ = Verificar limite
+        if ($usage->loads_count == $monthlyLoads) {
+            return [
+                'allowed' => true,
+                'suggest_upgrade' => true,
+                'message' => 'You have reached the employee limit for your plan. Please upgrade to add more.',
+            ];
         }
+    }
 
     public function checkUsageLimits(User $user, string $resourceType)
     {

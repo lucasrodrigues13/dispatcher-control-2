@@ -20,6 +20,7 @@ class Subscription extends Model
         'blocked_at',
         'payment_method',
         'payment_gateway_id',
+        'stripe_payment_id',  // Adicionado
         'amount',
         'billing_cycle_day',
         'due_date',           // Adicionado

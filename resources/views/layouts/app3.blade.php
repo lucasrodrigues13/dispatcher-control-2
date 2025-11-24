@@ -61,7 +61,7 @@
         <div class="alert alert-warning alert-dismissible fade show m-0" role="alert">
             <div class="container">
                 <i class="fas fa-exclamation-triangle"></i> {{ session('usage_warning') }}
-                <a href="{{ route('subscription.plans') }}" class="btn btn-warning btn-sm ms-2">Upgrade Now</a>
+                <a href="{{ route('subscription.build-plan') }}" class="btn btn-warning btn-sm ms-2">Upgrade Now</a>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         </div>

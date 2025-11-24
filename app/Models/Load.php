@@ -6,12 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Employee;
+use App\Models\Scopes\TenantScope;
 
 class Load extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $table = 'loads';
+
+    /**
+     * Aplicar TenantScope para filtrar automaticamente por tenant
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new TenantScope);
+    }
 
     protected $fillable = [
         // IDs e identificadores

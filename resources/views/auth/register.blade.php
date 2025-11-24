@@ -273,40 +273,19 @@
                 <div class="onboarding-step active" id="step1">
                     <div class="auth-card p-5">
                         <h2 class="mb-4 text-center">What best describes your company?</h2>
-                        <div class="row g-4 mb-4">
-                            <!-- Dispatcher -->
-                            <div class="col-lg-4">
-                                <label class="role-card card h-100 text-center p-4" onclick="selectRole(this)" role="button" tabindex="0" aria-label="Select Dispatcher role">
-                                    <input type="radio" name="role" value="dispatcher" hidden>
+                        <div class="row g-4 mb-4 justify-content-center">
+                            <!-- Dispatcher - Único tipo de conta permitido -->
+                            <div class="col-lg-6">
+                                <label class="role-card card h-100 text-center p-4 selected" onclick="selectRole(this)" role="button" tabindex="0" aria-label="Select Dispatcher role">
+                                    <input type="radio" name="role" value="dispatcher" checked hidden>
                                     <div class="check-icon"><i class="bi bi-check"></i></div>
                                     <div class="card-body">
                                         <i class="bi bi-clipboard-data role-icon"></i>
                                         <h5 class="card-title mb-3">Dispatcher</h5>
-                                        <p class="card-text small">Operations management and coordination</p>
+                                        <p class="card-text small">Crie sua conta como Dispatcher para gerenciar suas operações de transporte e logística</p>
+                                        <p class="card-text small text-muted mt-2"><small>Você será o administrador principal e poderá criar outros usuários em sua conta</small></p>
                                     </div>
                                 </label>
-                            </div>
-                            <!-- Carrier -->
-                            <div class="col-lg-4">
-                                <div class="role-card card h-100 text-center p-4 disabled-card" aria-label="Carrier role - Coming soon">
-                                    <div class="card-body">
-                                        <i class="bi bi-truck role-icon"></i>
-                                        <h5 class="card-title mb-3">Carrier</h5>
-                                        <p class="card-text small">Freight transport and logistics operations</p>
-                                        <div class="coming-soon-badge">Coming Soon</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Broker -->
-                            <div class="col-lg-4">
-                                <div class="role-card card h-100 text-center p-4 disabled-card" aria-label="Carrier role - Coming soon">
-                                    <div class="card-body">
-                                        <i class="bi bi-truck role-icon"></i>
-                                        <h5 class="card-title mb-3">Broker</h5>
-                                        <p class="card-text small">Cargo brokering and negotiations</p>
-                                        <div class="coming-soon-badge">Coming Soon</div>
-                                    </div>
-                                </div>
                             </div>
                             <!-- <div class="col-lg-4">
                                 <label class="role-card card h-100 text-center p-4" onclick="selectRole(this)" role="button" tabindex="0" aria-label="Select Broker role">
@@ -795,15 +774,9 @@
         // Step navigation
         function nextStep(step) {
             if (step === 2) {
-                const checked = document.querySelector('input[name="role"]:checked');
+                // Dispatcher sempre está selecionado, então sempre permitir avançar
                 const errorBox = document.getElementById('error-message');
-                if (!checked) {
-                    errorBox.textContent = 'Please select a role before continuing.';
-                    errorBox.classList.remove('d-none');
-                    return;
-                } else {
-                    errorBox.classList.add('d-none');
-                }
+                errorBox.classList.add('d-none');
             }
 
             document.querySelectorAll('.step-circle').forEach((circle, i) => {
@@ -815,22 +788,29 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Role selection
+        // Role selection - Apenas Dispatcher disponível
         function selectRole(card) {
+            // Apenas Dispatcher está disponível, então sempre selecionar Dispatcher
             document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
             card.querySelector('input[type="radio"]').checked = true;
-            const roleTitle = card.querySelector('h5.card-title').innerText.trim();
-            ['Dispatcher', 'Carrier', 'Broker'].forEach(id => {
-                document.getElementById(id).style.display = id === roleTitle ? 'block' : 'none';
-            });
+            const roleTitle = 'Dispatcher'; // Sempre Dispatcher
+            document.getElementById('Dispatcher').style.display = 'block';
             window.selectedRoleTitle = roleTitle;
 
-            // Initialize password validation for the selected role
+            // Initialize password validation
             setTimeout(() => {
                 initializePasswordValidation();
             }, 100);
         }
+
+        // Auto-selecionar Dispatcher ao carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            const dispatcherCard = document.querySelector('input[value="dispatcher"]').closest('.role-card');
+            if (dispatcherCard) {
+                selectRole(dispatcherCard);
+            }
+        });
 
         // Toggle fields based on type selection
         function toggleFields() {

@@ -90,12 +90,17 @@ class CommissionController extends Controller
      */
     public function store(Request $request)
     {
-        // Buscar dispatcher do usuário logado
-        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
+        // Obter owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
         
-        if (!$dispatcher) {
-            return back()->withErrors(['error' => 'Dispatcher não encontrado para este usuário.'])->withInput();
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return back()->withErrors(['error' => 'Você não tem permissão para criar este registro.'])->withInput();
         }
+        
+        // Obter dispatchers do tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
 
         $validated = $request->validate([
             'dispatcher_id' => 'required|exists:dispatchers,id',
@@ -104,27 +109,27 @@ class CommissionController extends Controller
             'value' => 'required|numeric|min:0',
         ]);
 
-        // Validar se o dispatcher pertence ao usuário logado
-        if ($validated['dispatcher_id'] != $dispatcher->id) {
-            return back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
+        // Validar se o dispatcher pertence ao tenant
+        if (!in_array($validated['dispatcher_id'], $tenantDispatchers->toArray())) {
+            return back()->withErrors(['dispatcher_id' => 'Dispatcher não pertence ao seu tenant.'])->withInput();
         }
 
-        // Validar se o deal pertence ao dispatcher
+        // Validar se o deal pertence ao dispatcher do tenant
         $deal = Deal::where('id', $validated['deal_id'])
-            ->where('dispatcher_id', $dispatcher->id)
+            ->whereIn('dispatcher_id', $tenantDispatchers)
             ->first();
 
         if (!$deal) {
-            return back()->withErrors(['deal_id' => 'Deal inválido ou não pertence a este dispatcher.'])->withInput();
+            return back()->withErrors(['deal_id' => 'Deal inválido ou não pertence ao seu tenant.'])->withInput();
         }
 
-        // Validar se o employee pertence ao dispatcher
+        // Validar se o employee pertence ao dispatcher do tenant
         $employee = Employee::where('id', $validated['employee_id'])
-            ->where('dispatcher_id', $dispatcher->id)
+            ->whereIn('dispatcher_id', $tenantDispatchers)
             ->first();
 
         if (!$employee) {
-            return back()->withErrors(['employee_id' => 'Employee inválido ou não pertence a este dispatcher.'])->withInput();
+            return back()->withErrors(['employee_id' => 'Employee inválido ou não pertence ao seu tenant.'])->withInput();
         }
 
         Comission::create($validated);

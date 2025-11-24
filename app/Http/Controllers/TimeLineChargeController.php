@@ -218,6 +218,27 @@ class TimeLineChargeController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Obter owner do tenant
+        $authUser = auth()->user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return response()->json([
+                'error' => 'Você não tem permissão para criar este registro.'
+            ], 403);
+        }
+        
+        // Obter dispatchers do tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+        
+        // Validar dispatcher_id se fornecido
+        if ($request->input('dispatcher_id') && !in_array($request->input('dispatcher_id'), $tenantDispatchers->toArray())) {
+            return response()->json([
+                'error' => 'Dispatcher não pertence ao seu tenant.'
+            ], 403);
+        }
+        
         $arrayTypeDates = array_keys($request->input('filters', []));
         $loadIds = array_map('strval', $request->input('load_ids', []));
 
@@ -260,12 +281,22 @@ class TimeLineChargeController extends Controller
                     continue;
                 }
 
+                // Obter dispatcher do owner se não fornecido
+                $dispatcherId = $request->input('dispatcher_id');
+                if (!$dispatcherId || !in_array($dispatcherId, $tenantDispatchers->toArray())) {
+                    // Usar dispatcher owner se não fornecido ou inválido
+                    $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+                        ->where('is_owner', true)
+                        ->first();
+                    $dispatcherId = $ownerDispatcher ? $ownerDispatcher->id : $tenantDispatchers->first();
+                }
+                
                 $timeLineCharge = TimeLineCharge::create([
                     'invoice_id'       => null,
                     'price'            => $request->input('total_amount'),
                     'status_payment'   => "Invoiced",
                     'carrier_id'       => $carrierId,
-                    'dispatcher_id'    => $request->input('dispatcher_id'),
+                    'dispatcher_id'    => $dispatcherId,
                     'date_start'       => $request->input('date_start'),
                     'date_end'         => $request->input('date_end'),
                     'amount_type'      => $request->input('amount_type'),
@@ -320,12 +351,30 @@ class TimeLineChargeController extends Controller
             ], 409);
         }
 
+        // Obter dispatcher do owner se não fornecido
+        $dispatcherId = $request->input('dispatcher_id');
+        if (!$dispatcherId || !in_array($dispatcherId, $tenantDispatchers->toArray())) {
+            // Usar dispatcher owner se não fornecido ou inválido
+            $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+                ->where('is_owner', true)
+                ->first();
+            $dispatcherId = $ownerDispatcher ? $ownerDispatcher->id : $tenantDispatchers->first();
+        }
+        
+        // Validar que carrier pertence ao tenant
+        $carrier = Carrier::find($request->input('carrier_id'));
+        if (!$carrier || !in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
+            return response()->json([
+                'error' => 'Carrier não pertence ao seu tenant.'
+            ], 403);
+        }
+
         $timeLineCharge = TimeLineCharge::create([
             'invoice_id'       => null,
             'price'            => $request->input('total_amount'),
             'status_payment'   => "Invoiced",
             'carrier_id'       => $request->input('carrier_id'),
-            'dispatcher_id'    => $request->input('dispatcher_id'),
+            'dispatcher_id'    => $dispatcherId,
             'date_start'       => $request->input('date_start'),
             'date_end'         => $request->input('date_end'),
             'amount_type'      => $request->input('amount_type'),

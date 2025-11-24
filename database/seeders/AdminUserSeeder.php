@@ -27,7 +27,7 @@ class AdminUserSeeder extends Seeder
         // Buscar todas as permissions
         $permissions = Permission::all();
 
-        // Criar usuário admin 1
+        // Criar usuário admin 1 (como owner)
         $user1 = User::updateOrCreate(
             ['email' => 'alexandre.brito.engenharia@gmail.com'],
             [
@@ -35,10 +35,13 @@ class AdminUserSeeder extends Seeder
                 'password' => Hash::make('dispatcher123'),
                 'email_verified_at' => now(),
                 'must_change_password' => false,
+                'owner_id' => null, // Owner não tem owner
+                'is_owner' => true, // Marca como owner
+                'is_subadmin' => false,
             ]
         );
 
-        // Criar usuário admin 2
+        // Criar usuário admin 2 (como owner)
         $user2 = User::updateOrCreate(
             ['email' => 'flucasrodrigues@hotmail.com'],
             [
@@ -46,6 +49,9 @@ class AdminUserSeeder extends Seeder
                 'password' => Hash::make('dispatcher123'),
                 'email_verified_at' => now(),
                 'must_change_password' => false,
+                'owner_id' => null, // Owner não tem owner
+                'is_owner' => true, // Marca como owner
+                'is_subadmin' => false,
             ]
         );
 
@@ -53,9 +59,26 @@ class AdminUserSeeder extends Seeder
         $this->assignRole($user1, $adminRole);
         $this->assignRole($user2, $adminRole);
 
+        // Atribuir role Dispatcher aos usuários (para que sejam dispatchers owners)
+        $dispatcherRole = Role::firstOrCreate(
+            ['name' => 'Dispatcher'],
+            ['description' => 'Dispatcher owner do tenant']
+        );
+        $this->assignRole($user1, $dispatcherRole);
+        $this->assignRole($user2, $dispatcherRole);
+
         // Criar dispatcher para cada admin se não existir
         $this->createDispatcherForUser($user1);
         $this->createDispatcherForUser($user2);
+        
+        // Criar subscription de trial/freemium para cada usuário
+        $billingService = app(\App\Services\BillingService::class);
+        if (!$user1->subscription) {
+            $billingService->createTrialSubscription($user1);
+        }
+        if (!$user2->subscription) {
+            $billingService->createTrialSubscription($user2);
+        }
 
         // Atribuir todas as permissions ao role Admin
         if ($permissions->count() > 0) {
@@ -103,9 +126,11 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
-        // Criar dispatcher
+        // Criar dispatcher como owner
         $dispatcher = Dispatcher::create([
             'user_id' => $user->id,
+            'owner_id' => $user->id, // Owner aponta para si mesmo
+            'is_owner' => true, // Marca como dispatcher owner
             'type' => 'Individual',
             'company_name' => $user->name,
             'ssn_itin' => null,

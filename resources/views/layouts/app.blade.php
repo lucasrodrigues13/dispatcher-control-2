@@ -47,6 +47,9 @@
         }
     </style>
 
+    <!-- Font Awesome CDN (fallback para ícones) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
     <!-- Fonts and icons -->
     <script src="/assets/assets/js/plugin/webfont/webfont.min.js"></script>
     <script>
@@ -384,14 +387,12 @@
                         @else
                             <a class="dropdown-item" href="{{ route('profile.edit') }}">My Profile</a>
                         @endif
-                        <a class="dropdown-item" href="#" id="logout-link">Logout</a>
-                        <!--
-                        <a class="dropdown-item" href="#">My Balance</a>
-                        <a class="dropdown-item" href="#">Inbox</a> -->
-                        <!-- <div class="dropdown-divider"></div> -->
-                        <!-- <a class="dropdown-item" href="#">Account Setting</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="#" id="logout-link">Logout</a> -->
+                        <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="dropdown-item border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
+                                Logout
+                            </button>
+                        </form>
                       </li>
                     </div>
                   </ul>
@@ -471,59 +472,7 @@
     <script src="/assets/assets/js/setting-demo.js"></script>
     <script src="/assets/assets/js/demo.js"></script>
 
-    <script>
-      $(document).ready(function () {
-        $('#logout-link').on('click', function (e) {
-          e.preventDefault();
-
-          $.ajax({
-            url: '{{ route("logout") }}',
-            type: 'POST',
-            data: {
-              _token: $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function () {
-              window.location.href = '/'; // redireciona após logout
-            },
-            error: function () {
-              alert('Erro ao fazer logout.');
-            }
-          });
-        });
-      });
-    </script>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-          document.getElementById('logout-link')?.addEventListener('click', function (e) {
-              e.preventDefault();
-
-              if (!confirm('Do you really want to logout?')) return;
-
-              fetch('{{ route('logout') }}', {
-                  method: 'POST',
-                  headers: {
-                      'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                      'Accept': 'application/json',
-                      'Content-Type': 'application/json'
-                  }
-              })
-              .then(response => {
-                  if (response.ok) {
-                      window.location.href = '/login1';
-                  } else {
-                      return response.json().then(data => {
-                          alert(data.message || 'Logout failed.');
-                      });
-                  }
-              })
-              .catch(error => {
-                  console.error('Logout error:', error);
-                  alert('Something went wrong.');
-              });
-          });
-      });
-    </script>
+    {{-- Logout script removido - usando form POST do sidebar --}}
 
     <script>
       $.ajaxSetup({

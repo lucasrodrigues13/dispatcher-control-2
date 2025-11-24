@@ -46,14 +46,14 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="name">Name</label>
-                                        <input type="text" name="name" class="form-control" id="name" value="{{ $driver->user->name ?? '' }}" placeholder="Enter name" required>
+                                        <input type="text" name="name" class="form-control" id="name" value="{{ $driver->user->name ?? $driver->name ?? '' }}" placeholder="Enter name" required>
                                     </div>
                                 </div>
                                 
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="email">Email</label>
-                                        <input type="email" name="email" class="form-control" id="email" value="{{ $driver->user->email ?? '' }}" placeholder="Enter email" required>
+                                        <input type="email" name="email" class="form-control" id="email" value="{{ $driver->user->email ?? $driver->email ?? '' }}" placeholder="Enter email" required>
                                     </div>
                                 </div>
                             </div>
@@ -97,7 +97,9 @@
                                         <select name="carrier_id" id="carrier_id" class="form-control" required>
                                             <option value="">Select carrier</option>
                                             @foreach($carriers as $carrier)
-                                                <option value="{{ $carrier->id }}">{{ $carrier->company_name }}</option>
+                                                <option value="{{ $carrier->id }}" {{ $driver->carrier_id == $carrier->id ? 'selected' : '' }}>
+                                                    {{ $carrier->company_name }}
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>

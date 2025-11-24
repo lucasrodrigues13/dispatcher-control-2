@@ -52,34 +52,6 @@
                                 </h5>
                             </div>
                             <div class="card-body" style="padding: 1.5rem;">
-                                <!-- Carriers -->
-                                <div class="mb-4">
-                                    <label for="carriers" class="form-label fw-bold mb-3 d-block text-center">
-                                        <i class="fas fa-truck text-primary me-2"></i>
-                                        Carriers
-                                    </label>
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <button type="button" class="btn btn-outline-secondary" style="width: 50px; height: 50px; font-size: 22px; font-weight: bold; margin-right: 15px;" onclick="decrement('carriers')">
-                                            −
-                                        </button>
-                                        <input type="number" 
-                                               class="form-control text-center" 
-                                               style="width: 100px; font-size: 20px; font-weight: bold; padding: 12px;" 
-                                               id="carriers" 
-                                               name="carriers" 
-                                               value="{{ old('carriers', $currentCounts['carriers'] ?? 0) }}" 
-                                               min="0" 
-                                               onchange="calculatePrice()"
-                                               required>
-                                        <button type="button" class="btn btn-outline-secondary" style="width: 50px; height: 50px; font-size: 22px; font-weight: bold; margin-left: 15px;" onclick="increment('carriers')">
-                                            +
-                                        </button>
-                                    </div>
-                                    <small class="text-muted d-block text-center mt-2">Atual: {{ $currentCounts['carriers'] ?? 0 }}</small>
-                                </div>
-
-                                <hr class="my-4">
-                                
                                 <!-- Dispatchers -->
                                 <div class="mb-4">
                                     <label for="dispatchers" class="form-label fw-bold mb-3 d-block text-center">
@@ -111,7 +83,7 @@
                                 <!-- Employees -->
                                 <div class="mb-4">
                                     <label for="employees" class="form-label fw-bold mb-3 d-block text-center">
-                                        <i class="fas fa-user-friends text-primary me-2"></i>
+                                        <i class="fas fa-users text-primary me-2"></i>
                                         Employees
                                     </label>
                                     <div class="d-flex align-items-center justify-content-center">
@@ -132,6 +104,34 @@
                                         </button>
                                     </div>
                                     <small class="text-muted d-block text-center mt-2">Atual: {{ $currentCounts['employees'] ?? 0 }}</small>
+                                </div>
+
+                                <hr class="my-4">
+                                
+                                <!-- Carriers -->
+                                <div class="mb-4">
+                                    <label for="carriers" class="form-label fw-bold mb-3 d-block text-center">
+                                        <i class="fas fa-truck text-primary me-2"></i>
+                                        Carriers
+                                    </label>
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <button type="button" class="btn btn-outline-secondary" style="width: 50px; height: 50px; font-size: 22px; font-weight: bold; margin-right: 15px;" onclick="decrement('carriers')">
+                                            −
+                                        </button>
+                                        <input type="number" 
+                                               class="form-control text-center" 
+                                               style="width: 100px; font-size: 20px; font-weight: bold; padding: 12px;" 
+                                               id="carriers" 
+                                               name="carriers" 
+                                               value="{{ old('carriers', $currentCounts['carriers'] ?? 0) }}" 
+                                               min="0" 
+                                               onchange="calculatePrice()"
+                                               required>
+                                        <button type="button" class="btn btn-outline-secondary" style="width: 50px; height: 50px; font-size: 22px; font-weight: bold; margin-left: 15px;" onclick="increment('carriers')">
+                                            +
+                                        </button>
+                                    </div>
+                                    <small class="text-muted d-block text-center mt-2">Atual: {{ $currentCounts['carriers'] ?? 0 }}</small>
                                 </div>
 
                                 <hr class="my-4">
@@ -242,7 +242,7 @@
                                     Continuar para Pagamento
                                 </button>
 
-                                <a href="{{ route('subscription.plans') }}" class="btn btn-outline-secondary w-100 mt-2">
+                                <a href="{{ route('subscription.index') }}" class="btn btn-outline-secondary w-100 mt-2">
                                     <i class="fas fa-arrow-left me-2"></i>
                                     Voltar
                                 </a>

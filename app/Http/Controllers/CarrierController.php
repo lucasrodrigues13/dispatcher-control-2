@@ -41,14 +41,35 @@ class CarrierController extends Controller
     // Mostra o formulário para criar um novo carrier
     public function create()
     {
+        // ⭐ VALIDAÇÃO PRIMEIRO: Verificar limite ANTES de qualquer coisa
         $billingService = app(BillingService::class);
-        $usageCheck = $billingService->checkUsageLimits(Auth::user(), 'carrier');
+        $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'carrier');
 
-        $showUpgradeModal = !empty($usageCheck['suggest_upgrade']);
+        // Se não tiver permissão, SEMPRE redirecionar ANTES de mostrar formulário
+        if (!($userLimitCheck['allowed'] ?? false)) {
+            // Se sugerir upgrade, redirecionar para tela de planos
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message'] ?? 'Limite atingido. Faça upgrade do seu plano.');
+            }
+            
+            // Caso contrário, voltar para lista com erro
+            return redirect()->route('carriers.index')
+                ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar carriers.');
+        }
 
         $dispatchers = Dispatcher::with('user')
             ->where('user_id', auth()->id())
             ->first();
+
+        // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
+        $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
+        $showUpgradeModal = false;
+        
+        // Se permitido mas com warning, mostrar modal
+        if (($usageCheck['allowed'] ?? true) && ($usageCheck['warning'] ?? false)) {
+            $showUpgradeModal = true;
+        }
 
         return view('carrier.self.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck'));
     }
@@ -80,14 +101,30 @@ class CarrierController extends Controller
             'dispatcher_id' => 'nullable|exists:dispatchers,id',
         ]);
 
-        // 2) Preenche dispatcher somente após passar no usage
-        if (empty($validated['dispatcher_id'])) {
-            $authUser = Auth::user();
-            $userDispatcher = Dispatcher::where('user_id', $authUser->id)->first();
-            if ($userDispatcher) {
-                $validated['dispatcher_id'] = $userDispatcher->id;
-            }
+        // 2) Obter dispatcher do owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                ->withInput();
         }
+        
+        // Obter dispatcher do owner
+        $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+            ->where('is_owner', true)
+            ->first();
+        
+        if (!$ownerDispatcher) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Dispatcher owner não encontrado.'])
+                ->withInput();
+        }
+        
+        // Sempre usar dispatcher do owner (ignorar dispatcher_id do request se fornecido)
+        $validated['dispatcher_id'] = $ownerDispatcher->id;
 
         $base = \Illuminate\Support\Str::of($validated['name'])->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', '');
         $plainPassword = (string) $base.'2025';
@@ -117,7 +154,10 @@ class CarrierController extends Controller
                 'email' => $validated['email'],
                 'password' => Hash::make($plainPassword),
                 'must_change_password' => true,
-                'email_verified_at' => now()
+                'email_verified_at' => now(),
+                'owner_id' => $ownerId, // Vincular ao owner do tenant
+                'is_owner' => false,
+                'is_subadmin' => false,
             ]);
 
             // Cria carrier
@@ -156,9 +196,9 @@ class CarrierController extends Controller
                 $roles->save();
             }
 
-            // Assinatura trial
-            $billingService = app(BillingService::class);
-            $billingService->createTrialSubscription($user);
+            // ⭐ CORRIGIDO: Carriers são sub-usuários do Dispatcher
+            // A subscription está no Dispatcher principal, não no Carrier
+            // Não criar subscription para Carrier
 
             DB::commit();
 

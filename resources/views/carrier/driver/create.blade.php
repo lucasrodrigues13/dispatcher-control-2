@@ -165,7 +165,7 @@
         <p>{{ $usageCheck['message'] ?? 'You have reached the limit of your current plan. Please upgrade to add more carriers.' }}</p>
       </div>
       <div class="modal-footer">
-        <a href="{{ route('subscription.plans') }}" class="btn btn-primary">Upgrade Plan</a>
+        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">Upgrade Plan</a>
       </div>
     </div>
   </div>

@@ -66,6 +66,16 @@ class LoadImportController extends Controller
             $billingService = app(BillingService::class);
             $loadLimitCheck = $billingService->checkLoadLimit(Auth::user());
 
+            // Log para debug
+            Log::info('Verificação de limite de cargas na importação', [
+                'user_id' => Auth::id(),
+                'allowed' => $loadLimitCheck['allowed'] ?? false,
+                'is_first_month' => $loadLimitCheck['is_first_month'] ?? false,
+                'loads_used' => $loadLimitCheck['loads_used'] ?? 0,
+                'max_loads' => $loadLimitCheck['max_loads'] ?? null,
+                'message' => $loadLimitCheck['message'] ?? '',
+            ]);
+
             if (!$loadLimitCheck['allowed']) {
                 // Remove arquivo se já foi salvo
                 if (file_exists($destination)) {
@@ -149,6 +159,28 @@ class LoadImportController extends Controller
      */
     public function store(Request $request)
     {
+        // Obter owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                ->withInput();
+        }
+        
+        // Obter dispatcher do owner
+        $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+            ->where('is_owner', true)
+            ->first();
+        
+        if (!$ownerDispatcher) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Dispatcher owner não encontrado.'])
+                ->withInput();
+        }
+        
         // Validação básica (ajuste conforme necessidade)
         $request->validate([
             // 'load_id'                 => 'required|integer',
@@ -202,9 +234,29 @@ class LoadImportController extends Controller
             'driver'                  => 'nullable|string|max:255',
         ]);
 
+        // Validar que dispatcher_id e carrier_id pertencem ao tenant
+        $requestDispatcherId = $request->input('dispatcher_id');
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+        
+        if ($requestDispatcherId && !in_array($requestDispatcherId, $tenantDispatchers->toArray())) {
+            return redirect()->back()
+                ->withErrors(['dispatcher_id' => 'Dispatcher não pertence ao seu tenant.'])
+                ->withInput();
+        }
+        
+        // Validar carrier se fornecido
+        if ($request->input('carrier_id')) {
+            $carrier = Carrier::find($request->input('carrier_id'));
+            if (!$carrier || !in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
+                return redirect()->back()
+                    ->withErrors(['carrier_id' => 'Carrier não pertence ao seu tenant.'])
+                    ->withInput();
+            }
+        }
+        
         // Monta array de atributos (mesmo formato usado na importação)
         $data = [
-            'dispatcher_id'           => $request->input('dispatcher_id'),
+            'dispatcher_id'           => $requestDispatcherId ?? $ownerDispatcher->id, // Usar dispatcher do request ou owner
             'carrier_id'              => $request->input('carrier_id'),
             'internal_load_id'        => $request->input('internal_load_id'),
             'creation_date'           => $request->input('creation_date'),

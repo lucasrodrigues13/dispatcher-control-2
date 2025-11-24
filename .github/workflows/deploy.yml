@@ -1,0 +1,99 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e  # Parar em caso de erro
+            
+            echo "=========================================="
+            echo "INICIANDO DEPLOY"
+            echo "=========================================="
+            echo ""
+            
+            # Navegar para o diretório da aplicação
+            cd /var/www/dispatcher-control
+            
+            # 1. Fazer pull das mudanças
+            echo "[1/7] Fazendo git pull..."
+            git pull origin main
+            echo ""
+            
+            # 2. Verificar e instalar dependências
+            echo "[2/7] Verificando dependências..."
+            composer install --no-dev --optimize-autoloader --no-interaction --quiet
+            echo ""
+            
+            # 3. Limpar TODOS os caches
+            echo "[3/7] Limpando caches..."
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan event:clear
+            echo ""
+            
+            # 4. Recriar cache de rotas
+            echo "[4/7] Recriando cache de rotas..."
+            php artisan route:cache
+            echo ""
+            
+            # 5. Recriar cache de configuração
+            echo "[5/7] Recriando cache de configuração..."
+            php artisan config:cache
+            echo ""
+            
+            # 6. Otimizar aplicação
+            echo "[6/7] Otimizando aplicação..."
+            php artisan optimize
+            echo ""
+            
+            # 7. Verificar e corrigir permissões
+            echo "[7/7] Verificando permissões..."
+            chown -R www-data:www-data storage bootstrap/cache
+            chmod -R 775 storage bootstrap/cache
+            echo ""
+            
+            echo "=========================================="
+            echo "DEPLOY CONCLUÍDO COM SUCESSO!"
+            echo "=========================================="
+            echo ""
+            echo "Verificando logs recentes para erros..."
+            tail -n 20 storage/logs/laravel.log | grep -i error || echo "Nenhum erro encontrado nos logs recentes."
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd /var/www/dispatcher-control
+            echo "Verificando status da aplicação..."
+            php artisan about | head -10 || echo "Comando 'about' não disponível"
+            echo ""
+            echo "Verificando se o Apache está rodando..."
+            systemctl is-active apache2 && echo "✅ Apache está ativo" || echo "❌ Apache não está ativo"
+

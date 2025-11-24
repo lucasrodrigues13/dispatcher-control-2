@@ -218,11 +218,11 @@
 
         {{-- Logout --}}
         <li class="nav-item">
-          <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-            <i class="fas fa-sign-out-alt"></i><p>Logout</p>
-          </a>
-          <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+          <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: inline;">
             @csrf
+            <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="text-decoration: none; display: flex; align-items: center;">
+              <i class="fas fa-sign-out-alt"></i><p style="margin: 0; margin-left: 10px;">Logout</p>
+            </a>
           </form>
         </li>
 

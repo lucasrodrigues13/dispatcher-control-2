@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\TenantScope;
 
 class TimeLineCharge extends Model
 {
@@ -11,6 +12,14 @@ class TimeLineCharge extends Model
 
     // Nome da tabela, caso o plural não corresponda
     protected $table = 'time_line_charges';
+
+    /**
+     * Aplicar TenantScope para filtrar automaticamente por tenant
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new TenantScope);
+    }
 
     /**
      * Atributos que podem ser atribuídos em massa.

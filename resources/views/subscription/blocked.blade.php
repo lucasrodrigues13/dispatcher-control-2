@@ -37,7 +37,7 @@
                         </div>
                     @else
                         <p>Please choose a subscription plan to access the system.</p>
-                        <a href="{{ route('subscription.plans') }}" class="btn btn-primary">
+                        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Choose a Plan
                         </a>
                     @endif

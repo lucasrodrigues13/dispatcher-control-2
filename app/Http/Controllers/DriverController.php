@@ -26,21 +26,23 @@ class DriverController extends Controller
      */
     public function index()
     {
-        // Busca o dispatcher do usuário logado
-        $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
-
-        // Se não existir dispatcher, retorna paginação vazia
-        if (!$dispatcher) {
-            $drivers = Driver::whereRaw('1 = 0')->paginate(10);
-        } else {
-            // Busca os carriers do dispatcher
-            $carriers = Carrier::where('dispatcher_id', $dispatcher->id)->pluck('id');
-
-            // Filtra os drivers pelos carriers do dispatcher
-            $drivers = Driver::with(['user', 'carrier'])
-                ->whereIn('carrier_id', $carriers)
-                ->paginate(10);
-        }
+        // ⭐ CORRIGIDO: Usar TenantScope automaticamente - buscar drivers do tenant
+        // O TenantScope já filtra automaticamente pelos carriers do tenant
+        // Carregar relacionamentos necessários
+        $drivers = Driver::with(['carrier.dispatcher.user'])
+            ->paginate(10);
+        
+        // ⭐ CORRIGIDO: Carregar users através do email para cada driver
+        $driverEmails = $drivers->pluck('email')->filter()->unique();
+        $users = User::whereIn('email', $driverEmails)->get()->keyBy('email');
+        
+        // Associar users aos drivers
+        $drivers->getCollection()->transform(function ($driver) use ($users) {
+            if ($driver->email && isset($users[$driver->email])) {
+                $driver->setRelation('user', $users[$driver->email]);
+            }
+            return $driver;
+        });
 
         return view('carrier.driver.index', compact('drivers'));
     }
@@ -50,10 +52,22 @@ class DriverController extends Controller
      */
     public function create()
     {
+        // ⭐ VALIDAÇÃO PRIMEIRO: Verificar limite ANTES de qualquer coisa
         $billingService = app(BillingService::class);
-        $usageCheck = $billingService->checkUsageLimits(Auth::user(), 'driver');
+        $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'driver');
 
-        $showUpgradeModal = !empty($usageCheck['suggest_upgrade']);
+        // Se não tiver permissão, SEMPRE redirecionar ANTES de mostrar formulário
+        if (!($userLimitCheck['allowed'] ?? false)) {
+            // Se sugerir upgrade, redirecionar para tela de planos
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message'] ?? 'Limite atingido. Faça upgrade do seu plano.');
+            }
+            
+            // Caso contrário, voltar com erro
+            return redirect()->back()
+                ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar drivers.');
+        }
 
         // Busca o dispatcher do usuário logado
         $dispatcher = Dispatcher::where('user_id', Auth::id())->first();
@@ -66,7 +80,16 @@ class DriverController extends Controller
                 ->get();
         }
 
-        return view('carrier.driver.create', compact('carriers','showUpgradeModal','usageCheck'));
+        // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
+        $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
+        $showUpgradeModal = false;
+        
+        // Se permitido mas com warning, mostrar modal
+        if (($usageCheck['allowed'] ?? true) && ($usageCheck['warning'] ?? false)) {
+            $showUpgradeModal = true;
+        }
+
+        return view('carrier.driver.create', compact('carriers', 'showUpgradeModal', 'usageCheck'));
     }
 
     /**
@@ -75,6 +98,17 @@ class DriverController extends Controller
     public function store(Request $request)
     {
         // Validação dos dados
+        // Obter owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                ->withInput();
+        }
+        
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
@@ -82,6 +116,29 @@ class DriverController extends Controller
             'phone'        => 'required|string|max:20',
             'ssn_tax_id'   => 'required|string|max:50',
         ]);
+
+        // Validar que carrier pertence ao tenant
+        $carrier = Carrier::find($validated['carrier_id']);
+        if (!$carrier) {
+            return redirect()->back()
+                ->withErrors(['carrier_id' => 'Carrier não encontrado.'])
+                ->withInput();
+        }
+        
+        // Verificar se carrier pertence ao dispatcher do owner
+        $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+            ->where('is_owner', true)
+            ->first();
+        
+        if (!$ownerDispatcher || $carrier->dispatcher_id != $ownerDispatcher->id) {
+            // Verificar se pertence a algum dispatcher do tenant
+            $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+            if (!in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
+                return redirect()->back()
+                    ->withErrors(['carrier_id' => 'Carrier não pertence ao seu tenant.'])
+                    ->withInput();
+            }
+        }
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|unique:users,email',
@@ -106,7 +163,7 @@ class DriverController extends Controller
 
             // ⭐ NOVO: Verificar limite de usuários antes de criar driver
             $billingService = app(BillingService::class);
-            $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'driver');
+            $userLimitCheck = $billingService->checkUserLimit($authUser, 'driver');
 
             if (!$userLimitCheck['allowed']) {
                 // Se sugerir upgrade, redirecionar para montar plano
@@ -120,13 +177,16 @@ class DriverController extends Controller
                     ->withInput();
             }
 
-            // Cria o usuário
+            // Cria o usuário vinculado ao owner
             $user = User::create([
                 'name'     => $validated['name'],
                 'email'    => $validated['email'],
                 'password' => Hash::make($plainPassword),
                 'must_change_password' => true,
                 'email_verified_at' => now(),
+                'owner_id' => $ownerId, // Vincular ao owner do tenant
+                'is_owner' => false,
+                'is_subadmin' => false,
             ]);
 
             // Cria o driver (vinculado ao user_id)
@@ -184,7 +244,13 @@ class DriverController extends Controller
      */
     public function show($id)
     {
-        $driver = Driver::with(['user', 'carrier'])->findOrFail($id);
+        // ⭐ CORRIGIDO: Buscar driver com relacionamentos corretos
+        $driver = Driver::with(['carrier.dispatcher.user'])->findOrFail($id);
+        
+        // ⭐ CORRIGIDO: Buscar user através do email se não estiver carregado
+        if (!$driver->relationLoaded('user') || !$driver->user) {
+            $driver->user = User::where('email', $driver->email)->first();
+        }
 
         return view('carrier.driver.show', compact('driver'));
     }
@@ -194,8 +260,26 @@ class DriverController extends Controller
      */
     public function edit($id)
     {
-        $driver = Driver::with('user')->findOrFail($id);
-        $carriers = Carrier::with('user')->get();
+        // ⭐ CORRIGIDO: Buscar driver com relacionamentos e filtrar pelo tenant
+        $driver = Driver::with(['carrier.dispatcher.user'])
+            ->findOrFail($id);
+        
+        // ⭐ CORRIGIDO: Buscar user através do email se não estiver carregado
+        if (!$driver->relationLoaded('user') || !$driver->user) {
+            $driver->user = User::where('email', $driver->email)->first();
+        }
+        
+        // ⭐ CORRIGIDO: Buscar apenas carriers do tenant do usuário logado
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Buscar dispatchers do tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+        
+        // Buscar carriers vinculados aos dispatchers do tenant
+        $carriers = Carrier::with('user')
+            ->whereIn('dispatcher_id', $tenantDispatchers)
+            ->get();
 
         return view('carrier.driver.edit', compact('driver', 'carriers'));
     }
@@ -205,31 +289,62 @@ class DriverController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $driver = Driver::with('user')->findOrFail($id);
+        // ⭐ CORRIGIDO: Buscar driver com relacionamentos corretos
+        $driver = Driver::with(['carrier.dispatcher.user'])->findOrFail($id);
+        
+        // ⭐ CORRIGIDO: Buscar user através do email (Driver não tem user_id direto)
+        $user = User::where('email', $driver->email)->first();
+        
+        if (!$user) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Usuário associado ao driver não encontrado.'])
+                ->withInput();
+        }
 
         // Validação dos dados
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
-            'email'        => "required|email|unique:users,email,{$driver->user_id}",
+            'email'        => "required|email|unique:users,email,{$user->id}",
             'password'     => 'nullable|string|min:8|confirmed',
             'carrier_id'   => 'required|exists:carriers,id',
             'phone'        => 'required|string|max:20',
             'ssn_tax_id'   => 'required|string|max:50',
         ]);
+        
+        // ⭐ CORRIGIDO: Validar que carrier pertence ao tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        $carrier = Carrier::find($validated['carrier_id']);
+        
+        if (!$carrier) {
+            return redirect()->back()
+                ->withErrors(['carrier_id' => 'Carrier não encontrado.'])
+                ->withInput();
+        }
+        
+        // Verificar se carrier pertence ao tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+        if (!in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
+            return redirect()->back()
+                ->withErrors(['carrier_id' => 'Carrier não pertence ao seu tenant.'])
+                ->withInput();
+        }
 
         try {
             DB::beginTransaction();
 
             // Atualiza dados do usuário
-            $driver->user->update([
+            $user->update([
                 'name'  => $validated['name'],
                 'email' => $validated['email'],
                 // Atualiza senha somente se preenchida
-                'password' => $validated['password'] ? Hash::make($validated['password']) : $driver->user->password,
+                'password' => $validated['password'] ? Hash::make($validated['password']) : $user->password,
             ]);
 
             // Atualiza dados do driver
             $driver->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
                 'carrier_id' => $validated['carrier_id'],
                 'phone'      => $validated['phone'],
                 'ssn_tax_id' => $validated['ssn_tax_id'],
@@ -260,15 +375,17 @@ class DriverController extends Controller
      */
     public function destroy($id)
     {
-        $driver = Driver::with('user')->findOrFail($id);
+        // ⭐ CORRIGIDO: Buscar driver e user através do email
+        $driver = Driver::findOrFail($id);
+        $user = User::where('email', $driver->email)->first();
 
         try {
             DB::beginTransaction();
 
-            // Remove o driver e o usuário associado
+            // Remove o driver e o usuário associado (se existir)
             $driver->delete();
-            if ($driver->user) {
-                $driver->user->delete();
+            if ($user) {
+                $user->delete();
             }
 
             DB::commit();

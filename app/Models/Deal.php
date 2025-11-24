@@ -4,10 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\TenantScope;
 
 class Deal extends Model
 {
     use HasFactory;
+
+    /**
+     * Aplicar TenantScope para filtrar automaticamente por tenant
+     */
+    protected static function booted()
+    {
+        static::addGlobalScope(new TenantScope);
+    }
 
     protected $fillable = [
         'dispatcher_id',

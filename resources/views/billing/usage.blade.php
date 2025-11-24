@@ -123,48 +123,57 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
-                                    <i class="fas fa-truck fa-2x text-primary mb-2"></i>
-                                    <h6>Carriers</h6>
+                                    <i class="fas fa-user-tie fa-2x text-primary mb-2"></i>
+                                    <h6>Dispatchers</h6>
                                     <p class="mb-0">
-                                        {{ auth()->user()->carriers()->count() }} / {{ $subscription->plan->max_carriers }}
+                                        {{ $usageStats['dispatchers']['used'] ?? 0 }} / {{ $usageStats['dispatchers']['limit'] ?? 'Unlimited' }}
                                     </p>
-                                    @if(auth()->user()->carriers()->count() > $subscription->plan->max_carriers)
-                                        <small class="text-warning">+${{ (auth()->user()->carriers()->count() - $subscription->plan->max_carriers) * 10 }}/month</small>
-                                    @endif
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <i class="fas fa-users fa-2x text-primary mb-2"></i>
                                     <h6>Employees</h6>
                                     <p class="mb-0">
-                                        {{ auth()->user()->employees()->count() }} / {{ $subscription->plan->max_employees }}
+                                        {{ $usageStats['employees']['used'] ?? 0 }} / {{ $usageStats['employees']['limit'] ?? 'Unlimited' }}
                                     </p>
-                                    @if(auth()->user()->employees()->count() > $subscription->plan->max_employees)
-                                        <small class="text-warning">+${{ (auth()->user()->employees()->count() - $subscription->plan->max_employees) * 10 }}/month</small>
-                                    @endif
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <i class="fas fa-truck fa-2x text-primary mb-2"></i>
+                                    <h6>Carriers</h6>
+                                    <p class="mb-0">
+                                        {{ $usageStats['carriers']['used'] ?? 0 }} / {{ $usageStats['carriers']['limit'] ?? 'Unlimited' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <i class="fas fa-user fa-2x text-primary mb-2"></i>
                                     <h6>Drivers</h6>
                                     <p class="mb-0">
-                                        {{ auth()->user()->drivers()->count() }} / {{ $subscription->plan->max_drivers }}
+                                        {{ $usageStats['drivers']['used'] ?? 0 }} / {{ $usageStats['drivers']['limit'] ?? 'Unlimited' }}
                                     </p>
-                                    @if(auth()->user()->drivers()->count() > $subscription->plan->max_drivers)
-                                        <small class="text-warning">+${{ (auth()->user()->drivers()->count() - $subscription->plan->max_drivers) * 10 }}/month</small>
-                                    @endif
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <div class="text-center">
+                                    <i class="fas fa-handshake fa-2x text-primary mb-2"></i>
+                                    <h6>Brokers</h6>
+                                    <p class="mb-0">
+                                        {{ $usageStats['brokers']['used'] ?? 0 }} / {{ $usageStats['brokers']['limit'] ?? 'Unlimited' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
                                 <div class="text-center">
                                     <i class="fas fa-boxes fa-2x text-primary mb-2"></i>
                                     <h6>Loads (Month)</h6>
                                     <p class="mb-0">
-                                        {{ $currentUsage['monthly_loads'] ?? 0 }} / {{ $subscription->plan->max_loads_per_month ?? 'Unlimited' }}
+                                        {{ $usageStats['loads_this_month']['used'] ?? 0 }} / {{ $usageStats['loads_this_month']['limit'] ?? 'Unlimited' }}
                                     </p>
                                 </div>
                             </div>
@@ -191,7 +200,7 @@
                                 You're approaching your usage limits. Upgrade to get more capacity and avoid interruptions.
                             @endif
                         </p>
-                        <a href="{{ route('subscription.plans') }}" class="btn btn-warning">
+                        <a href="{{ route('subscription.build-plan') }}" class="btn btn-warning">
                             <i class="fas fa-arrow-up"></i> View Plans & Upgrade
                         </a>
                     </div>

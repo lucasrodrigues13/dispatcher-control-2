@@ -110,4 +110,20 @@ class StripeService
     {
         return $this->getStripeClient()->customers->retrieve($customerId);
     }
+
+    /**
+     * ⭐ NOVO: Atualiza uma Subscription no Stripe para o próximo ciclo
+     * Usado para downgrades onde não há pagamento imediato
+     */
+    public function updateSubscriptionForNextCycle(string $subscriptionId, array $updateData)
+    {
+        // Atualizar subscription no Stripe para que a mudança seja aplicada no próximo ciclo
+        // Isso é feito através do update da subscription com proration_behavior = 'none'
+        // para que não cobre nada agora, apenas no próximo ciclo
+        $params = array_merge($updateData, [
+            'proration_behavior' => 'none', // Não aplicar proratação, mudança só no próximo ciclo
+        ]);
+
+        return $this->getStripeClient()->subscriptions->update($subscriptionId, $params);
+    }
 }

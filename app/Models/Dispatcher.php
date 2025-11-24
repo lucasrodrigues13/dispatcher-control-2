@@ -11,6 +11,8 @@ class Dispatcher extends Model
 
     protected $fillable = [
         'user_id',
+        'owner_id',
+        'is_owner',
         'type',
         'company_name',
         'ssn_itin',
@@ -23,6 +25,10 @@ class Dispatcher extends Model
         'notes',
         'phone',
         'departament'
+    ];
+
+    protected $casts = [
+        'is_owner' => 'boolean',
     ];
 
     /**
@@ -47,5 +53,21 @@ class Dispatcher extends Model
     public function employees()
     {
         return $this->hasMany(Employee::class, 'dispatcher_id');
+    }
+
+    /**
+     * Relacionamento com o owner (dispatcher principal)
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Verifica se é o owner do tenant
+     */
+    public function isOwner(): bool
+    {
+        return $this->is_owner === true;
     }
 }

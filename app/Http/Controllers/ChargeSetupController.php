@@ -64,26 +64,34 @@ class ChargeSetupController extends Controller
      */
     public function store(Request $request)
     {
-        // Buscar dispatcher do usuário logado
-        $dispatcher = Dispatcher::where('user_id', auth()->id())->first();
+        // Obter owner do tenant
+        $authUser = auth()->user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()->withErrors(['error' => 'Você não tem permissão para criar este registro.'])->withInput();
+        }
+        
+        // Obter dispatchers do tenant
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
 
-        if (!$dispatcher) {
-            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher não encontrado para este usuário.']);
+        // Validar se o dispatcher_id do request pertence ao tenant
+        if ($request['dispatcher_id'] && !in_array($request['dispatcher_id'], $tenantDispatchers->toArray())) {
+            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher não pertence ao seu tenant.'])->withInput();
         }
 
-        // Validar se o dispatcher_id do request pertence ao usuário logado
-        if ($request['dispatcher_id'] != $dispatcher->id) {
-            return redirect()->back()->withErrors(['dispatcher_id' => 'Dispatcher inválido.'])->withInput();
-        }
-
-        // Validar se o carrier pertence ao dispatcher logado
+        // Validar se o carrier pertence ao dispatcher do tenant
         $carrier = Carrier::where('id', $request['carrier_id'])
-            ->where('dispatcher_id', $dispatcher->id)
+            ->whereIn('dispatcher_id', $tenantDispatchers)
             ->first();
 
         if (!$carrier) {
-            return redirect()->back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence a este dispatcher.'])->withInput();
+            return redirect()->back()->withErrors(['carrier_id' => 'Carrier inválido ou não pertence ao seu tenant.'])->withInput();
         }
+        
+        // Usar dispatcher do request ou dispatcher do carrier
+        $dispatcherId = $request['dispatcher_id'] ?? $carrier->dispatcher_id;
 
         $selectedFilters = collect($request->input('filters', []))
                             ->filter(fn($v) => $v == '1')
@@ -92,7 +100,7 @@ class ChargeSetupController extends Controller
 
         $chargeSetup = ChargeSetup::create([
             'carrier_id'           => $request['carrier_id'],
-            'dispatcher_id'        => $dispatcher->id,
+            'dispatcher_id'        => $dispatcherId,
             'price'                => $request['amount_type'], // ou amount_type se já ajustou
             'charges_setup_array'  => $selectedFilters,
         ]);

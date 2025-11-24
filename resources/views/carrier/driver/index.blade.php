@@ -53,8 +53,8 @@
                 <tbody>
                   @forelse($drivers as $item)
                     <tr>
-                      <td>{{ $item->user->name ?? 'N/A' }}</td>
-                      <td>{{ $item->user->email ?? 'N/A' }}</td>
+                      <td>{{ $item->user->name ?? $item->name ?? 'N/A' }}</td>
+                      <td>{{ $item->user->email ?? $item->email ?? 'N/A' }}</td>
                       <td>{{ $item->carrier->company_name ?? 'N/A' }}</td>
                       <td>{{ $item->phone ?? 'N/A' }}</td>
                       <td>{{ $item->ssn_tax_id ?? 'N/A' }}</td>

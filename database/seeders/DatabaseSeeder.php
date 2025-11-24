@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             PermissionsSeeder::class,
             AdminUserSeeder::class,
+            DispatcherOwnerSeeder::class, // Dispatchers owners (simula registro pelo site)
         ]);
     }
 }

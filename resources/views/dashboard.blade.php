@@ -31,46 +31,133 @@
 
                     <!-- Plan Information -->
                     <div class="card-body">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-2 d-flex align-items-center">
-                                <i class="fas fa-truck text-primary me-2" style="width: 20px;"></i>
-                                <span>
-                                    <strong>
-                                        @if($subscription->plan->slug == 'dispatcher-pro')
-                                            Unlimited
-                                        @else
-                                            {{ $subscription->plan->max_carriers }}
-                                        @endif
-                                    </strong> Carrier{{ ($subscription->plan->slug == 'dispatcher-pro' || $subscription->plan->max_carriers > 1) ? 's' : '' }}
-                                </span>
-                            </li>
-                            <li class="mb-2 d-flex align-items-center">
-                                <i class="fas fa-users text-primary me-2" style="width: 20px;"></i>
-                                <span>
-                                    <strong>{{ $subscription->plan->max_employees }}</strong> Employee{{ $subscription->plan->max_employees != 1 ? 's' : '' }}
-                                </span>
-                            </li>
-                            <li class="mb-2 d-flex align-items-center">
-                                <i class="fas fa-user text-primary me-2" style="width: 20px;"></i>
-                                <span>
-                                    <strong>{{ $subscription->plan->max_drivers }}</strong> Driver{{ $subscription->plan->max_drivers != 1 ? 's' : '' }}
-                                </span>
-                            </li>
-                            <li class="mb-0 d-flex align-items-center">
-                                <i class="fas fa-boxes text-primary me-2" style="width: 20px;"></i>
-                                <span>
-                                    <strong>
-                                        @if($subscription->plan->slug == 'dispatcher-pro')
-                                            Unlimited
-                                        @elseif($subscription->isOnTrial())
-                                            Unlimited <span class="text-muted">(only in the first month after that it will be a maximum of {{ $subscription->plan->max_loads_per_month }} loads)</span>
-                                        @else
-                                            {{ $subscription->plan->max_loads_per_month }}
-                                        @endif
-                                    </strong> Loads/Month
-                                </span>
-                            </li>
-                        </ul>
+                        <div class="row">
+                            <!-- Limites do Plano (Esquerda) -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3 fw-bold">Plan Limits</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-user-tie text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>
+                                                @if($subscription->plan->slug == 'dispatcher-pro')
+                                                    Unlimited
+                                                @else
+                                                    {{ $subscription->plan->max_dispatchers ?? 1 }}
+                                                @endif
+                                            </strong> Dispatcher{{ ($subscription->plan->slug == 'dispatcher-pro' || ($subscription->plan->max_dispatchers ?? 1) > 1) ? 's' : '' }}
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-users text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $subscription->plan->max_employees }}</strong> Employee{{ $subscription->plan->max_employees != 1 ? 's' : '' }}
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-truck text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>
+                                                @if($subscription->plan->slug == 'dispatcher-pro')
+                                                    Unlimited
+                                                @else
+                                                    {{ $subscription->plan->max_carriers }}
+                                                @endif
+                                            </strong> Carrier{{ ($subscription->plan->slug == 'dispatcher-pro' || $subscription->plan->max_carriers > 1) ? 's' : '' }}
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-user text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $subscription->plan->max_drivers }}</strong> Driver{{ $subscription->plan->max_drivers != 1 ? 's' : '' }}
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-handshake text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $subscription->plan->max_brokers ?? 0 }}</strong> Broker{{ ($subscription->plan->max_brokers ?? 0) != 1 ? 's' : '' }}
+                                        </span>
+                                    </li>
+                                    <li class="mb-0 d-flex align-items-center">
+                                        <i class="fas fa-boxes text-primary me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>
+                                                @if($subscription->plan->slug == 'dispatcher-pro')
+                                                    Unlimited
+                                                @elseif($subscription->isOnTrial())
+                                                    Unlimited <span class="text-muted">(only in the first month after that it will be a maximum of {{ $subscription->plan->max_loads_per_month }} loads)</span>
+                                                @else
+                                                    {{ $subscription->plan->max_loads_per_month }}
+                                                @endif
+                                            </strong> Loads/Month
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Uso Atual (Direita) -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3 fw-bold">Current Usage</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-user-tie text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['dispatchers']['used'] ?? 0 }}</strong> Dispatcher{{ ($usageStats['dispatchers']['used'] ?? 0) != 1 ? 's' : '' }}
+                                            @if(isset($usageStats['dispatchers']['limit']) && $usageStats['dispatchers']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['dispatchers']['limit'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-users text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['employees']['used'] ?? 0 }}</strong> Employee{{ ($usageStats['employees']['used'] ?? 0) != 1 ? 's' : '' }}
+                                            @if(isset($usageStats['employees']['limit']) && $usageStats['employees']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['employees']['limit'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-truck text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['carriers']['used'] ?? 0 }}</strong> Carrier{{ ($usageStats['carriers']['used'] ?? 0) != 1 ? 's' : '' }}
+                                            @if(isset($usageStats['carriers']['limit']) && $usageStats['carriers']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['carriers']['limit'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-user text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['drivers']['used'] ?? 0 }}</strong> Driver{{ ($usageStats['drivers']['used'] ?? 0) != 1 ? 's' : '' }}
+                                            @if(isset($usageStats['drivers']['limit']) && $usageStats['drivers']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['drivers']['limit'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <i class="fas fa-handshake text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['brokers']['used'] ?? 0 }}</strong> Broker{{ ($usageStats['brokers']['used'] ?? 0) != 1 ? 's' : '' }}
+                                            @if(isset($usageStats['brokers']['limit']) && $usageStats['brokers']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['brokers']['limit'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                    <li class="mb-0 d-flex align-items-center">
+                                        <i class="fas fa-boxes text-success me-2" style="width: 20px;"></i>
+                                        <span>
+                                            <strong>{{ $usageStats['loads_this_month']['used'] ?? 0 }}</strong> Loads
+                                            @if(isset($usageStats['loads_this_month']['limit']) && $usageStats['loads_this_month']['limit'] !== null)
+                                                <span class="text-muted">/ {{ $usageStats['loads_this_month']['limit'] }}</span>
+                                            @else
+                                                <span class="text-muted">(Unlimited)</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -103,22 +190,10 @@
             </div>
             @endif
 
-            @if($usageStats)
-                <div class="alert alert-info mb-4">
-                    <strong>Plan:</strong> {{ $subscription->plan->name }}<br>
-                    <ul class="mb-0">
-                        <li>Carriers used: {{ $usageStats['carriers']['used'] }} of {{ $usageStats['carriers']['limit'] ?? 'Unlimited' }}</li>
-                        <li>Employees used: {{ $usageStats['employees']['used'] }} of {{ $usageStats['employees']['limit'] ?? 'Unlimited' }}</li>
-                        <li>Drivers used: {{ $usageStats['drivers']['used'] }} of {{ $usageStats['drivers']['limit'] ?? 'Unlimited' }}</li>
-                        <li>Loads this month: {{ $usageStats['loads_this_month']['used'] }} of {{ $usageStats['loads_this_month']['limit'] ?? 'Unlimited' }}</li>
-                    </ul>
-                </div>
-            @endif
-
             <!-- @if(isset($usageCheck['suggest_upgrade']) && $usageCheck['suggest_upgrade'])
                 <div class="alert alert-warning">
                     {{ $usageCheck['message'] }}
-                    <a href="{{ route('subscription.plans') }}" class="btn btn-primary btn-sm">Upgrade</a>
+                    <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary btn-sm">Upgrade</a>
                 </div>
             @elseif(isset($usageCheck['warning']) && $usageCheck['warning'])
                 <div class="alert alert-warning">

@@ -83,16 +83,30 @@ class BrokerController extends Controller
                     ->withInput();
             }
 
+            // Obter owner do tenant
+            $authUser = Auth::user();
+            $ownerId = $authUser->getOwnerId();
+            
+            // Validar permissão
+            if (!$authUser->canManageTenant()) {
+                return redirect()->back()
+                    ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                    ->withInput();
+            }
+            
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($plainPassword),
                 'must_change_password' => true,
+                'owner_id' => $ownerId, // Vincular ao owner do tenant
+                'is_owner' => false,
+                'is_subadmin' => false,
             ]);
 
-            // Criar o broker com user_id
+            // Criar o broker vinculado ao usuário criado
             $broker = Broker::create([
-                'user_id' => $user->id,
+                'user_id' => $user->id, // Broker vinculado ao seu próprio user
                 'license_number' => $request->license_number ?? null,
                 'company_name' => $request->company_name ?? null,
                 'phone' => $request->phone ?? null,
@@ -105,9 +119,9 @@ class BrokerController extends Controller
                 'payment_method' => $request->payment_method ?? null,
             ]);
 
-            // Criar assinatura trial automática
-            $billingService = app(BillingService::class);
-            $billingService->createTrialSubscription($user);
+            // ⭐ CORRIGIDO: Brokers são sub-usuários do Dispatcher
+            // A subscription está no Dispatcher principal, não no Broker
+            // Não criar subscription para Broker
 
             // Atribuir role
             $role = DB::table('roles')->where('name', 'Broker')->first();

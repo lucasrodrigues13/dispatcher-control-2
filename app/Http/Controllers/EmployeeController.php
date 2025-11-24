@@ -36,7 +36,7 @@ class EmployeeController extends Controller
                 ->paginate(10);
         }
 
-        return view('dispatcher.employeer.index', compact('employeers'));
+        return view('dispatcher.employee.index', compact('employeers'));
     }
 
     /**
@@ -44,16 +44,38 @@ class EmployeeController extends Controller
      */
     public function create()
     {
+        // ⭐ VALIDAÇÃO PRIMEIRO: Verificar limite ANTES de qualquer coisa
         $billingService = app(BillingService::class);
-        $usageCheck = $billingService->checkUsageLimits(Auth::user(), 'employee');
+        $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'employee');
 
-        $showUpgradeModal = !empty($usageCheck['suggest_upgrade']);
+        // Se não tiver permissão, SEMPRE redirecionar ANTES de mostrar formulário
+        if (!($userLimitCheck['allowed'] ?? false)) {
+            // Se sugerir upgrade, redirecionar para tela de planos
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message'] ?? 'Limite atingido. Faça upgrade do seu plano.');
+            }
+            
+            // Caso contrário, voltar para lista com erro
+            return redirect()->route('employees.index')
+                ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar employees.');
+        }
 
+        // Se chegou aqui, tem permissão - buscar dados para o formulário
         $dispatchers = Dispatcher::with('user')
             ->where('user_id', auth()->id())
             ->first();
 
-        return view('dispatcher.employeer.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck'));
+        // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
+        $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
+        $showUpgradeModal = false;
+        
+        // Se permitido mas com warning, mostrar modal
+        if (($usageCheck['allowed'] ?? true) && ($usageCheck['warning'] ?? false)) {
+            $showUpgradeModal = true;
+        }
+
+        return view('dispatcher.employee.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck'));
     }
 
     /**
@@ -79,9 +101,42 @@ class EmployeeController extends Controller
                 ->withInput();
         }
 
+        // Obter dispatcher do owner do tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        
+        // Validar permissão
+        if (!$authUser->canManageTenant()) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Você não tem permissão para criar este registro.'])
+                ->withInput();
+        }
+        
+        // Obter dispatcher do owner
+        $ownerDispatcher = Dispatcher::where('owner_id', $ownerId)
+            ->where('is_owner', true)
+            ->first();
+        
+        if (!$ownerDispatcher) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Dispatcher owner não encontrado.'])
+                ->withInput();
+        }
+        
+        // Validar que dispatcher_id do request pertence ao owner (se fornecido)
+        if ($request->dispatcher_id && $request->dispatcher_id != $ownerDispatcher->id) {
+            // Verificar se é um dispatcher não-owner do mesmo tenant
+            $requestDispatcher = Dispatcher::find($request->dispatcher_id);
+            if (!$requestDispatcher || $requestDispatcher->owner_id != $ownerId) {
+                return redirect()->back()
+                    ->withErrors(['dispatcher_id' => 'Dispatcher inválido ou não pertence ao seu tenant.'])
+                    ->withInput();
+            }
+        }
+        
         // ⭐ NOVO: Verificar limite de usuários antes de criar employee
         $billingService = app(BillingService::class);
-        $userLimitCheck = $billingService->checkUserLimit(Auth::user(), 'employee');
+        $userLimitCheck = $billingService->checkUserLimit($authUser, 'employee');
 
         if (!$userLimitCheck['allowed']) {
             // Se sugerir upgrade, redirecionar para montar plano
@@ -96,7 +151,7 @@ class EmployeeController extends Controller
         }
 
         Employee::create([
-            'dispatcher_id' => $request->dispatcher_id,
+            'dispatcher_id' => $request->dispatcher_id ?? $ownerDispatcher->id, // Usar dispatcher do request ou owner
             'name'          => $request->name,
             'email'         => $request->email,
             'phone'         => $request->phone ?? null,
@@ -118,7 +173,7 @@ class EmployeeController extends Controller
     {
         $employee    = Employee::findOrFail($id);
         $dispatchers = Dispatcher::with('user')->get();
-        return view('dispatcher.employeer.edit', compact('employee', 'dispatchers'));
+        return view('dispatcher.employee.edit', compact('employee', 'dispatchers'));
     }
 
     public function getEmployee($id) {

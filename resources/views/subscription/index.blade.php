@@ -112,7 +112,7 @@
                                 <h4 class="text-muted">No Active Subscription</h4>
                                 <p class="text-muted mb-4">Choose a plan to unlock all features and start using our platform.</p>
                             </div>
-                            <a href="{{ route('subscription.plans') }}" class="btn btn-primary btn-lg">
+                            <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary btn-lg">
                                 <i class="fas fa-bolt me-2"></i>
                                 Explore Plans
                             </a>
@@ -123,180 +123,52 @@
         </div>
     </div>
 
-    <!-- Available Plans -->
-    @if($plans->count() > 0)
-        <div class="row justify-content-center mb-5">
-            <div class="col-12">
-                <div class="card border-0 shadow">
-                    <div class="card-header bg-white border-bottom">
-                        <h5 class="mb-0">
-                            <i class="fas fa-th-large me-2 text-secondary"></i>
-                            Available Plans
-                        </h5>
-                    </div>
-
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach($plans as $plan)
-                                <div class="col-lg-4 col-md-6 mb-4">
-                                    <div class="card h-100 {{ $subscription && $subscription->plan_id === $plan->id ? 'border-primary shadow-sm' : 'border-light' }}">
-                                        @if($subscription && $subscription->plan_id === $plan->id)
-                                            <div class="card-header bg-primary text-white text-center py-2">
-                                                <small><i class="fas fa-check me-1"></i>CURRENT PLAN</small>
-                                            </div>
-                                        @endif
-
-                                        <div class="card-body text-center d-flex flex-column">
-                                            <h5 class="card-title">{{ $plan->name }}</h5>
-                                            @if($plan->description)
-                                                <p class="card-text text-muted small">{{ $plan->description }}</p>
-                                            @endif
-
-                                            <div class="mb-4">
-                                                <h3 class="text-primary">
-                                                    ${{ number_format($plan->price, 2) }}
-                                                    <small class="text-muted fs-6">/ {{ $plan->billing_cycle ?? 'month' }}</small>
-                                                </h3>
-                                            </div>
-
-                                            @if($plan->features)
-                                                <ul class="list-unstyled text-start flex-grow-1">
-                                                    @foreach(json_decode($plan->features, true) as $feature)
-                                                        <li class="mb-2">
-                                                            <i class="fas fa-check text-success me-2"></i>
-                                                            <small>{{ $feature }}</small>
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            @endif
-
-                                            <div class="mt-auto">
-                                                @if($subscription && $subscription->plan_id === $plan->id)
-                                                    <button class="btn btn-outline-primary" disabled>
-                                                        <i class="fas fa-check me-1"></i>
-                                                        Active Plan
-                                                    </button>
-                                                @else
-                                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#changePlanModal{{ $plan->id }}">
-                                                        @if($subscription)
-                                                            <i class="fas fa-exchange-alt me-1"></i>
-                                                            Change Plan
-                                                        @else
-                                                            <i class="fas fa-arrow-right me-1"></i>
-                                                            Select Plan
-                                                        @endif
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Change Plan Modal for each plan -->
-                                @if(!($subscription && $subscription->plan_id === $plan->id))
-                                    <div class="modal fade" id="changePlanModal{{ $plan->id }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">
-                                                        @if($subscription)
-                                                            Change to {{ $plan->name }}
-                                                        @else
-                                                            Subscribe to {{ $plan->name }}
-                                                        @endif
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form action="{{ $subscription ? route('subscription.upgrade') : route('subscription.subscribe') }}" method="POST">
-                                                    @csrf
-                                                    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-
-                                                    <div class="modal-body">
-                                                        <div class="mb-3">
-                                                            <h6>Plan Summary</h6>
-                                                            <ul class="list-unstyled">
-                                                                <li><strong>Plan:</strong> {{ $plan->name }}</li>
-                                                                <li><strong>Price:</strong> ${{ number_format($plan->price, 2) }}/{{ $plan->billing_cycle ?? 'month' }}</li>
-                                                                @if($plan->description)
-                                                                    <li><strong>Description:</strong> {{ $plan->description }}</li>
-                                                                @endif
-                                                            </ul>
-                                                        </div>
-
-                                                        <div class="mb-3">
-                                                            <label for="payment_method{{ $plan->id }}" class="form-label">Payment Method</label>
-                                                            <select class="form-select" id="payment_method{{ $plan->id }}" name="payment_method" required>
-                                                                <option value="">Select Payment Method</option>
-                                                                <option value="credit_card">💳 Credit Card</option>
-                                                                {{-- <option value="debit_card">💳 Debit Card</option>
-                                                                <option value="pix">📱 PIX</option>
-                                                                <option value="bank_transfer">🏦 Bank Transfer</option> --}}
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="alert alert-info">
-                                                            <small>
-                                                                <i class="fas fa-info-circle me-1"></i>
-                                                                @if($subscription)
-                                                                    Your plan will be changed immediately and billing will be adjusted.
-                                                                @else
-                                                                    Your billing cycle will start immediately and you'll be charged monthly.
-                                                                @endif
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button type="submit" class="btn btn-primary">
-                                                            @if($subscription)
-                                                                Confirm Change
-                                                            @else
-                                                                Confirm Subscription
-                                                            @endif
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-
     <!-- Action Buttons -->
-    @if($subscription)
-        <div class="row justify-content-center">
-            <div class="col-auto">
-                <div class="d-flex gap-3 flex-wrap justify-content-center">
+    <div class="row justify-content-center">
+        <div class="col-auto">
+            <div class="d-flex gap-3 flex-wrap justify-content-center">
+                @if($subscription)
                     @if($subscription->status === 'active')
+                        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">
+                            <i class="fas fa-cog me-2"></i>
+                            Alterar Plano
+                        </a>
+                        
                         <form action="{{ route('subscription.cancel') }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Are you sure you want to cancel your subscription?')">
+                              onsubmit="return confirm('Tem certeza que deseja cancelar sua assinatura? Você poderá continuar usando até ' + 
+                              '{{ $subscription->expires_at ? $subscription->expires_at->format('d/m/Y') : 'a data de vencimento' }}.')">
                             @csrf
                             <button type="submit" class="btn btn-outline-danger">
                                 <i class="fas fa-times me-2"></i>
-                                Cancel Subscription
+                                Cancelar Assinatura
                             </button>
                         </form>
-                    @elseif(in_array($subscription->status, ['blocked', 'cancelled']))
-                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#reactivateModal">
+                    @elseif($subscription->status === 'cancelled')
+                        <div class="alert alert-warning mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Assinatura Cancelada</strong><br>
+                            Você pode continuar usando o sistema até 
+                            {{ $subscription->expires_at ? $subscription->expires_at->format('d/m/Y') : 'a data de vencimento' }}.
+                        </div>
+                        <a href="{{ route('subscription.build-plan') }}" class="btn btn-success">
                             <i class="fas fa-redo me-2"></i>
-                            Reactivate Subscription
-                        </button>
+                            Reativar Assinatura
+                        </a>
                     @endif
 
                     <a href="{{ route('billing.index') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-receipt me-2"></i>
-                        View Billing
+                        Ver Faturas
                     </a>
-                </div>
+                @else
+                    <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-bolt me-2"></i>
+                        Montar Plano Personalizado
+                    </a>
+                @endif
             </div>
         </div>
-    @endif
+    </div>
 </div>
 
 <!-- Reactivate Modal -->
