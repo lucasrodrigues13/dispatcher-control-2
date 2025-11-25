@@ -235,6 +235,9 @@ class DriverController extends Controller
             if (!$userLimitCheck['allowed']) {
                 // Se sugerir upgrade, redirecionar para montar plano
                 if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                    // ⭐ NOVO: Armazenar URL de origem para retornar após pagamento
+                    session(['return_url_after_payment' => route('drivers.create')]);
+                    
                     return redirect()->route('subscription.build-plan')
                         ->with('error', $userLimitCheck['message']);
                 }

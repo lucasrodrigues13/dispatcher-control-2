@@ -268,9 +268,9 @@
                             <h4 class="text-success">Payment Successful!</h4>
                             <p class="text-muted mb-4">Your subscription has been activated successfully.</p>
                         </div>
-                        <a href="{{ route('dashboard.index') }}" class="btn btn-success btn-lg">
-                            <i class="fas fa-tachometer-alt me-2"></i>
-                            Go to Dashboard
+                        <a href="{{ $returnUrl ?? route('dashboard.index') }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Return to Previous Page
                         </a>
                     </div>
 
@@ -414,8 +414,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const data = await response.json();
                     
                     if (data.success) {
-                        // Redirecionar diretamente para o dashboard
-                        window.location.href = '{{ route("dashboard.index") }}';
+                        // ⭐ NOVO: Redirecionar para URL de origem (se existir) ou dashboard
+                        const returnUrl = "{{ $returnUrl ?? route('dashboard.index') }}";
+                        window.location.href = returnUrl;
                     } else {
                         throw new Error(data.message || data.error || 'Erro ao processar downgrade');
                     }
@@ -507,6 +508,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             if (data.success) {
+                // ⭐ NOVO: Usar URL de retorno da resposta do servidor se disponível
+                const returnUrlFromServer = data.return_url;
+                if (returnUrlFromServer) {
+                    // Atualizar a URL de retorno com a do servidor
+                    window.returnUrlAfterPayment = returnUrlFromServer;
+                }
                 showSuccess();
             } else {
                 throw new Error(data.message || 'Error processing payment');
@@ -538,9 +545,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('payment-form').classList.add('d-none');
         document.getElementById('payment-success').classList.remove('d-none');
 
-        // Redirect directly to dashboard (Stripe component already has back button)
+        // ⭐ NOVO: Redirecionar para URL de origem (se existir) ou dashboard
+        // Priorizar URL do servidor (se disponível), senão usar a da view
+        const returnUrl = window.returnUrlAfterPayment || "{{ $returnUrl ?? route('dashboard.index') }}";
+        console.log('Redirecionando para:', returnUrl); // Debug
+        console.log('URL da view:', "{{ $returnUrl ?? route('dashboard.index') }}"); // Debug
+        console.log('URL do servidor:', window.returnUrlAfterPayment); // Debug
         setTimeout(() => {
-            window.location.href = "{{ route('dashboard.index') }}";
+            window.location.href = returnUrl;
         }, 2000);
     }
 

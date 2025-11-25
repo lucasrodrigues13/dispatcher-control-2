@@ -1,206 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Welcome</title>
-    <meta
-      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-      name="viewport"
-    />
-    <link
-      rel="icon"
-      href="/assets/assets/img/kaiadmin/favicon.ico"
-      type="image/x-icon"
-    />
 
-    <style>
-        .btn-add-new {
-            position: fixed; right: 20px !important; bottom: 30px;
-            z-index: 99;
-        }
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Welcome</title>
+  <meta
+    content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+    name="viewport" />
+  <link
+    rel="icon"
+    href="/assets/assets/img/kaiadmin/favicon.ico"
+    type="image/x-icon" />
 
-        .top-alert {
-            position: relative;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1050;
-        }
+  <style>
+    .btn-add-new {
+      position: fixed;
+      right: 20px !important;
+      bottom: 30px;
+      z-index: 99;
+    }
 
-        .top-alert .alert {
-            border-radius: 0;
-            margin-bottom: 0;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+    .top-alert {
+      position: relative;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1050;
+    }
 
-        .table>tbody>tr>td, .table>tbody>tr>th {
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-        }
-        .big-exclamation {
-            font-size: 20px;
-            font-weight: bold;
-            vertical-align: middle;
-            margin-left: 3px;
-        }
-        
-        /* Garantir que flash messages apareçam abaixo do header fixo */
-        /* O main-header tem position: fixed e z-index: 1001, altura ~70px */
-        .flash-messages-container {
-            margin-top: 70px; /* Compensar altura do header fixo */
-            padding-top: 1rem;
-            padding-bottom: 0.5rem;
-            clear: both;
-            position: relative;
-            z-index: 1;
-        }
-    </style>
+    .top-alert .alert {
+      border-radius: 0;
+      margin-bottom: 0;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-    <!-- Font Awesome CDN (fallback para ícones) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- Fonts and icons -->
-    <script src="/assets/assets/js/plugin/webfont/webfont.min.js"></script>
-    <script>
-      WebFont.load({
-        google: { families: ["Public Sans:300,400,500,600,700"] },
-        custom: {
-          families: [
-            "Font Awesome 5 Solid",
-            "Font Awesome 5 Regular",
-            "Font Awesome 5 Brands",
-            "simple-line-icons",
-          ],
-          urls: ["assets/assets/css/fonts.min.css"],
-        },
-        active: function () {
-          sessionStorage.fonts = true;
-        },
-      });
-    </script>
+    .table>tbody>tr>td,
+    .table>tbody>tr>th {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
 
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="/assets/assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/assets/assets/css/plugins.min.css" />
-    <link rel="stylesheet" href="/assets/assets/css/kaiadmin.min.css" />
+    .big-exclamation {
+      font-size: 20px;
+      font-weight: bold;
+      vertical-align: middle;
+      margin-left: 3px;
+    }
 
-    <!-- CSS Just for demo purpose, don't include it in your project -->
-    <link rel="stylesheet" href="/assets/assets/css/demo.css" />
-  </head>
-  <body>
-    <div class="wrapper">
-      {{-- Flash Messages removidas do topo - agora aparecem no conteúdo da página --}}
+    /* Garantir que flash messages apareçam abaixo do header fixo */
+    /* O main-header tem position: fixed e z-index: 1001, altura ~70px */
+    .flash-messages-container {
+      margin-top: 70px;
+      /* Compensar altura do header fixo */
+      padding-top: 1rem;
+      padding-bottom: 0.5rem;
+      clear: both;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
 
-      @include('layouts.sidebar')
+  <!-- Font Awesome CDN (fallback para ícones) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-      <div class="main-panel">
-        <div class="main-header">
-          <div class="main-header-logo">
-            <!-- Logo Header -->
-            <div class="logo-header" data-background-color="dark">
-              <a href="index.html" class="logo">
-                <!-- <img
+  <!-- Fonts and icons -->
+  <script src="/assets/assets/js/plugin/webfont/webfont.min.js"></script>
+  <script>
+    WebFont.load({
+      google: {
+        families: ["Public Sans:300,400,500,600,700"]
+      },
+      custom: {
+        families: [
+          "Font Awesome 5 Solid",
+          "Font Awesome 5 Regular",
+          "Font Awesome 5 Brands",
+          "simple-line-icons",
+        ],
+        urls: ["assets/assets/css/fonts.min.css"],
+      },
+      active: function() {
+        sessionStorage.fonts = true;
+      },
+    });
+  </script>
+
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="/assets/assets/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/assets/assets/css/plugins.min.css" />
+  <link rel="stylesheet" href="/assets/assets/css/kaiadmin.min.css" />
+
+  <!-- CSS Just for demo purpose, don't include it in your project -->
+  <link rel="stylesheet" href="/assets/assets/css/demo.css" />
+</head>
+
+<body>
+  <div class="wrapper">
+    {{-- Flash Messages removidas do topo - agora aparecem no conteúdo da página --}}
+
+    @include('layouts.sidebar')
+
+    <div class="main-panel">
+      <div class="main-header">
+        <div class="main-header-logo">
+          <!-- Logo Header -->
+          <div class="logo-header" data-background-color="dark">
+            <a href="index.html" class="logo">
+              <!-- <img
                   src="/assets/assets/img/kaiadmin/logo_light.svg"
                   alt="navbar brand"
                   class="navbar-brand"
                   height="20"
                 /> --> Logo
-              </a>
-              <div class="nav-toggle">
-                <button class="btn btn-toggle toggle-sidebar">
-                  <i class="gg-menu-right"></i>
-                </button>
-                <button class="btn btn-toggle sidenav-toggler">
-                  <i class="gg-menu-left"></i>
-                </button>
-              </div>
-              <button class="topbar-toggler more">
-                <i class="gg-more-vertical-alt"></i>
+            </a>
+            <div class="nav-toggle">
+              <button class="btn btn-toggle toggle-sidebar">
+                <i class="gg-menu-right"></i>
+              </button>
+              <button class="btn btn-toggle sidenav-toggler">
+                <i class="gg-menu-left"></i>
               </button>
             </div>
-            <!-- End Logo Header -->
+            <button class="topbar-toggler more">
+              <i class="gg-more-vertical-alt"></i>
+            </button>
           </div>
-          <!-- Navbar Header -->
-          <nav
-            class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
-          >
-            <div class="container-fluid d-flex align-items-center">
-              {{-- ⭐ NOVO: Dropdown de seleção de tenant para admins - TOTALMENTE À ESQUERDA --}}
-              @if(auth()->user()->isAdmin())
-              <div class="me-auto">
-                @php
-                    $adminTenantService = app(\App\Services\AdminTenantService::class);
-                    $viewingTenantId = $adminTenantService->getViewingTenantId();
-                    $viewingTenant = $viewingTenantId ? \App\Models\User::find($viewingTenantId) : null;
-                    $owners = \App\Models\User::getAvailableOwners();
-                @endphp
-                <div class="dropdown">
-                    <a
-                        class="btn dropdown-toggle admin-tenant-selector"
-                        href="#"
-                        id="tenantDropdown"
-                        role="button"
-                        data-bs-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; font-weight: 600; padding: 10px 20px; border-radius: 8px; min-width: 220px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3); border: 2px solid #ffc107; transition: all 0.3s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px;"
-                        onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(255, 193, 7, 0.5)';"
-                        onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(255, 193, 7, 0.3)';"
-                    >
-                        <div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px;">
-                            <i class="fas fa-shield-alt" style="flex-shrink: 0; font-size: 1rem; line-height: 1;"></i>
-                            <span class="text-truncate" style="flex: 1; text-align: left; line-height: 1.5; display: flex; align-items: center;">
-                                @if($viewingTenant)
-                                    {{ $viewingTenant->name }}
-                                @else
-                                    All Tenants
-                                @endif
-                            </span>
-                        </div>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-start animated fadeIn" aria-labelledby="tenantDropdown" style="min-width: 280px; margin-top: 8px; border: 1px solid #ffc107;">
-                        <li>
-                            <div class="dropdown-title" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; padding: 12px 16px; font-weight: 600; border-radius: 4px 4px 0 0;">
-                                <i class="fas fa-shield-alt me-2"></i>
-                                <strong>Admin Master Mode</strong>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider m-0"></li>
-                        <li>
-                            <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
-                                @csrf
-                                <input type="hidden" name="tenant_id" value="all">
-                                <button type="submit" class="dropdown-item {{ !$viewingTenant ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ !$viewingTenant ? '600' : '400' }}; padding: 10px 16px;">
-                                    <i class="fas fa-globe me-2"></i>
-                                    <strong>All Tenants</strong>
-                                    <small class="text-muted d-block ms-4" style="font-size: 0.85em;">View all data without filters</small>
-                                </button>
-                            </form>
-                        </li>
-                        @foreach($owners as $owner)
-                        <li>
-                            <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
-                                @csrf
-                                <input type="hidden" name="tenant_id" value="{{ $owner->id }}">
-                                <button type="submit" class="dropdown-item {{ $viewingTenant && $viewingTenant->id == $owner->id ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ $viewingTenant && $viewingTenant->id == $owner->id ? '600' : '400' }}; padding: 10px 16px;">
-                                    <i class="fas fa-user-tie me-2"></i>
-                                    <strong>{{ $owner->name }}</strong>
-                                    <small class="text-muted d-block ms-4" style="font-size: 0.85em;">{{ $owner->email }}</small>
-                                </button>
-                            </form>
-                        </li>
-                        @endforeach
-                    </ul>
-                </div>
+          <!-- End Logo Header -->
+        </div>
+        <!-- Navbar Header -->
+        <nav
+          class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom">
+          <div class="container-fluid d-flex align-items-center">
+            {{-- ⭐ NOVO: Dropdown de seleção de tenant para admins - TOTALMENTE À ESQUERDA --}}
+            @if(auth()->user()->isAdmin())
+            <div class="me-auto">
+              @php
+              $adminTenantService = app(\App\Services\AdminTenantService::class);
+              $viewingTenantId = $adminTenantService->getViewingTenantId();
+              $viewingTenant = $viewingTenantId ? \App\Models\User::find($viewingTenantId) : null;
+              $owners = \App\Models\User::getAvailableOwners();
+              @endphp
+              <div class="dropdown">
+                <a
+                  class="btn dropdown-toggle admin-tenant-selector"
+                  href="#"
+                  id="tenantDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; font-weight: 600; padding: 10px 20px; border-radius: 8px; min-width: 220px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3); border: 2px solid #ffc107; transition: all 0.3s ease; display: flex; align-items: center; justify-content: space-between; gap: 12px;"
+                  onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(255, 193, 7, 0.5)';"
+                  onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 2px 8px rgba(255, 193, 7, 0.3)';">
+                  <div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px;">
+                    <i class="fas fa-shield-alt" style="flex-shrink: 0; font-size: 1rem; line-height: 1;"></i>
+                    <span class="text-truncate" style="flex: 1; text-align: left; line-height: 1.5; display: flex; align-items: center;">
+                      @if($viewingTenant)
+                      {{ $viewingTenant->name }}
+                      @else
+                      All Tenants
+                      @endif
+                    </span>
+                  </div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-start animated fadeIn" aria-labelledby="tenantDropdown" style="min-width: 280px; margin-top: 8px; border: 1px solid #ffc107;">
+                  <li>
+                    <div class="dropdown-title" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; padding: 12px 16px; font-weight: 600; border-radius: 4px 4px 0 0;">
+                      <i class="fas fa-shield-alt me-2"></i>
+                      <strong>Admin Master Mode</strong>
+                    </div>
+                  </li>
+                  <li>
+                    <hr class="dropdown-divider m-0">
+                  </li>
+                  <li>
+                    <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
+                      @csrf
+                      <input type="hidden" name="tenant_id" value="all">
+                      <button type="submit" class="dropdown-item {{ !$viewingTenant ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ !$viewingTenant ? '600' : '400' }}; padding: 10px 16px;">
+                        <i class="fas fa-globe me-2"></i>
+                        <strong>All Tenants</strong>
+                        <small class="text-muted d-block ms-4" style="font-size: 0.85em;">View all data without filters</small>
+                      </button>
+                    </form>
+                  </li>
+                  @foreach($owners as $owner)
+                  <li>
+                    <form method="POST" action="{{ route('admin.switch-tenant') }}" class="d-inline w-100">
+                      @csrf
+                      <input type="hidden" name="tenant_id" value="{{ $owner->id }}">
+                      <button type="submit" class="dropdown-item {{ $viewingTenant && $viewingTenant->id == $owner->id ? 'active bg-warning text-dark' : '' }} w-100 text-start" style="font-weight: {{ $viewingTenant && $viewingTenant->id == $owner->id ? '600' : '400' }}; padding: 10px 16px;">
+                        <i class="fas fa-user-tie me-2"></i>
+                        <strong>{{ $owner->name }}</strong>
+                        <small class="text-muted d-block ms-4" style="font-size: 0.85em;">{{ $owner->email }}</small>
+                      </button>
+                    </form>
+                  </li>
+                  @endforeach
+                </ul>
               </div>
-              @endif
-              
-              <nav
-                class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
-              >
-                <!-- <div class="input-group">
+            </div>
+            @endif
+
+            <nav
+              class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex">
+              <!-- <div class="input-group">
                   <div class="input-group-prepend">
                     <button type="submit" class="btn btn-search pe-1">
                       <i class="fa fa-search search-icon"></i>
@@ -212,313 +218,292 @@
                     class="form-control"
                   />
                 </div> epsaço vago -->
-              </nav>
+            </nav>
 
-              <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
-                <li
-                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
-                >
-                  <a
-                    class="nav-link dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    role="button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                  >
-                    <i class="fa fa-search"></i>
-                  </a>
-                  <ul class="dropdown-menu dropdown-search animated fadeIn">
-                    <form class="navbar-left navbar-form nav-search">
-                      <div class="input-group">
-                        <input
-                          type="text"
-                          placeholder="Search ..."
-                          class="form-control"
-                        />
-                      </div>
-                    </form>
-                  </ul>
-                </li>
-                <li
-                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
-                >
-                  <a
-                    class="nav-link dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    role="button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                  >
-                    <i class="fa fa-search"></i>
-                  </a>
-                  <ul class="dropdown-menu dropdown-search animated fadeIn">
-                    <form class="navbar-left navbar-form nav-search">
-                      <div class="input-group">
-                        <input
-                          type="text"
-                          placeholder="Search ..."
-                          class="form-control"
-                        />
-                      </div>
-                    </form>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="messageDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-envelope"></i>
-                  </a>
-                  <ul
-                    class="dropdown-menu messages-notif-box animated fadeIn"
-                    aria-labelledby="messageDropdown"
-                  >
-                    <li>
-                      <div
-                        class="dropdown-title d-flex justify-content-between align-items-center"
-                      >
-                        Messages
-                        <a href="#" class="small">Mark all as read</a>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="message-notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/jm_denis.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jimmy Denis</span>
-                              <span class="block"> How are you ? </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/chadengle.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Chad</span>
-                              <span class="block"> Ok, Thanks ! </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/mlane.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jhon Doe</span>
-                              <span class="block">
-                                Ready for the meeting today...
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/talha.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Talha</span>
-                              <span class="block"> Hi, Apa Kabar ? </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all messages<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="notifDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-bell"></i>
-                    <span class="notification">4</span>
-                  </a>
-                  <ul
-                    class="dropdown-menu notif-box animated fadeIn"
-                    aria-labelledby="notifDropdown"
-                  >
-                    <li>
-                      <div class="dropdown-title">
-                        You have 4 new notification
-                      </div>
-                    </li>
-                    <li>
-                      <div class="notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-icon notif-primary">
-                              <i class="fa fa-user-plus"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> New user registered </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-success">
-                              <i class="fa fa-comment"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Rahmad commented on Admin
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/profile2.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Reza send messages to you
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-danger">
-                              <i class="fa fa-heart"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> Farrah liked Admin </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all notifications<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-user dropdown hidden-caret">
-                    <a
-                        class="dropdown-toggle profile-pic d-flex align-items-center"
-                        data-bs-toggle="dropdown"
-                        href="#"
-                        aria-expanded="false"
-                    >
-                        <div class="avatar-sm position-relative">
-                            <img
-                                src="/assets/assets/img/profile.jpg"
-                                alt="..."
-                                class="avatar-img rounded-circle"
-                            />
-
-                            @if(session('warning'))
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                    !
-                                </span>
-                            @endif
-                            @if(auth()->user()->isAdmin())
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" title="Admin">
-                                    <i class="fas fa-shield-alt"></i>
-                                </span>
-                            @endif
-                        </div>
-
-                        <span class="profile-username ms-2">
-                            <span class="op-7">{{ auth()->user()->name }}</span>
-                            @if(auth()->user()->isAdmin())
-                                <small class="d-block text-warning" style="font-size: 0.7rem;">
-                                    <i class="fas fa-shield-alt"></i> Admin
-                                </small>
-                            @endif
-                        </span>
-                    </a>
-                  <ul class="dropdown-menu dropdown-user animated fadeIn">
-                    <div class="dropdown-user-scroll scrollbar-outer">
-                      <li>
-                        <div class="user-box">
-                          <div class="avatar-lg">
-                            <img
-                              src="/assets/assets/img/profile.jpg"
-                              alt="image profile"
-                              class="avatar-img rounded"
-                            />
-                          </div>
-                          <div class="u-text">
-                            <h4>{{ auth()->user()->name }}</h4>
-                            <p class="text-muted">{{ auth()->user()->email }}</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li>
-                        @if(session('warning'))
-                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                                My Profile <span class="text-danger big-exclamation">!</span>
-                            </a>
-                        @else
-                            <a class="dropdown-item" href="{{ route('profile.edit') }}">My Profile</a>
-                        @endif
-                        <form method="POST" action="{{ route('logout') }}" class="d-inline">
-                            @csrf
-                            <button type="submit" class="dropdown-item border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
-                                Logout
-                            </button>
-                        </form>
-                      </li>
+            <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
+              <li
+                class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none">
+                <a
+                  class="nav-link dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  href="#"
+                  role="button"
+                  aria-expanded="false"
+                  aria-haspopup="true">
+                  <i class="fa fa-search"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-search animated fadeIn">
+                  <form class="navbar-left navbar-form nav-search">
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        placeholder="Search ..."
+                        class="form-control" />
                     </div>
-                  </ul>
-                </li>
-              </ul>
-            </div>
-          </nav>
-          <!-- End Navbar -->
-        </div>
-        <!-- End Main Header -->
+                  </form>
+                </ul>
+              </li>
+              <li
+                class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none">
+                <a
+                  class="nav-link dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  href="#"
+                  role="button"
+                  aria-expanded="false"
+                  aria-haspopup="true">
+                  <i class="fa fa-search"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-search animated fadeIn">
+                  <form class="navbar-left navbar-form nav-search">
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        placeholder="Search ..."
+                        class="form-control" />
+                    </div>
+                  </form>
+                </ul>
+              </li>
+              <li class="nav-item topbar-icon dropdown hidden-caret">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="messageDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false">
+                  <i class="fa fa-envelope"></i>
+                </a>
+                <ul
+                  class="dropdown-menu messages-notif-box animated fadeIn"
+                  aria-labelledby="messageDropdown">
+                  <li>
+                    <div
+                      class="dropdown-title d-flex justify-content-between align-items-center">
+                      Messages
+                      <a href="#" class="small">Mark all as read</a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="message-notif-scroll scrollbar-outer">
+                      <div class="notif-center">
+                        <a href="#">
+                          <div class="notif-img">
+                            <img
+                              src="/assets/assets/img/jm_denis.jpg"
+                              alt="Img Profile" />
+                          </div>
+                          <div class="notif-content">
+                            <span class="subject">Jimmy Denis</span>
+                            <span class="block"> How are you ? </span>
+                            <span class="time">5 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-img">
+                            <img
+                              src="/assets/assets/img/chadengle.jpg"
+                              alt="Img Profile" />
+                          </div>
+                          <div class="notif-content">
+                            <span class="subject">Chad</span>
+                            <span class="block"> Ok, Thanks ! </span>
+                            <span class="time">12 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-img">
+                            <img
+                              src="/assets/assets/img/mlane.jpg"
+                              alt="Img Profile" />
+                          </div>
+                          <div class="notif-content">
+                            <span class="subject">Jhon Doe</span>
+                            <span class="block">
+                              Ready for the meeting today...
+                            </span>
+                            <span class="time">12 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-img">
+                            <img
+                              src="/assets/assets/img/talha.jpg"
+                              alt="Img Profile" />
+                          </div>
+                          <div class="notif-content">
+                            <span class="subject">Talha</span>
+                            <span class="block"> Hi, Apa Kabar ? </span>
+                            <span class="time">17 minutes ago</span>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    <a class="see-all" href="javascript:void(0);">See all messages<i class="fa fa-angle-right"></i>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item topbar-icon dropdown hidden-caret">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="notifDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false">
+                  <i class="fa fa-bell"></i>
+                  <span class="notification">4</span>
+                </a>
+                <ul
+                  class="dropdown-menu notif-box animated fadeIn"
+                  aria-labelledby="notifDropdown">
+                  <li>
+                    <div class="dropdown-title">
+                      You have 4 new notification
+                    </div>
+                  </li>
+                  <li>
+                    <div class="notif-scroll scrollbar-outer">
+                      <div class="notif-center">
+                        <a href="#">
+                          <div class="notif-icon notif-primary">
+                            <i class="fa fa-user-plus"></i>
+                          </div>
+                          <div class="notif-content">
+                            <span class="block"> New user registered </span>
+                            <span class="time">5 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-icon notif-success">
+                            <i class="fa fa-comment"></i>
+                          </div>
+                          <div class="notif-content">
+                            <span class="block">
+                              Rahmad commented on Admin
+                            </span>
+                            <span class="time">12 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-img">
+                            <img
+                              src="/assets/assets/img/profile2.jpg"
+                              alt="Img Profile" />
+                          </div>
+                          <div class="notif-content">
+                            <span class="block">
+                              Reza send messages to you
+                            </span>
+                            <span class="time">12 minutes ago</span>
+                          </div>
+                        </a>
+                        <a href="#">
+                          <div class="notif-icon notif-danger">
+                            <i class="fa fa-heart"></i>
+                          </div>
+                          <div class="notif-content">
+                            <span class="block"> Farrah liked Admin </span>
+                            <span class="time">17 minutes ago</span>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    <a class="see-all" href="javascript:void(0);">See all notifications<i class="fa fa-angle-right"></i>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item topbar-user dropdown hidden-caret">
+                <a
+                  class="dropdown-toggle profile-pic d-flex align-items-center"
+                  data-bs-toggle="dropdown"
+                  href="#"
+                  aria-expanded="false">
+                  <div class="avatar-sm position-relative">
+                    <img
+                      src="/assets/assets/img/profile.jpg"
+                      alt="..."
+                      class="avatar-img rounded-circle" />
 
-        {{-- Flash Messages - aparecem abaixo da navbar, antes do conteúdo --}}
-        <div class="container-fluid px-4 flash-messages-container">
-            <x-flash-messages />
-        </div>
+                    @if(session('warning'))
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                      !
+                    </span>
+                    @endif
+                    @if(auth()->user()->isAdmin())
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" title="Admin">
+                      <i class="fas fa-shield-alt"></i>
+                    </span>
+                    @endif
+                  </div>
 
-        @yield('conteudo')
+                  <span class="profile-username ms-2">
+                    <span class="op-7">{{ auth()->user()->name }}</span>
+                    @if(auth()->user()->isAdmin())
+                    <small class="d-block text-warning" style="font-size: 0.7rem;">
+                      <i class="fas fa-shield-alt"></i> Admin
+                    </small>
+                    @endif
+                  </span>
+                </a>
+                <ul class="dropdown-menu dropdown-user animated fadeIn">
+                  <div class="dropdown-user-scroll scrollbar-outer">
+                    <li>
+                      <div class="user-box">
+                        <div class="avatar-lg">
+                          <img
+                            src="/assets/assets/img/profile.jpg"
+                            alt="image profile"
+                            class="avatar-img rounded" />
+                        </div>
+                        <div class="u-text">
+                          <h4>{{ auth()->user()->name }}</h4>
+                          <p class="text-muted">{{ auth()->user()->email }}</p>
+                        </div>
+                      </div>
+                    </li>
+                    <li>
+                      @if(session('warning'))
+                      <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                        My Profile <span class="text-danger big-exclamation">!</span>
+                      </a>
+                      @else
+                      <a class="dropdown-item" href="{{ route('profile.edit') }}">My Profile</a>
+                      @endif
+                      <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="dropdown-item border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
+                          Logout
+                        </button>
+                      </form>
+                    </li>
+                  </div>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </nav>
+        <!-- End Navbar -->
+      </div>
+      <!-- End Main Header -->
 
-        <!-- <footer class="footer">
+      {{-- Flash Messages - aparecem abaixo da navbar, antes do conteúdo --}}
+      <div class="container-fluid px-4 flash-messages-container">
+        <x-flash-messages />
+      </div>
+
+      @yield('conteudo')
+
+      <!-- <footer class="footer">
           <div class="container-fluid d-flex justify-content-between">
             <nav class="pull-left">
               <ul class="nav">
@@ -595,5 +580,6 @@
       });
     </script>
 
-  </body>
+</body>
+
 </html>

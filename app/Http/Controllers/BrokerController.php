@@ -47,6 +47,34 @@ class BrokerController extends Controller
             }
         }
         
+        // ⭐ VALIDAÇÃO PRIMEIRO: Verificar limite ANTES de qualquer coisa
+        // Se for admin, usar tenant selecionado para validação
+        if ($authUser->isAdmin()) {
+            $userForValidation = $viewingTenant;
+        } else {
+            $userForValidation = $authUser;
+        }
+        
+        $billingService = app(BillingService::class);
+        $userLimitCheck = $billingService->checkUserLimit($userForValidation, 'broker');
+
+        // Se não tiver permissão, SEMPRE redirecionar ANTES de mostrar formulário
+        if (!($userLimitCheck['allowed'] ?? false)) {
+            // Se sugerir upgrade, redirecionar para tela de planos
+            if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                // ⭐ NOVO: Armazenar URL de origem para retornar após pagamento
+                session(['return_url_after_payment' => route('brokers.create')]);
+                
+                return redirect()->route('subscription.build-plan')
+                    ->with('error', $userLimitCheck['message'] ?? 'Limite atingido. Faça upgrade do seu plano.');
+            }
+            
+            // Caso contrário, voltar com erro
+            return redirect()->back()
+                ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar brokers.');
+        }
+        
+        // Se chegou aqui, tem permissão - buscar dados para o formulário
         // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
         $owners = $authUser->isAdmin() ? User::getAvailableOwners() : collect();
         
@@ -129,6 +157,9 @@ class BrokerController extends Controller
             if (!$userLimitCheck['allowed']) {
                 // Se sugerir upgrade, redirecionar para montar plano
                 if ($userLimitCheck['suggest_upgrade'] ?? false) {
+                    // ⭐ NOVO: Armazenar URL de origem para retornar após pagamento
+                    session(['return_url_after_payment' => route('brokers.create')]);
+                    
                     return redirect()->route('subscription.build-plan')
                         ->with('error', $userLimitCheck['message']);
                 }

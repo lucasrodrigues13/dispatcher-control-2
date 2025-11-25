@@ -84,6 +84,9 @@ class LoadImportController extends Controller
                 
                 // Se sugerir upgrade, redirecionar para montar plano
                 if ($loadLimitCheck['suggest_upgrade'] ?? false) {
+                    // ⭐ NOVO: Armazenar URL de origem para retornar após pagamento
+                    session(['return_url_after_payment' => url()->previous()]);
+                    
                     return redirect()->route('subscription.build-plan')
                         ->with('error', $loadLimitCheck['message']);
                 }
@@ -316,6 +319,9 @@ class LoadImportController extends Controller
         if (!$loadLimitCheck['allowed']) {
             // Se sugerir upgrade, redirecionar para montar plano
             if ($loadLimitCheck['suggest_upgrade'] ?? false) {
+                // ⭐ NOVO: Armazenar URL de origem para retornar após pagamento
+                session(['return_url_after_payment' => route('loads.create')]);
+                
                 return redirect()->route('subscription.build-plan')
                     ->with('error', $loadLimitCheck['message']);
             }

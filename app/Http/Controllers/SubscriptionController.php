@@ -121,7 +121,39 @@ class SubscriptionController extends Controller
             }
         }
 
-        return view('subscription.checkout', compact('plan', 'currentSubscription', 'prorationInfo', 'pendingPlanData', 'isDowngrade', 'planForCalculation'));
+        // ⭐ NOVO: Obter URL de retorno da sessão (se existir)
+        $returnUrl = session('return_url_after_payment');
+        
+        // Debug: Log para verificar se a URL está na sessão
+        Log::info('Checkout - URL de retorno', [
+            'return_url_from_session' => $returnUrl,
+            'previous_url' => url()->previous(),
+            'current_url' => url()->current(),
+            'all_session_keys' => array_keys(session()->all()),
+        ]);
+        
+        // Se não houver URL de retorno na sessão, usar URL anterior ou dashboard
+        if (!$returnUrl) {
+            $previousUrl = url()->previous();
+            // Se a URL anterior for a própria página de checkout ou build-plan, usar dashboard
+            if ($previousUrl && 
+                !str_contains($previousUrl, '/subscription/checkout') && 
+                !str_contains($previousUrl, '/subscription/build-plan') &&
+                !str_contains($previousUrl, '/subscription/plans') &&
+                !str_contains($previousUrl, '/login') &&
+                !str_contains($previousUrl, '/register')) {
+                $returnUrl = $previousUrl;
+            } else {
+                $returnUrl = route('dashboard.index');
+            }
+        }
+        
+        // Garantir que temos uma URL válida
+        if (!$returnUrl || $returnUrl === url()->current()) {
+            $returnUrl = route('dashboard.index');
+        }
+        
+        return view('subscription.checkout', compact('plan', 'currentSubscription', 'prorationInfo', 'pendingPlanData', 'isDowngrade', 'planForCalculation', 'returnUrl'));
     }
 
     /** API: cria o PaymentIntent no Stripe */
@@ -504,11 +536,17 @@ class SubscriptionController extends Controller
             
             // ⭐ CORRIGIDO: Limpar relacionamento do usuário para forçar recarregamento
             $mainUser->unsetRelation('subscription');
+            
+            // ⭐ NOVO: Limpar URL de retorno da sessão após pagamento bem-sucedido
+            // (será usado pelo JavaScript para redirecionar)
+            $returnUrl = session('return_url_after_payment', route('dashboard.index'));
+            session()->forget('return_url_after_payment');
 
             return response()->json([
                 'success'      => true,
                 'message'      => 'Pagamento processado com sucesso!',
                 'subscription' => $subscription,
+                'return_url'   => $returnUrl, // ⭐ NOVO: Incluir URL de retorno na resposta
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -651,6 +689,19 @@ class SubscriptionController extends Controller
      */
     public function buildPlan()
     {
+        // ⭐ NOVO: Se não houver URL de retorno na sessão e vier de uma página válida, armazenar
+        if (!session()->has('return_url_after_payment')) {
+            $previousUrl = url()->previous();
+            // Se a URL anterior não for uma página de subscription/login/register, usar como retorno
+            if ($previousUrl && 
+                !str_contains($previousUrl, '/subscription/') && 
+                !str_contains($previousUrl, '/login') &&
+                !str_contains($previousUrl, '/register')) {
+                session(['return_url_after_payment' => $previousUrl]);
+                Log::info('buildPlan - URL de retorno armazenada', ['url' => $previousUrl]);
+            }
+        }
+        
         $user = auth()->user();
         $currentSubscription = $user->subscription;
         $currentPlan = $currentSubscription ? $currentSubscription->plan : null;
@@ -834,6 +885,19 @@ class SubscriptionController extends Controller
                 ]);
             }
 
+            // ⭐ NOVO: Preservar URL de retorno ao redirecionar para checkout
+            // Se não houver URL de retorno na sessão, tentar usar a URL anterior
+            if (!session()->has('return_url_after_payment')) {
+                $previousUrl = url()->previous();
+                // Se a URL anterior não for uma página de subscription, usar como retorno
+                if ($previousUrl && 
+                    !str_contains($previousUrl, '/subscription/') && 
+                    !str_contains($previousUrl, '/login') &&
+                    !str_contains($previousUrl, '/register')) {
+                    session(['return_url_after_payment' => $previousUrl]);
+                }
+            }
+            
             // Redirecionar para checkout com o plano temporário
             return redirect()->route('subscription.checkout', ['plan_id' => $plan->id])
                 ->with('success', 'Plano configurado! Complete o pagamento para ativar.');
