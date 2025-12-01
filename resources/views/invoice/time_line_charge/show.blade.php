@@ -872,37 +872,37 @@
             <div class="modal-header bg-warning text-dark">
                 <h5 class="modal-title" id="pdfWarningModalLabel">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Muitas Colunas Selecionadas
+                    Too Many Columns Selected
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>
-                    Você selecionou <strong id="modal-column-count">0</strong> colunas.
+                    You selected <strong id="modal-column-count">0</strong> columns.
                 </p>
                 <p>
-                    Para melhor visualização, recomendamos exportar para <strong>Excel</strong> quando há mais de 14 colunas.
+                    For better visualization, we recommend exporting to <strong>Excel</strong> when there are more than 14 columns.
                 </p>
                 <p class="mb-0">
-                    Deseja continuar mesmo assim com o PDF?
+                    Do you want to continue with PDF anyway?
                 </p>
                 <div class="alert alert-info mt-3 mb-0">
                     <i class="fas fa-info-circle me-2"></i>
-                    <small>O PDF será gerado com tamanho de fonte reduzido para acomodar todas as colunas.</small>
+                    <small>The PDF will be generated with reduced font size to accommodate all columns.</small>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>
-                    Cancelar
+                    Cancel
                 </button>
                 <button type="button" class="btn btn-primary" id="confirm-pdf-generation">
                     <i class="fas fa-file-pdf me-1"></i>
-                    Continuar com PDF
+                    Continue with PDF
                 </button>
                 <button type="button" class="btn btn-success" id="switch-to-excel">
                     <i class="fas fa-file-excel me-1"></i>
-                    Exportar Excel
+                    Export Excel
                 </button>
             </div>
         </div>
@@ -995,11 +995,15 @@ function generatePDFWithSettings(elementoClone, fileName, visibleColumnsCount) {
         .from(elementoClone)
         .save()
         .then(() => {
-            console.log('PDF gerado com sucesso');
+            console.log('PDF generated successfully');
         })
         .catch((error) => {
-            console.error('Erro ao gerar PDF:', error);
-            alert('Erro ao gerar PDF. Tente novamente.');
+            console.error('Error generating PDF:', error);
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Error', 'Error generating PDF. Please try again.', 'error');
+            } else {
+                alert('Error generating PDF. Please try again.');
+            }
         })
         .finally(() => {
             // Esconder loading
@@ -1019,7 +1023,11 @@ function gerarPDF() {
             const elemento = document.getElementById('invoice-content');
 
             if (!elemento) {
-                alert('Erro: Conteúdo da invoice não encontrado');
+                if (typeof showAlertModal === 'function') {
+                    showAlertModal('Error', 'Invoice content not found', 'error');
+                } else {
+                    alert('Error: Invoice content not found');
+                }
                 document.getElementById('pdf-loading').style.display = 'none';
                 return;
             }
@@ -1106,8 +1114,12 @@ function gerarPDF() {
             generatePDFWithSettings(elementoClone, fileName, visibleColumnsCount);
 
         } catch (error) {
-            console.error('Erro na função gerarPDF:', error);
-            alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+            console.error('Error in gerarPDF function:', error);
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Error', 'Error generating PDF. Check the console for more details.', 'error');
+            } else {
+                alert('Error generating PDF. Check the console for more details.');
+            }
             document.getElementById('pdf-loading').style.display = 'none';
         }
     }, 100);
@@ -1161,7 +1173,11 @@ function exportarExcel() {
         const table = document.getElementById('loadsTable');
         
         if (!table) {
-            alert('Erro: Tabela não encontrada');
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Error', 'Table not found', 'error');
+            } else {
+                alert('Error: Table not found');
+            }
             return;
         }
         
@@ -1209,8 +1225,12 @@ function exportarExcel() {
         }, 2000);
         
     } catch (error) {
-        console.error('Erro ao exportar Excel:', error);
-        alert('Erro ao exportar Excel. Verifique o console para mais detalhes.');
+        console.error('Error exporting Excel:', error);
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Error', 'Error exporting Excel. Check the console for more details.', 'error');
+        } else {
+            alert('Error exporting Excel. Check the console for more details.');
+        }
         document.getElementById('pdf-loading').style.display = 'none';
     }
 }
@@ -1255,9 +1275,9 @@ function imprimirInvoice() {
             const originalBody = modalBody.innerHTML;
             const originalBtnText = confirmBtn.innerHTML;
             
-            modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Muitas Colunas para Impressão';
-            modalBody.innerHTML = 'Deseja continuar mesmo assim com a impressão?<br><small class="text-muted">A impressão será ajustada automaticamente para acomodar todas as colunas.</small>';
-            confirmBtn.innerHTML = '<i class="fas fa-print me-1"></i> Continuar com Impressão';
+            modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Too Many Columns for Printing';
+            modalBody.innerHTML = 'Do you want to continue with printing anyway?<br><small class="text-muted">Printing will be automatically adjusted to accommodate all columns.</small>';
+            confirmBtn.innerHTML = '<i class="fas fa-print me-1"></i> Continue with Printing';
             
             // Event listener temporário para impressão
             const printHandler = function() {
@@ -1298,8 +1318,12 @@ function imprimirInvoice() {
         executePrint(visibleColumnsCount);
         
     } catch (error) {
-        console.error('Erro na função imprimirInvoice:', error);
-        alert('Erro ao preparar impressão. Verifique o console para mais detalhes.');
+        console.error('Error in imprimirInvoice function:', error);
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Error', 'Error preparing print. Check the console for more details.', 'error');
+        } else {
+            alert('Error preparing print. Check the console for more details.');
+        }
     }
 }
 
@@ -1687,7 +1711,7 @@ function initColumnSelector() {
         const table = document.getElementById('loadsTable');
         
         if (!table) {
-            console.error('Tabela não encontrada');
+            console.error('Table not found');
             return;
         }
         
@@ -1752,7 +1776,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ⭐ NOVA: Função para testar PDF sem html2pdf (usando window.print)
 function baixarPDFAlternativo() {
-    alert('Para baixar como PDF, use a opção "Salvar como PDF" na janela de impressão que será aberta.');
+    if (typeof showAlertModal === 'function') {
+        showAlertModal('Print to PDF', 'To download as PDF, use the "Save as PDF" option in the print window that will open.', 'info');
+    } else {
+        alert('To download as PDF, use the "Save as PDF" option in the print window that will open.');
+    }
     imprimirInvoice();
 }
 

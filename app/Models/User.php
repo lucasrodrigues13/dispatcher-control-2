@@ -23,6 +23,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_owner',
         'is_subowner',
         'is_admin',
+        'photo',
     ];
 
     protected $hidden = [

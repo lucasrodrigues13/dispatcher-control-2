@@ -979,7 +979,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     // Verifica se há uma tabela com dados
     const table = document.querySelector('table tbody');
     if (!table || table.rows.length === 0) {
-        alert('No loads found to create invoice. Please apply filters first.');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('No Loads Found', 'No loads found to create invoice. Please apply filters first.', 'warning');
+        } else {
+            alert('No loads found to create invoice. Please apply filters first.');
+        }
         return;
     }
 
@@ -990,7 +994,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     });
 
     if (validRows.length === 0) {
-        alert('No valid loads available to create invoice.');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('No Valid Loads', 'No valid loads available to create invoice.', 'warning');
+        } else {
+            alert('No valid loads available to create invoice.');
+        }
         return;
     }
 
@@ -1003,7 +1011,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     console.log('Carrier ID encontrado:', carrierId); // Debug
 
     if (!carrierId || carrierId === '') {
-        alert('Please select a Carrier.');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Required Field', 'Please select a Carrier.', 'warning');
+        } else {
+            alert('Please select a Carrier.');
+        }
         document.querySelector('#carrier-select')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         document.querySelector('#carrier-select')?.focus();
         return;
@@ -1012,7 +1024,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     // Verifica se dispatcher foi selecionado
     const dispatcherId = document.querySelector('select[name="dispatcher_id"]')?.value;
     if (!dispatcherId) {
-        alert('Please select a Dispatcher.');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Required Field', 'Please select a Dispatcher.', 'warning');
+        } else {
+            alert('Please select a Dispatcher.');
+        }
         document.querySelector('select[name="dispatcher_id"]')?.focus();
         return;
     }
@@ -1020,7 +1036,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     // Verifica se a data de vencimento foi preenchida
     const dueDateCheck = document.querySelector('input[name="due_date"]')?.value;
     if (!dueDateCheck) {
-        alert('Please select a Due Date.');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Required Field', 'Please select a Due Date.', 'warning');
+        } else {
+            alert('Please select a Due Date.');
+        }
         document.querySelector('input[name="due_date"]')?.focus();
         return;
     }
@@ -1097,7 +1117,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     console.log('=== FIM DEBUG ===');
 
     if (loadIds.length === 0) {
-        alert('Please select at least one load to create the invoice.\n\nDEBUG INFO:\n- Checkboxes encontrados: ' + selectedCheckboxes.length + '\n- Verifique o console para mais detalhes');
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('No Loads Selected', 'Please select at least one load to create the invoice.', 'warning');
+        } else {
+            alert('Please select at least one load to create the invoice.\n\nDEBUG INFO:\n- Checkboxes encontrados: ' + selectedCheckboxes.length + '\n- Verifique o console para mais detalhes');
+        }
         console.error('ERRO: Nenhum load ID foi coletado dos checkboxes');
         return;
     }
@@ -1165,9 +1189,25 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
 
         if (!res.ok) {
             if (data.message) {
-                alert(data.message);
+                if (typeof showAlertModal === 'function') {
+                    showAlertModal('Error', data.message || 'Error saving Time Line Charge.', 'error');
+                } else {
+                    if (typeof showAlertModal === 'function') {
+                        showAlertModal('Error', data.message || 'Error saving Time Line Charge.', 'error');
+                    } else {
+                        alert(data.message || 'Error saving Time Line Charge.');
+                    }
+                }
             } else {
-                alert('Error saving Time Line Charge.');
+                if (typeof showAlertModal === 'function') {
+                    showAlertModal('Error', 'Error saving Time Line Charge.', 'error');
+                } else {
+                    if (typeof showAlertModal === 'function') {
+                        showAlertModal('Error', 'Error saving Time Line Charge.', 'error');
+                    } else {
+                        alert('Error saving Time Line Charge.');
+                    }
+                }
             }
             throw new Error(data.message || 'Error saving');
         }
@@ -1189,8 +1229,15 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
             });
         }
 
-        alert(message);
-        window.location.href = '{{ route('time_line_charges.index') }}';
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Success', message, 'success');
+            setTimeout(() => {
+                window.location.href = '{{ route('time_line_charges.index') }}';
+            }, 1500);
+        } else {
+            alert(message);
+            window.location.href = '{{ route('time_line_charges.index') }}';
+        }
     })
     .catch(err => {
         console.error("Error:", err.message);
@@ -1867,7 +1914,11 @@ $(document).ready(function () {
 
       success: function (response) {
         if (response.success) {
-          alert(response.message);
+          if (typeof showAlertModal === 'function') {
+            showAlertModal('Success', response.message, 'success');
+          } else {
+            alert(response.message);
+          }
           $('#additionalService').modal('hide');
           $('#additional-service-form')[0].reset();
         }
@@ -1877,9 +1928,17 @@ $(document).ready(function () {
         if (xhr.status === 422) {
           let errors = xhr.responseJSON.errors;
           let messages = Object.values(errors).map(msgArray => msgArray.join(', ')).join('\n');
-          alert("Validation errors:\n" + messages);
+          if (typeof showAlertModal === 'function') {
+            showAlertModal('Validation Errors', messages, 'error');
+          } else {
+            alert("Validation errors:\n" + messages);
+          }
         } else {
-          alert("Error saving. Please try again.");
+          if (typeof showAlertModal === 'function') {
+            showAlertModal('Error', 'Error saving. Please try again.', 'error');
+          } else {
+            alert("Error saving. Please try again.");
+          }
         }
       }
     });
@@ -1968,7 +2027,11 @@ $(document).ready(function () {
       },
 
       error: function (xhr) {
-        alert("Error loading additional services.");
+        if (typeof showAlertModal === 'function') {
+          showAlertModal('Error', 'Error loading additional services.', 'error');
+        } else {
+          alert("Error loading additional services.");
+        }
         console.error(xhr);
       }
     });
@@ -2563,13 +2626,21 @@ function deleteService(serviceId) {
       },
       success: function(response) {
         if (response.success) {
-          alert(response.message);
+          if (typeof showAlertModal === 'function') {
+            showAlertModal('Success', response.message, 'success');
+          } else {
+            alert(response.message);
+          }
           // Reload the services list
           $('#open-additional-service').click();
         }
       },
       error: function(xhr) {
-        alert('Error deleting service. Please try again.');
+        if (typeof showAlertModal === 'function') {
+          showAlertModal('Error', 'Error deleting service. Please try again.', 'error');
+        } else {
+          alert('Error deleting service. Please try again.');
+        }
         console.error(xhr);
       }
     });

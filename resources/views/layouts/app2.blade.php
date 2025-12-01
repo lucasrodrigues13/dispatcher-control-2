@@ -456,175 +456,6 @@
                     </form>
                   </ul>
                 </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="messageDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-envelope"></i>
-                  </a>
-                  <ul
-                    class="dropdown-menu messages-notif-box animated fadeIn"
-                    aria-labelledby="messageDropdown"
-                  >
-                    <li>
-                      <div
-                        class="dropdown-title d-flex justify-content-between align-items-center"
-                      >
-                        Messages
-                        <a href="#" class="small">Mark all as read</a>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="message-notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/jm_denis.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jimmy Denis</span>
-                              <span class="block"> How are you ? </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/chadengle.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Chad</span>
-                              <span class="block"> Ok, Thanks ! </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/mlane.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jhon Doe</span>
-                              <span class="block">
-                                Ready for the meeting today...
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/talha.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Talha</span>
-                              <span class="block"> Hi, Apa Kabar ? </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all messages<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="notifDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-bell"></i>
-                    <span class="notification">4</span>
-                  </a>
-                  <ul
-                    class="dropdown-menu notif-box animated fadeIn"
-                    aria-labelledby="notifDropdown"
-                  >
-                    <li>
-                      <div class="dropdown-title">
-                        You have 4 new notification
-                      </div>
-                    </li>
-                    <li>
-                      <div class="notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-icon notif-primary">
-                              <i class="fa fa-user-plus"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> New user registered </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-success">
-                              <i class="fa fa-comment"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Rahmad commented on Admin
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="/assets/assets/img/profile2.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Reza send messages to you
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-danger">
-                              <i class="fa fa-heart"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> Farrah liked Admin </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all notifications<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
                 <li class="nav-item topbar-user dropdown hidden-caret">
                   <a
                     class="dropdown-toggle profile-pic"
@@ -633,10 +464,16 @@
                     aria-expanded="false"
                   >
                     <div class="avatar-sm">
+                      @php
+                        $user = auth()->user();
+                        $photoUrl = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() . '&r=' . rand(1000, 9999) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=45&background=013d81&color=fff';
+                      @endphp
                       <img
-                        src="/assets/assets/img/profile.jpg"
-                        alt="..."
+                        src="{{ $photoUrl }}"
+                        alt="{{ $user->name }}"
                         class="avatar-img rounded-circle"
+                        id="header-avatar-small"
+                        onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=45&background=013d81&color=fff'"
                       />
                     </div>
                     <span class="profile-username">
@@ -649,10 +486,16 @@
                       <li>
                         <div class="user-box">
                           <div class="avatar-lg">
+                            @php
+                              $user = auth()->user();
+                              $photoUrlLarge = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() . '&r=' . rand(1000, 9999) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=150&background=013d81&color=fff';
+                            @endphp
                             <img
-                              src="/assets/assets/img/profile.jpg"
-                              alt="image profile"
+                              src="{{ $photoUrlLarge }}"
+                              alt="{{ $user->name }}"
                               class="avatar-img rounded"
+                              id="header-avatar-large"
+                              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=150&background=013d81&color=fff'"
                             />
                           </div>
                           <div class="u-text">
@@ -687,6 +530,9 @@
         <div class="container-fluid px-4 flash-messages-container">
             <x-flash-messages />
         </div>
+        
+        {{-- Generic Alert Modal Component --}}
+        @include('components.modal-alert')
 
         <style>
           .table>tbody>tr>td, .table>tbody>tr>th {
@@ -784,7 +630,11 @@
               window.location.href = '/'; // redireciona após logout
             },
             error: function () {
-              alert('Erro ao fazer logout.');
+              if (typeof showAlertModal === 'function') {
+                showAlertModal('Error', 'Error logging out.', 'error');
+              } else {
+                alert('Erro ao fazer logout.');
+              }
             }
           });
         });
@@ -811,13 +661,21 @@
                     window.location.href = '/login1';
                 } else {
                     return response.json().then(data => {
-                        alert(data.message || 'Logout failed.');
+                        if (typeof showAlertModal === 'function') {
+                            showAlertModal('Error', data.message || 'Logout failed.', 'error');
+                        } else {
+                            alert(data.message || 'Logout failed.');
+                        }
                     });
                 }
             })
             .catch(error => {
                 console.error('Logout error:', error);
-                alert('Something went wrong.');
+                if (typeof showAlertModal === 'function') {
+                    showAlertModal('Error', 'Something went wrong.', 'error');
+                } else {
+                    alert('Something went wrong.');
+                }
             });
         });
     });

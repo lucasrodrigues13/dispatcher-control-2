@@ -227,7 +227,7 @@ class TimeLineChargeController extends Controller
         // Validar permissão
         if (!$authUser->canManageTenant()) {
             return response()->json([
-                'error' => 'Você não tem permissão para criar este registro.'
+                'error' => 'You do not have permission to create this record.'
             ], 403);
         }
         
@@ -237,7 +237,7 @@ class TimeLineChargeController extends Controller
         // Validar dispatcher_id se fornecido
         if ($request->input('dispatcher_id') && !in_array($request->input('dispatcher_id'), $tenantDispatchers->toArray())) {
             return response()->json([
-                'error' => 'Dispatcher não pertence ao seu tenant.'
+                'error' => 'Dispatcher does not belong to your tenant.'
             ], 403);
         }
         
@@ -367,7 +367,7 @@ class TimeLineChargeController extends Controller
         $carrier = Carrier::find($request->input('carrier_id'));
         if (!$carrier || !in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
             return response()->json([
-                'error' => 'Carrier não pertence ao seu tenant.'
+                'error' => 'Carrier does not belong to your tenant.'
             ], 403);
         }
 
@@ -433,11 +433,11 @@ class TimeLineChargeController extends Controller
 
         // Validações básicas
         if (!in_array($amountType, ['price', 'paid_amount'])) {
-            return redirect()->back()->with('error', 'Tipo de valor inválido.');
+            return redirect()->back()->with('error', 'Invalid amount type.');
         }
 
         if (!is_array($loadIds)) {
-            return redirect()->back()->with('error', 'Load IDs inválidos.');
+            return redirect()->back()->with('error', 'Invalid Load IDs.');
         }
 
         // Inicia a query com os load_ids
@@ -717,18 +717,18 @@ class TimeLineChargeController extends Controller
         $TimeLineCharge = TimeLineCharge::find($id);
 
         if (!$TimeLineCharge) {
-            return response()->json(['error' => 'Invoice não encontrada.'], 404);
+            return response()->json(['error' => 'Invoice not found.'], 404);
         }
 
         $amountType = $TimeLineCharge->amount_type;
         $loadIds = json_decode($TimeLineCharge->load_ids, true);
 
         if (!in_array($amountType, ['price', 'paid_amount'])) {
-            return response()->json(['error' => 'Tipo de valor inválido.'], 400);
+            return response()->json(['error' => 'Invalid amount type.'], 400);
         }
 
         if (!is_array($loadIds)) {
-            return response()->json(['error' => 'Load IDs inválidos.'], 400);
+            return response()->json(['error' => 'Invalid Load IDs.'], 400);
         }
 
         // Buscar os loads
@@ -790,7 +790,7 @@ class TimeLineChargeController extends Controller
         $charge = TimeLineCharge::find($time_line_charge_id);
 
         if (!$charge) {
-            return redirect()->back()->with('error', 'TimeLineCharge não encontrado.');
+            return redirect()->back()->with('error', 'TimeLineCharge not found.');
         }
 
         // Decodifica os load_ids com segurança
@@ -808,7 +808,7 @@ class TimeLineChargeController extends Controller
 
         // Verifica se o ID está presente
         if (!in_array($load_id, $loadIds)) {
-            return redirect()->back()->with('error', 'Este Load ID não está associado a este TimeLineCharge.');
+            return redirect()->back()->with('error', 'This Load ID is not associated with this TimeLineCharge.');
         }
 
         // Remove o load_id e salva de volta
@@ -889,8 +889,8 @@ class TimeLineChargeController extends Controller
             if ($columnsCount > 14) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Você selecionou {$columnsCount} colunas. Para melhor visualização, recomendamos exportar para Excel quando há mais de 14 colunas.",
-                    'suggestion' => 'Por favor, selecione até 14 colunas ou exporte para Excel.'
+                    'message' => "You selected {$columnsCount} columns. For better visualization, we recommend exporting to Excel when there are more than 14 columns.",
+                    'suggestion' => 'Please select up to 14 columns or export to Excel.'
                 ], 422);
             }
             
@@ -940,7 +940,7 @@ class TimeLineChargeController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Erro ao gerar PDF da invoice', [
+            Log::error('Error generating PDF from invoice', [
                 'invoice_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -948,7 +948,7 @@ class TimeLineChargeController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao gerar PDF: ' . $e->getMessage()
+                'message' => 'Error generating PDF: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1020,13 +1020,13 @@ class TimeLineChargeController extends Controller
             return Excel::download($export, $fileName);
             
         } catch (\Exception $e) {
-            Log::error('Erro ao exportar Excel da invoice', [
+            Log::error('Error exporting Excel from invoice', [
                 'invoice_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->back()->with('error', 'Erro ao exportar Excel: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error exporting Excel: ' . $e->getMessage());
         }
     }
 }

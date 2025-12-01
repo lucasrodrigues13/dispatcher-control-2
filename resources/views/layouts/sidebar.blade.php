@@ -9,7 +9,16 @@
         <button class="btn btn-toggle sidenav-toggler"><i class="gg-menu-left"></i></button>
       </div>
       <button class="topbar-toggler more">
-        <img src="assets/assets/img/profile.jpg" alt="..." class="avatar-img rounded-circle" style="width: 45px; height: 45px;" />
+        @php
+          $user = auth()->user();
+          $photoUrlSidebar = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=45&background=013d81&color=fff';
+        @endphp
+        <img src="{{ $photoUrlSidebar }}" 
+             alt="{{ $user->name }}" 
+             class="avatar-img rounded-circle" 
+             style="width: 45px; height: 45px; object-fit: cover;"
+             id="sidebar-avatar"
+             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=45&background=013d81&color=fff'" />
       </button>
     </div>
   </div>

@@ -394,7 +394,12 @@
                         <a href="#">
                           <div class="notif-img">
                             <img
-                              src="/assets/assets/img/profile2.jpg"
+                              @php
+                                $user = auth()->user();
+                                $photoUrlNotif = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() . '&r=' . rand(1000, 9999) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=45&background=013d81&color=fff';
+                              @endphp
+                              src="{{ $photoUrlNotif }}"
+                              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=45&background=013d81&color=fff'"
                               alt="Img Profile" />
                           </div>
                           <div class="notif-content">
@@ -429,10 +434,16 @@
                   href="#"
                   aria-expanded="false">
                   <div class="avatar-sm position-relative">
+                    @php
+                      $user = auth()->user();
+                      $photoUrl = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() . '&r=' . rand(1000, 9999) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=45&background=013d81&color=fff';
+                    @endphp
                     <img
-                      src="/assets/assets/img/profile.jpg"
-                      alt="..."
-                      class="avatar-img rounded-circle" />
+                      src="{{ $photoUrl }}"
+                      alt="{{ $user->name }}"
+                      class="avatar-img rounded-circle"
+                      id="header-avatar-small-app"
+                      onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=45&background=013d81&color=fff'" />
 
                     @if(session('warning'))
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -460,9 +471,15 @@
                     <li>
                       <div class="user-box">
                         <div class="avatar-lg">
+                          @php
+                            $user = auth()->user();
+                            $photoUrlLarge = $user->photo ? asset('storage/' . $user->photo) . '?v=' . time() . '&r=' . rand(1000, 9999) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=150&background=013d81&color=fff';
+                          @endphp
                           <img
-                            src="/assets/assets/img/profile.jpg"
-                            alt="image profile"
+                            src="{{ $photoUrlLarge }}"
+                            id="header-avatar-large-app"
+                            onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&size=150&background=013d81&color=fff'"
+                            alt="{{ $user->name }}"
                             class="avatar-img rounded" />
                         </div>
                         <div class="u-text">
@@ -500,6 +517,9 @@
       <div class="container-fluid px-4 flash-messages-container">
         <x-flash-messages />
       </div>
+      
+      {{-- Generic Alert Modal Component --}}
+      @include('components.modal-alert')
 
       @yield('conteudo')
 
