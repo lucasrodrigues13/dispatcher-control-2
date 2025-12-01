@@ -26,3 +26,6 @@ yarn-error.log
 /data/*.db
 /data/*.db-shm
 /data/*.db-wal
+
+# Markdown documentation files
+*.md

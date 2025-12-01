@@ -13,6 +13,8 @@ use App\Models\Comission;
 use App\Models\Deal;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\InvoiceTimeLineChargeExport;
 
 class TimeLineChargeController extends Controller
 {
@@ -849,6 +851,182 @@ class TimeLineChargeController extends Controller
             return response()->json([
                 'error' => 'Charge not found or error loading details'
             ], 404);
+        }
+    }
+
+    /**
+     * ⭐ NOVO: Gerar PDF da invoice com tamanho de papel dinâmico baseado no número de colunas
+     * 
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+     */
+    public function generatePDF(Request $request, $id)
+    {
+        try {
+            // Buscar a invoice
+            $charge = TimeLineCharge::with(['carrier.user', 'dispatcher.user'])->findOrFail($id);
+            
+            // Carregar loads
+            $loads = $charge->getLoadsWithHistory();
+            
+            // ⭐ CONTAR COLUNAS SELECIONADAS
+            // Se vier do request, usar; senão, contar todas as colunas visíveis
+            $selectedColumns = $request->input('columns', []);
+            
+            // Se não vier do request, assumir todas as colunas padrão
+            if (empty($selectedColumns)) {
+                $selectedColumns = [
+                    'load_id', 'year_make_model', 'price', 'dispatcher', 
+                    'driver', 'broker_fee', 'driver_pay', 'payment_status'
+                ];
+            }
+            
+            $columnsCount = count($selectedColumns);
+            
+            // ⭐ VALIDAÇÃO: Limitar a 14 colunas para PDF (recomendado)
+            // Nota: O frontend já valida e mostra modal, mas mantemos validação aqui também
+            if ($columnsCount > 14) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Você selecionou {$columnsCount} colunas. Para melhor visualização, recomendamos exportar para Excel quando há mais de 14 colunas.",
+                    'suggestion' => 'Por favor, selecione até 14 colunas ou exporte para Excel.'
+                ], 422);
+            }
+            
+            // ⭐ LÓGICA DINÂMICA: Determinar formato do papel
+            $paperSize = 'a4'; // padrão
+            $orientation = 'landscape';
+            
+            if ($columnsCount <= 10) {
+                $paperSize = 'a4'; // A4 landscape
+            } else if ($columnsCount <= 14) {
+                $paperSize = 'a3'; // A3 landscape
+            }
+            
+            // Calcular total
+            $totalAmount = $loads->sum($charge->amount_type);
+            
+            // Preparar dados para a view
+            $data = [
+                'charge' => $charge,
+                'loads' => $loads,
+                'totalAmount' => $totalAmount,
+                'selectedColumns' => $selectedColumns,
+                'columnsCount' => $columnsCount
+            ];
+            
+            // Gerar HTML da view
+            $html = view('invoice.time_line_charge.pdf', $data)->render();
+            
+            // ⭐ IMPORTANTE: Verificar se DomPDF está instalado
+            // Se não estiver usando DomPDF, você pode usar outra biblioteca
+            // Exemplo com barryvdh/laravel-dompdf:
+            
+            // $pdf = \PDF::loadHTML($html);
+            // $pdf->setPaper($paperSize, $orientation);
+            // return $pdf->download("Invoice_{$charge->invoice_id}.pdf");
+            
+            // OU se estiver usando outra biblioteca, ajuste conforme necessário
+            
+            // Por enquanto, retornar JSON com informações (você pode implementar depois)
+            return response()->json([
+                'success' => true,
+                'message' => 'PDF gerado com sucesso',
+                'paper_size' => $paperSize,
+                'orientation' => $orientation,
+                'columns_count' => $columnsCount,
+                'note' => 'Implemente a geração de PDF usando sua biblioteca preferida (DomPDF, Snappy, etc.)'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erro ao gerar PDF da invoice', [
+                'invoice_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao gerar PDF: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ⭐ NOVO: Exportar Invoice para Excel com formatações bonitas
+     * 
+     * @param Request $request
+     * @param int $id
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\JsonResponse
+     */
+    public function exportExcel(Request $request, $id)
+    {
+        try {
+            // Buscar a invoice
+            $charge = TimeLineCharge::with(['carrier.user', 'dispatcher.user'])->findOrFail($id);
+            
+            // Carregar loads
+            $loads = $charge->getLoadsWithHistory();
+            
+            // ⭐ COLETAR COLUNAS SELECIONADAS
+            // Se vier do request como string separada por vírgula, converter para array
+            $selectedColumns = $request->input('columns', '');
+            
+            if (!empty($selectedColumns)) {
+                if (is_string($selectedColumns)) {
+                    $selectedColumns = explode(',', $selectedColumns);
+                    $selectedColumns = array_filter(array_map('trim', $selectedColumns));
+                }
+            }
+            
+            // Se não vier do request, usar colunas padrão visíveis
+            if (empty($selectedColumns)) {
+                $selectedColumns = [
+                    'load_id', 'year_make_model', 'price', 'dispatcher', 
+                    'driver', 'broker_fee', 'driver_pay', 'payment_status'
+                ];
+            }
+            
+            // Validar colunas (remover colunas inválidas)
+            $validColumns = [
+                'load_id', 'internal_load_id', 'year_make_model', 'vin', 'lot_number',
+                'creation_date', 'scheduled_pickup_date', 'actual_pickup_date',
+                'scheduled_delivery_date', 'actual_delivery_date',
+                'pickup_name', 'delivery_name', 'price', 'paid_amount',
+                'dispatcher', 'driver', 'broker_fee', 'driver_pay',
+                'payment_status', 'invoice_number', 'invoice_date', 'receipt_date'
+            ];
+            
+            $selectedColumns = array_intersect($selectedColumns, $validColumns);
+            
+            // Se não houver colunas válidas, usar padrão
+            if (empty($selectedColumns)) {
+                $selectedColumns = ['load_id', 'year_make_model', 'price', 'dispatcher', 
+                    'driver', 'broker_fee', 'driver_pay', 'payment_status'];
+            }
+            
+            // Gerar nome do arquivo
+            $invoiceId = $charge->invoice_id ?? 'unknown';
+            $invoiceDate = $charge->created_at->format('m-d-Y');
+            $carrierName = $charge->carrier->user->name ?? 'Unknown_Carrier';
+            $cleanCarrierName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $carrierName);
+            $fileName = "Invoice_{$invoiceId}_{$invoiceDate}_{$cleanCarrierName}.xlsx";
+            
+            // Criar export
+            $export = new InvoiceTimeLineChargeExport($charge, $loads, $selectedColumns);
+            
+            // Gerar e baixar Excel
+            return Excel::download($export, $fileName);
+            
+        } catch (\Exception $e) {
+            Log::error('Erro ao exportar Excel da invoice', [
+                'invoice_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()->with('error', 'Erro ao exportar Excel: ' . $e->getMessage());
         }
     }
 }

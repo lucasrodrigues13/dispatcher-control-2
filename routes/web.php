@@ -303,6 +303,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/time_line_charges/get-charges-setup/{id}', [TimeLineChargeController::class, 'getChargeSetup'])->name('time_line_charges.getChargesSetup');
     Route::delete('/time_line_charges/load_invoice/destroy/{load_id}/{time_line_charge_id}', [TimeLineChargeController::class, 'load_invoice_destroy'])->name('time_line_charges.load_invoice.destroy');
     Route::get('/time_line_charges/{id}/details', [TimeLineChargeController::class, 'getChargeDetails'])->name('time_line_charges.details');
+    Route::get('/time_line_charges/{id}/excel', [TimeLineChargeController::class, 'exportExcel'])->name('time_line_charges.excel');
 
 
 

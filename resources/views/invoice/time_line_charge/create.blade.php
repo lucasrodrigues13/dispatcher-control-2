@@ -2,9 +2,6 @@
 
 @section('conteudo')
 
-
-/* 4. ADICIONAR/ATUALIZAR o CSS para as novas animações */
-
 <style>
 /* Animações para campos preenchidos automaticamente */
 @keyframes fillHighlight {
@@ -270,10 +267,18 @@
                         {{-- Tabela de loads filtrados --}}
 @if(!empty($loads) && $loads->count() > 0)
     <div class="table-responsive mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Filtered Loads ({{ $loads->count() }} records)</h5>
-            <div class="text-muted">
-                Total: ${{ number_format($totalAmount ?? 0, 2) }}
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">Filtered Loads ({{ $loads->count() }} records)</h5>
+                <div class="text-muted">
+                    Total: ${{ number_format($totalAmount ?? 0, 2) }}
+                </div>
+            </div>
+            <div>
+                <a href="#" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#selectColums">
+                    <i class="fa fa-eye"></i>
+                    <span class="d-none d-md-inline">Show/Hide Columns</span>
+                </a>
             </div>
         </div>
 
@@ -529,7 +534,6 @@
                     <th></th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     {{-- Total na coluna do Paid Amount --}}
                     <th class="text-end text-info">
                         <strong>
@@ -539,6 +543,7 @@
                             ${{ number_format($totalPaidAmount, 2) }}
                         </strong>
                     </th>
+                    <th></th>
                     <th></th>
                 </tr>
                 <tr>
@@ -761,15 +766,18 @@
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Payment Terms</label>
-                                    <select name="payment_terms" class="form-select">
+                                    <select name="payment_terms_option" id="payment_terms_option" class="form-select">
                                         <option value="">Select Payment Terms</option>
-                                        <option value="net_15">Net 15 days</option>
-                                        <option value="net_30" selected>Net 30 days</option>
-                                        <option value="net_45">Net 45 days</option>
-                                        <option value="net_60">Net 60 days</option>
-                                        <option value="due_on_receipt">Due on Receipt</option>
-                                        <option value="custom">Custom Terms</option>
+                                        <option value="today">Today</option>
+                                        <option value="2">2 days</option>
+                                        <option value="5">5 days</option>
+                                        <option value="15">15 days</option>
+                                        <option value="30" selected>30 days</option>
+                                        <option value="45">45 days</option>
+                                        <option value="60">60 days</option>
+                                        <option value="custom">Custom</option>
                                     </select>
+                                    <div class="form-text">Select payment terms to auto-update due date</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Invoice Notes (Optional)</label>
@@ -777,6 +785,22 @@
                                               class="form-control"
                                               rows="3"
                                               placeholder="Add any special instructions or notes for this invoice..."></textarea>
+                                </div>
+                                {{-- Hidden input to store the actual payment_terms value --}}
+                                <input type="hidden" name="payment_terms" id="payment_terms" value="net_30">
+                            </div>
+
+                            {{-- Custom Payment Terms Date (shown only when Custom is selected) --}}
+                            <div class="row mb-3" id="custom-payment-terms-row" style="display: none;">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Custom Payment Terms Date <span class="text-danger">*</span></label>
+                                    <input type="date"
+                                           name="custom_payment_date"
+                                           id="custom_payment_date"
+                                           class="form-control"
+                                           min="{{ date('Y-m-d') }}"
+                                           value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                                    <div class="form-text">Select a custom payment terms date</div>
                                 </div>
                             </div>
 
@@ -994,8 +1018,8 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     }
 
     // Verifica se a data de vencimento foi preenchida
-    const dueDate = document.querySelector('input[name="due_date"]')?.value;
-    if (!dueDate) {
+    const dueDateCheck = document.querySelector('input[name="due_date"]')?.value;
+    if (!dueDateCheck) {
         alert('Please select a Due Date.');
         document.querySelector('input[name="due_date"]')?.focus();
         return;
@@ -1091,8 +1115,9 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     console.log('Amount Type encontrado:', amountType); // Debug
 
     // Capturar os campos adicionais do formulário
-    const paymentTerms = document.querySelector('select[name="payment_terms"]')?.value || '';
+    const paymentTerms = document.getElementById('payment_terms')?.value || 'net_30';
     const invoiceNotes = document.querySelector('textarea[name="invoice_notes"]')?.value || '';
+    const dueDate = document.querySelector('input[name="due_date"]')?.value || '';
 
     const payload = {
         _token: token,
@@ -1210,7 +1235,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Atualiza o contador de registros
         const remainingRows = document.querySelectorAll('tbody tr').length;
-        const headerCount = document.querySelector('h5');
+        const headerCount = document.querySelector('.table-responsive h5');
         if (headerCount) {
             headerCount.textContent = `Filtered Loads (${remainingRows} records)`;
         }
@@ -1376,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Atualiza o contador de registros
-        const headerCount = document.querySelector('h5');
+        const headerCount = document.querySelector('.table-responsive h5');
         if (headerCount) {
             const totalLoads = loadCheckboxes.length;
             headerCount.textContent = `Filtered Loads (${totalLoads} total, ${selectedCount} selected)`;
@@ -1587,111 +1612,133 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 
 
-  // Script para atualizar automaticamente a data de vencimento baseada nos termos de pagamento
+  // Script para atualizar automaticamente a data de vencimento baseada nos Payment Terms selecionados
 document.addEventListener('DOMContentLoaded', function() {
-    const paymentTermsSelect = document.querySelector('select[name="payment_terms"]');
-    const dueDateInput = document.querySelector('input[name="due_date"]');
+    const paymentTermsOptionSelect = document.getElementById('payment_terms_option');
+    const dueDateInput = document.getElementById('due_date');
+    const paymentTermsHidden = document.getElementById('payment_terms');
+    const customPaymentTermsRow = document.getElementById('custom-payment-terms-row');
+    const customPaymentDateInput = document.getElementById('custom_payment_date');
 
-    if (paymentTermsSelect && dueDateInput) {
-
-        // Função para calcular e atualizar a data de vencimento
-        function updateDueDate(selectedTerm) {
+    if (paymentTermsOptionSelect && dueDateInput) {
+        // Função para calcular e atualizar a data de vencimento baseada nos payment terms
+        function updateDueDateFromPaymentTerms(selectedOption) {
             const today = new Date();
             let dueDate = new Date(today);
+            let paymentTermsValue = 'net_30';
 
-            // ⭐ MAPEAMENTO COMPLETO DOS TERMOS DE PAGAMENTO
-            switch(selectedTerm) {
-                case 'due_on_receipt':
-                    dueDate = new Date(today); // Hoje mesmo
+            // Calcula a data baseada na opção selecionada
+            switch(selectedOption) {
+                case 'today':
+                    // Hoje mesmo
+                    dueDate = new Date(today);
+                    paymentTermsValue = 'due_on_receipt';
                     break;
-                case 'net_15':
+                case '2':
+                    dueDate.setDate(today.getDate() + 2);
+                    paymentTermsValue = 'custom';
+                    break;
+                case '5':
+                    dueDate.setDate(today.getDate() + 5);
+                    paymentTermsValue = 'custom';
+                    break;
+                case '15':
                     dueDate.setDate(today.getDate() + 15);
+                    paymentTermsValue = 'net_15';
                     break;
-                case 'net_30':
+                case '30':
                     dueDate.setDate(today.getDate() + 30);
+                    paymentTermsValue = 'net_30';
                     break;
-                case 'net_45':
+                case '45':
                     dueDate.setDate(today.getDate() + 45);
+                    paymentTermsValue = 'net_45';
                     break;
-                case 'net_60':
+                case '60':
                     dueDate.setDate(today.getDate() + 60);
+                    paymentTermsValue = 'net_60';
                     break;
                 case 'custom':
-                    // Para custom, não altera a data - deixa o usuário escolher
-                    showNotification('Custom payment terms selected. Please set the due date manually.', 'info');
-                    return;
+                    // Mostra o campo de data customizada
+                    if (customPaymentTermsRow) {
+                        customPaymentTermsRow.style.display = 'block';
+                    }
+                    if (customPaymentDateInput) {
+                        customPaymentDateInput.required = true;
+                        // Se já tiver um valor, mantém; senão, usa 30 dias como padrão
+                        if (!customPaymentDateInput.value) {
+                            const defaultDate = new Date(today);
+                            defaultDate.setDate(today.getDate() + 30);
+                            customPaymentDateInput.value = defaultDate.toISOString().split('T')[0];
+                        }
+                        // Atualiza o due_date com o valor custom
+                        dueDateInput.value = customPaymentDateInput.value;
+                    }
+                    paymentTermsValue = 'custom';
+                    return; // Não atualiza automaticamente quando é custom
                 case '':
-                    // Se não selecionou nada, volta ao padrão de 30 dias
+                    // Se não selecionou nada, usa 30 dias como padrão
                     dueDate.setDate(today.getDate() + 30);
+                    paymentTermsValue = 'net_30';
                     break;
                 default:
-                    // Fallback - tenta extrair número de dias do valor
-                    const daysMatch = selectedTerm.match(/(\d+)/);
-                    if (daysMatch) {
-                        const days = parseInt(daysMatch[1]);
+                    // Fallback - tenta usar como número de dias
+                    const days = parseInt(selectedOption);
+                    if (!isNaN(days)) {
                         dueDate.setDate(today.getDate() + days);
+                        paymentTermsValue = days <= 15 ? 'net_15' : (days <= 30 ? 'net_30' : (days <= 45 ? 'net_45' : 'net_60'));
                     } else {
-                        // Se não conseguir extrair, usa 30 dias como padrão
                         dueDate.setDate(today.getDate() + 30);
+                        paymentTermsValue = 'net_30';
                     }
-                    break;
             }
 
-            // Formatar a data para o input (YYYY-MM-DD)
+            // Esconde o campo custom se não for necessário
+            if (customPaymentTermsRow && selectedOption !== 'custom') {
+                customPaymentTermsRow.style.display = 'none';
+            }
+            if (customPaymentDateInput && selectedOption !== 'custom') {
+                customPaymentDateInput.required = false;
+            }
+
+            // Formata a data para YYYY-MM-DD
             const formattedDate = dueDate.toISOString().split('T')[0];
-            dueDateInput.value = formattedDate;
-
-            // ⭐ FEEDBACK VISUAL MELHORADO
-            dueDateInput.style.transition = 'all 0.3s ease';
-            dueDateInput.style.backgroundColor = '#d4edda';
-            dueDateInput.style.borderLeft = '4px solid #28a745';
-            dueDateInput.style.transform = 'scale(1.02)';
-
-            // Mostrar notificação informativa
-            const termLabels = {
-                'due_on_receipt': 'Due on Receipt (Today)',
-                'net_15': 'Net 15 days',
-                'net_30': 'Net 30 days',
-                'net_45': 'Net 45 days',
-                'net_60': 'Net 60 days',
-                'custom': 'Custom Terms'
-            };
-
-            const termLabel = termLabels[selectedTerm] || selectedTerm;
-            const formattedDisplayDate = dueDate.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            });
-
-            if (selectedTerm !== 'custom') {
-                showNotification(
-                    `Due date updated! ${termLabel} → ${formattedDisplayDate}`,
-                    'success'
-                );
+            
+            // Atualiza o campo hidden de payment_terms
+            if (paymentTermsHidden) {
+                paymentTermsHidden.value = paymentTermsValue;
             }
-
-            // Remover destaque após 2 segundos
-            setTimeout(() => {
-                dueDateInput.style.removeProperty('background-color');
-                dueDateInput.style.removeProperty('border-left');
-                dueDateInput.style.removeProperty('transform');
-            }, 2000);
+            
+            // Atualiza o campo de due_date se não for custom
+            if (selectedOption !== 'custom') {
+                dueDateInput.value = formattedDate;
+            }
         }
 
-        // ⭐ EVENT LISTENER PRINCIPAL
-        paymentTermsSelect.addEventListener('change', function() {
-            const selectedTerm = this.value;
-            console.log('Payment term selected:', selectedTerm); // Debug
-            updateDueDate(selectedTerm);
+        // Event listener para mudanças na opção de payment terms
+        paymentTermsOptionSelect.addEventListener('change', function() {
+            updateDueDateFromPaymentTerms(this.value);
         });
 
-        // ⭐ INICIALIZAÇÃO - Se já há um termo selecionado na página
-        const initialTerm = paymentTermsSelect.value;
-        if (initialTerm && initialTerm !== '') {
-            setTimeout(() => {
-                updateDueDate(initialTerm);
-            }, 500); // Pequeno delay para garantir que a página carregou
+        // Se o campo custom de data for alterado manualmente, atualiza o due_date
+        if (customPaymentDateInput) {
+            customPaymentDateInput.addEventListener('change', function() {
+                if (paymentTermsOptionSelect.value === 'custom') {
+                    dueDateInput.value = this.value;
+                    if (paymentTermsHidden) {
+                        paymentTermsHidden.value = 'custom';
+                    }
+                }
+            });
+        }
+
+        // Inicializa com o valor padrão (30 dias)
+        if (paymentTermsOptionSelect.value) {
+            updateDueDateFromPaymentTerms(paymentTermsOptionSelect.value);
+        } else {
+            // Se não tiver valor selecionado, define 30 dias como padrão
+            paymentTermsOptionSelect.value = '30';
+            updateDueDateFromPaymentTerms('30');
         }
     }
 
@@ -2527,6 +2574,204 @@ function deleteService(serviceId) {
       }
     });
   }
+}
+</script>
+
+<!-- Modal Show/Hide Columns -->
+<div class="modal fade" id="selectColums" tabindex="-1" aria-labelledby="selectColumsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="selectColumsLabel">Select Columns</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <input type="text" id="searchColumnsInput" class="form-control" placeholder="Search columns...">
+        </div>
+        <div class="col-12">
+          <label>
+            <input type="checkbox" id="toggle-all-columns" checked>
+            Show/Hide All Columns
+          </label>
+        </div>
+        <div>
+          <hr>
+        </div>
+
+        <div class="row" style="max-height: 300px; overflow: auto;">
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="LOAD ID" checked> Load ID</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CARRIER" checked> Carrier</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="DRIVER" checked> Driver</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="DISPATCHER" checked> Dispatcher</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="PRICE" checked> Price</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CHARGE STATUS" checked> Charge Status</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CREATION DATE" checked> Creation Date</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTUAL PICKUP" checked> Actual Pickup</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTUAL DELIVERY" checked> Actual Delivery</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="SCHEDULED PICKUP" checked> Scheduled Pickup</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="SCHEDULED DELIVERY" checked> Scheduled Delivery</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="INVOICE DATE" checked> Invoice Date</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="RECEIPT DATE" checked> Receipt Date</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="PAID AMOUNT" checked> Paid Amount</label></div>
+          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTIONS" checked> Actions</label></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hidden {
+    display: none !important;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const checkboxes = document.querySelectorAll(".toggle-column");
+  const toggleAll = document.getElementById("toggle-all-columns");
+
+  function getColumnIndexByName(columnName) {
+    // Use more specific selector to target only the loads table
+    const table = document.querySelector(".table-responsive table");
+    if (!table) return -1;
+    const headerCells = table.querySelectorAll("thead th");
+    const searchName = columnName.toUpperCase().trim();
+    
+    // Map of column names to their exact header text (handling variations)
+    const columnMapping = {
+      'LOAD ID': 'LOAD ID',
+      'CARRIER': 'CARRIER',
+      'DRIVER': 'DRIVER',
+      'DISPATCHER': 'DISPATCHER',
+      'PRICE': 'PRICE',
+      'CHARGE STATUS': 'CHARGE STATUS',
+      'CREATION DATE': 'CREATION DATE',
+      'ACTUAL PICKUP': 'ACTUAL PICKUP',
+      'ACTUAL DELIVERY': 'ACTUAL DELIVERY',
+      'SCHEDULED PICKUP': 'SCHEDULED PICKUP',
+      'SCHEDULED DELIVERY': 'SCHEDULED DELIVERY',
+      'INVOICE DATE': 'INVOICE DATE',
+      'RECEIPT DATE': 'RECEIPT DATE',
+      'PAID AMOUNT': 'PAID AMOUNT',
+      'ACTIONS': 'ACTIONS'
+    };
+    
+    for (let i = 0; i < headerCells.length; i++) {
+      const headerText = headerCells[i].textContent.trim().toUpperCase();
+      // Remove HTML tags and extra whitespace, normalize spaces
+      const cleanText = headerText.replace(/\s+/g, ' ').trim();
+      
+      // Check for exact match
+      if (cleanText === searchName) {
+        return i;
+      }
+      
+      // Check if header contains the search name
+      if (cleanText.includes(searchName)) {
+        return i;
+      }
+      
+      // Check reverse - if search name contains key words from header
+      const searchWords = searchName.split(' ').filter(w => w.length > 2);
+      if (searchWords.length > 0 && searchWords.every(word => cleanText.includes(word))) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function toggleColumnByName(columnName, show) {
+    const colIndex = getColumnIndexByName(columnName);
+    if (colIndex === -1) {
+      console.warn(`Column "${columnName}" not found`);
+      return;
+    }
+    // Use more specific selector to target only the loads table
+    const table = document.querySelector(".table-responsive table");
+    if (!table) return;
+    const rows = table.querySelectorAll("tr");
+    rows.forEach(row => {
+      const cell = row.cells[colIndex];
+      if (cell) {
+        cell.classList.toggle("hidden", !show);
+      }
+    });
+  }
+
+  function toggleActionsColumn() {
+    const table = document.querySelector(".table-responsive table");
+    if (!table) return;
+    const actionsColIndex = Array.from(table.querySelectorAll("thead th"))
+      .findIndex(th => th.textContent.trim().toUpperCase().includes("ACTIONS"));
+    if (actionsColIndex === -1) return;
+
+    const showActions = Array.from(checkboxes).some(cb => {
+      return cb.dataset.column.toUpperCase() === "ACTIONS" && cb.checked;
+    });
+
+    const rows = table.querySelectorAll("tr");
+    rows.forEach(row => {
+      const cell = row.cells[actionsColIndex];
+      if (cell) {
+        cell.classList.toggle("hidden", !showActions);
+      }
+    });
+  }
+
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener("change", () => {
+      const columnName = checkbox.dataset.column;
+      toggleColumnByName(columnName, checkbox.checked);
+
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      toggleAll.checked = allChecked;
+
+      toggleActionsColumn();
+    });
+  });
+
+  toggleAll.addEventListener("change", () => {
+    const show = toggleAll.checked;
+    checkboxes.forEach(cb => {
+      cb.checked = show;
+      const columnName = cb.dataset.column;
+      toggleColumnByName(columnName, show);
+    });
+
+    toggleActionsColumn();
+  });
+
+  // Executar ao carregar para garantir consistência inicial
+  toggleActionsColumn();
+});
+
+// Pesquisa dinâmica de colunas
+const searchColumnsInput = document.getElementById('searchColumnsInput');
+if (searchColumnsInput) {
+  searchColumnsInput.addEventListener('input', function () {
+    const searchTerm = this.value.toLowerCase();
+    const checkboxes = document.querySelectorAll('#selectColums .toggle-column');
+
+    checkboxes.forEach(function (checkbox) {
+      const label = checkbox.closest('label');
+      const container = checkbox.closest('.col-md-6');
+
+      if (label && container) {
+        if (label.textContent.toLowerCase().includes(searchTerm)) {
+          container.style.display = 'block';
+        } else {
+          container.style.display = 'none';
+        }
+      }
+    });
+  });
 }
 </script>
 

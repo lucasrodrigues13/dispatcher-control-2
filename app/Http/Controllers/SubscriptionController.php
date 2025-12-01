@@ -452,7 +452,18 @@ class SubscriptionController extends Controller
             // ⭐ CORRIGIDO: Criar/atualizar plano APENAS após pagamento confirmado
             $pendingPlanData = session('pending_plan');
             
-            if ($pendingPlanData && $plan->is_custom) {
+            // ⭐ NOVO: Log para debug
+            Log::info('processPayment - Verificando plano customizado', [
+                'user_id' => $mainUser->id,
+                'plan_id' => $plan->id,
+                'plan_slug' => $plan->slug,
+                'plan_is_custom' => $plan->is_custom ?? false,
+                'has_pending_plan_data' => $pendingPlanData ? true : false,
+                'pending_plan_employees' => $pendingPlanData['employees'] ?? 'N/A',
+            ]);
+            
+            // ⭐ CORRIGIDO: Verificar se há dados pendentes OU se o plano é temporário (slug começa com 'temp-')
+            if ($pendingPlanData && ($plan->is_custom || strpos($plan->slug ?? '', 'temp-') === 0)) {
                 // Verificar se é plano temporário (slug começa com 'temp-')
                 $isTemporaryPlan = strpos($plan->slug, 'temp-') === 0;
                 
@@ -536,6 +547,21 @@ class SubscriptionController extends Controller
             
             // ⭐ CORRIGIDO: Limpar relacionamento do usuário para forçar recarregamento
             $mainUser->unsetRelation('subscription');
+            
+            // ⭐ NOVO: Log detalhado após pagamento para debug
+            Log::info('Pagamento processado - Subscription atualizada', [
+                'user_id' => $mainUser->id,
+                'subscription_id' => $subscription->id,
+                'plan_id' => $subscription->plan_id,
+                'plan_name' => $subscription->plan->name ?? 'N/A',
+                'plan_max_employees' => $subscription->plan->max_employees ?? 'N/A',
+                'plan_max_carriers' => $subscription->plan->max_carriers ?? 'N/A',
+                'plan_max_drivers' => $subscription->plan->max_drivers ?? 'N/A',
+                'plan_max_brokers' => $subscription->plan->max_brokers ?? 'N/A',
+                'plan_is_custom' => $subscription->plan->is_custom ?? false,
+                'subscription_status' => $subscription->status,
+                'subscription_updated_at' => $subscription->updated_at,
+            ]);
             
             // ⭐ NOVO: Limpar URL de retorno da sessão após pagamento bem-sucedido
             // (será usado pelo JavaScript para redirecionar)

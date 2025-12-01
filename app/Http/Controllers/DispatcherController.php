@@ -81,10 +81,7 @@ class DispatcherController extends Controller
                 ->with('error', $userLimitCheck['message'] ?? 'Você não tem permissão para criar dispatchers.');
         }
         
-        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
-        $owners = $authUser->isAdmin() ? User::getAvailableOwners() : collect();
-        
-        return view('dispatcher.self.create', compact('owners'));
+        return view('dispatcher.self.create');
     }
 
     public function store(Request $request)
@@ -230,19 +227,8 @@ class DispatcherController extends Controller
                     ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
             }
             
-            // Se admin forneceu owner_id no request, validar; senão, usar o tenant selecionado
-            if ($request->filled('owner_id')) {
-                $selectedOwner = User::find($request->owner_id);
-                if (!$selectedOwner || !$selectedOwner->is_owner || $selectedOwner->is_admin) {
-                    return redirect()->back()
-                        ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
-                        ->withInput();
-                }
-                $ownerId = $selectedOwner->id;
-            } else {
-                // Usar o tenant selecionado como owner
-                $ownerId = $viewingTenant->id;
-            }
+            // ⭐ CORRIGIDO: Sempre usar o tenant selecionado no topo da tela
+            $ownerId = $viewingTenant->id;
         } else {
             // Obter owner do tenant (comportamento normal)
             $ownerId = $authUser->getOwnerId();

@@ -448,7 +448,7 @@
                 <i class="fas fa-table me-2"></i>
                 Load Details
             </h5>
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#columnSelectorModal">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#columnSelectionModal">
                 <i class="fas fa-columns me-1"></i>
                 Select Columns
             </button>
@@ -663,6 +663,10 @@
                     <i class="fas fa-file-pdf me-2"></i>
                     Download PDF
                 </button>
+                <button class="btn btn-info btn-modern" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel me-2"></i>
+                    Export Excel
+                </button>
                 <button class="btn btn-primary btn-modern" onclick="imprimirInvoice()">
                     <i class="fas fa-print me-2"></i>
                     Print
@@ -852,9 +856,53 @@
                     <i class="fas fa-times me-1"></i>
                     Cancel
                 </button>
-                <button type="button" class="btn btn-primary" id="applyColumnSelection" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-primary" id="applyColumnSelection">
                     <i class="fas fa-check me-1"></i>
                     Apply Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Aviso para PDF com muitas colunas -->
+<div class="modal fade" id="pdfWarningModal" tabindex="-1" aria-labelledby="pdfWarningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="pdfWarningModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Muitas Colunas Selecionadas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Você selecionou <strong id="modal-column-count">0</strong> colunas.
+                </p>
+                <p>
+                    Para melhor visualização, recomendamos exportar para <strong>Excel</strong> quando há mais de 14 colunas.
+                </p>
+                <p class="mb-0">
+                    Deseja continuar mesmo assim com o PDF?
+                </p>
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <small>O PDF será gerado com tamanho de fonte reduzido para acomodar todas as colunas.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="confirm-pdf-generation">
+                    <i class="fas fa-file-pdf me-1"></i>
+                    Continuar com PDF
+                </button>
+                <button type="button" class="btn btn-success" id="switch-to-excel">
+                    <i class="fas fa-file-excel me-1"></i>
+                    Exportar Excel
                 </button>
             </div>
         </div>
@@ -864,6 +912,101 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
+// ⭐ NOVA: Função para gerar PDF com configurações dinâmicas baseadas no número de colunas
+// Definida antes de gerarPDF() para garantir que esteja disponível
+function generatePDFWithSettings(elementoClone, fileName, visibleColumnsCount) {
+    // Adicionar classe PDF ao clone
+    elementoClone.classList.add('pdf-content');
+    
+    // ⭐ REDUZIR TAMANHO DAS COLUNAS E FONTE QUANDO > 14 COLUNAS
+    if (visibleColumnsCount > 14) {
+        // Reduzir tamanho da fonte na tabela
+        const table = elementoClone.querySelector('#loadsTable');
+        if (table) {
+            table.style.fontSize = '9px';
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                header.style.fontSize = '9px';
+                header.style.padding = '4px 6px';
+            });
+            const cells = table.querySelectorAll('td');
+            cells.forEach(cell => {
+                cell.style.fontSize = '9px';
+                cell.style.padding = '4px 6px';
+            });
+        }
+        
+        // Reduzir largura das colunas
+        elementoClone.style.fontSize = '9px';
+    }
+
+    // ⭐ LÓGICA DINÂMICA: Determinar formato do papel baseado no número de colunas
+    let paperFormat = 'a4'; // padrão
+    let scale = 1.5; // escala padrão
+    let margin = [0.5, 0.5, 0.5, 0.5]; // margens padrão
+    
+    if (visibleColumnsCount <= 10) {
+        paperFormat = 'a4'; // A4 landscape
+        scale = 1.5;
+        margin = [0.5, 0.5, 0.5, 0.5];
+    } else if (visibleColumnsCount <= 14) {
+        paperFormat = 'a3'; // A3 landscape
+        scale = 1.5;
+        margin = [0.4, 0.4, 0.4, 0.4]; // Margens reduzidas para A3
+    } else {
+        // Mais de 14 colunas: usar A3 com escala e margens reduzidas
+        paperFormat = 'a3';
+        scale = 1.2; // ⭐ Reduzir escala para caber mais colunas
+        margin = [0.3, 0.3, 0.3, 0.3]; // ⭐ Margens ainda menores
+    }
+
+    // Configurações otimizadas para PDF
+    const options = {
+        margin: margin,
+        filename: fileName,
+        image: {
+            type: 'jpeg',
+            quality: 0.95
+        },
+        html2canvas: {
+            scale: scale, // ⭐ Escala dinâmica baseada no número de colunas
+            useCORS: true,
+            allowTaint: true,
+            scrollX: 0,
+            scrollY: 0,
+            backgroundColor: '#ffffff',
+            removeContainer: true,
+            foreignObjectRendering: false
+        },
+        jsPDF: {
+            unit: 'in',
+            format: paperFormat, // ⭐ Formato dinâmico baseado no número de colunas
+            orientation: 'landscape',
+            compress: true
+        },
+        pagebreak: {
+            mode: ['avoid-all', 'css', 'legacy']
+        }
+    };
+
+    // Gerar PDF
+    html2pdf()
+        .set(options)
+        .from(elementoClone)
+        .save()
+        .then(() => {
+            console.log('PDF gerado com sucesso');
+        })
+        .catch((error) => {
+            console.error('Erro ao gerar PDF:', error);
+            alert('Erro ao gerar PDF. Tente novamente.');
+        })
+        .finally(() => {
+            // Esconder loading
+            document.getElementById('pdf-loading').style.display = 'none';
+        });
+}
+
 // ⭐ MELHORADO: Função para gerar PDF
 function gerarPDF() {
     // Mostrar loading
@@ -899,54 +1042,68 @@ function gerarPDF() {
             const elementosRemover = elementoClone.querySelectorAll('.no-print, .btn, button, .modal, .dropdown, .navbar, .sidebar');
             elementosRemover.forEach(el => el.remove());
 
-            // Adicionar classe PDF ao clone
-            elementoClone.classList.add('pdf-content');
-
-            // Configurações otimizadas para PDF
-            const options = {
-                margin: [0.5, 0.5, 0.5, 0.5], // margens em inches
-                filename: fileName,
-                image: {
-                    type: 'jpeg',
-                    quality: 0.95
-                },
-                html2canvas: {
-                    scale: 1.5, // Reduzido para melhor performance
-                    useCORS: true,
-                    allowTaint: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    backgroundColor: '#ffffff',
-                    removeContainer: true,
-                    foreignObjectRendering: false
-                },
-                jsPDF: {
-                    unit: 'in',
-                    format: 'a4',
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: {
-                    mode: ['avoid-all', 'css', 'legacy']
+            // ⭐ NOVO: Ocultar colunas que estão ocultas na tela (respeitar seleção de colunas)
+            const table = elementoClone.querySelector('#loadsTable');
+            let visibleColumnsCount = 0;
+            
+            if (table) {
+                // Verificar quais colunas estão visíveis na tabela original
+                const originalTable = document.getElementById('loadsTable');
+                if (originalTable) {
+                    const allColumns = originalTable.querySelectorAll('th[data-column]');
+                    allColumns.forEach(originalTh => {
+                        const columnName = originalTh.getAttribute('data-column');
+                        const computedStyle = window.getComputedStyle(originalTh);
+                        const isVisible = computedStyle.display !== 'none' && 
+                                         computedStyle.visibility !== 'hidden' &&
+                                         originalTh.style.display !== 'none';
+                        
+                        // Contar colunas visíveis
+                        if (isVisible) {
+                            visibleColumnsCount++;
+                        }
+                        
+                        // Ocultar colunas no clone se estiverem ocultas no original
+                        if (!isVisible) {
+                            // Ocultar cabeçalhos
+                            const clonedHeaders = table.querySelectorAll(`th[data-column="${columnName}"], th.column-${columnName}`);
+                            clonedHeaders.forEach(header => {
+                                header.style.display = 'none';
+                                header.style.visibility = 'hidden';
+                            });
+                            
+                            // Ocultar células do corpo da tabela
+                            const clonedCells = table.querySelectorAll(`td.column-${columnName}, td[data-column="${columnName}"]`);
+                            clonedCells.forEach(cell => {
+                                cell.style.display = 'none';
+                                cell.style.visibility = 'hidden';
+                            });
+                        }
+                    });
                 }
-            };
+            }
 
-            // Gerar PDF
-            html2pdf()
-                .set(options)
-                .from(elementoClone)
-                .save()
-                .then(() => {
-                    console.log('PDF gerado com sucesso');
-                })
-                .catch((error) => {
-                    console.error('Erro ao gerar PDF:', error);
-                    alert('Erro ao gerar PDF. Tente novamente.');
-                })
-                .finally(() => {
-                    // Esconder loading
-                    document.getElementById('pdf-loading').style.display = 'none';
-                });
+            // ⭐ VALIDAÇÃO: Limitar a 14 colunas para PDF (com aviso em modal)
+            if (visibleColumnsCount > 14) {
+                // Armazenar dados para usar após confirmação do modal
+                window.pendingPDFData = {
+                    elementoClone: elementoClone,
+                    fileName: fileName,
+                    visibleColumnsCount: visibleColumnsCount
+                };
+                
+                // Mostrar modal ao invés de confirm()
+                document.getElementById('modal-column-count').textContent = visibleColumnsCount;
+                const modal = new bootstrap.Modal(document.getElementById('pdfWarningModal'));
+                modal.show();
+                
+                // Esconder loading enquanto aguarda decisão do usuário
+                document.getElementById('pdf-loading').style.display = 'none';
+                return; // Para aqui e aguarda confirmação do modal
+            }
+
+            // Se passou da validação, gerar PDF diretamente
+            generatePDFWithSettings(elementoClone, fileName, visibleColumnsCount);
 
         } catch (error) {
             console.error('Erro na função gerarPDF:', error);
@@ -956,14 +1113,223 @@ function gerarPDF() {
     }, 100);
 }
 
+// ⭐ Event listeners para o modal de aviso PDF
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmPdfBtn = document.getElementById('confirm-pdf-generation');
+    const switchToExcelBtn = document.getElementById('switch-to-excel');
+    
+    if (confirmPdfBtn) {
+        confirmPdfBtn.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('pdfWarningModal'));
+            if (modal) modal.hide();
+            
+            // Recuperar dados armazenados
+            if (window.pendingPDFData) {
+                const { elementoClone, fileName, visibleColumnsCount } = window.pendingPDFData;
+                
+                // Mostrar loading novamente
+                document.getElementById('pdf-loading').style.display = 'flex';
+                
+                // Gerar PDF com as configurações apropriadas
+                generatePDFWithSettings(elementoClone, fileName, visibleColumnsCount);
+                
+                // Limpar dados pendentes
+                window.pendingPDFData = null;
+            }
+        });
+    }
+    
+    if (switchToExcelBtn) {
+        switchToExcelBtn.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('pdfWarningModal'));
+            if (modal) modal.hide();
+            
+            // Limpar dados pendentes
+            window.pendingPDFData = null;
+            
+            // Chamar função de exportar Excel
+            exportarExcel();
+        });
+    }
+});
+
+// ⭐ NOVA: Função para exportar Excel
+function exportarExcel() {
+    try {
+        // Coletar colunas visíveis na tabela
+        const visibleColumns = [];
+        const table = document.getElementById('loadsTable');
+        
+        if (!table) {
+            alert('Erro: Tabela não encontrada');
+            return;
+        }
+        
+        // Coletar todas as colunas visíveis
+        const allHeaders = table.querySelectorAll('th[data-column]');
+        allHeaders.forEach(header => {
+            const columnName = header.getAttribute('data-column');
+            const computedStyle = window.getComputedStyle(header);
+            const isVisible = computedStyle.display !== 'none' && 
+                             computedStyle.visibility !== 'hidden' &&
+                             header.style.display !== 'none';
+            
+            if (isVisible && columnName) {
+                visibleColumns.push(columnName);
+            }
+        });
+        
+        // Se não houver colunas visíveis, usar padrão
+        if (visibleColumns.length === 0) {
+            visibleColumns.push('load_id', 'year_make_model', 'price', 'dispatcher', 
+                'driver', 'broker_fee', 'driver_pay', 'payment_status');
+        }
+        
+        // Construir URL com colunas selecionadas
+        const invoiceId = {{ $charge->id }};
+        const columnsParam = visibleColumns.join(',');
+        const baseUrl = "{{ route('time_line_charges.excel', $charge->id) }}";
+        const url = baseUrl + `?columns=${encodeURIComponent(columnsParam)}`;
+        
+        // Mostrar loading
+        const loadingDiv = document.getElementById('pdf-loading');
+        if (loadingDiv) {
+            loadingDiv.querySelector('span').textContent = 'Generating Excel...';
+            loadingDiv.style.display = 'flex';
+        }
+        
+        // Abrir URL para download
+        window.location.href = url;
+        
+        // Esconder loading após um delay
+        setTimeout(() => {
+            if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Erro ao exportar Excel:', error);
+        alert('Erro ao exportar Excel. Verifique o console para mais detalhes.');
+        document.getElementById('pdf-loading').style.display = 'none';
+    }
+}
+
 // ⭐ NOVA: Função específica para impressão
 function imprimirInvoice() {
+    try {
+        // ⭐ CONTAR COLUNAS VISÍVEIS (mesma lógica do PDF)
+        const table = document.getElementById('loadsTable');
+        let visibleColumnsCount = 0;
+        
+        if (table) {
+            const allColumns = table.querySelectorAll('th[data-column]');
+            allColumns.forEach(th => {
+                const computedStyle = window.getComputedStyle(th);
+                const isVisible = computedStyle.display !== 'none' && 
+                                 computedStyle.visibility !== 'hidden' &&
+                                 th.style.display !== 'none';
+                if (isVisible) {
+                    visibleColumnsCount++;
+                }
+            });
+        }
+        
+        // ⭐ VALIDAÇÃO: Se > 14 colunas, mostrar modal de aviso
+        if (visibleColumnsCount > 14) {
+            // Armazenar flag para impressão
+            window.pendingPrintData = {
+                visibleColumnsCount: visibleColumnsCount
+            };
+            
+            // Mostrar modal (reutilizar o mesmo modal do PDF)
+            document.getElementById('modal-column-count').textContent = visibleColumnsCount;
+            const modal = new bootstrap.Modal(document.getElementById('pdfWarningModal'));
+            
+            // Alterar texto do modal para impressão
+            const modalTitle = document.querySelector('#pdfWarningModal .modal-title');
+            const modalBody = document.querySelector('#pdfWarningModal .modal-body p:last-of-type');
+            const confirmBtn = document.getElementById('confirm-pdf-generation');
+            
+            const originalTitle = modalTitle.innerHTML;
+            const originalBody = modalBody.innerHTML;
+            const originalBtnText = confirmBtn.innerHTML;
+            
+            modalTitle.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Muitas Colunas para Impressão';
+            modalBody.innerHTML = 'Deseja continuar mesmo assim com a impressão?<br><small class="text-muted">A impressão será ajustada automaticamente para acomodar todas as colunas.</small>';
+            confirmBtn.innerHTML = '<i class="fas fa-print me-1"></i> Continuar com Impressão';
+            
+            // Event listener temporário para impressão
+            const printHandler = function() {
+                modal.hide();
+                
+                // Restaurar textos originais
+                modalTitle.innerHTML = originalTitle;
+                modalBody.innerHTML = originalBody;
+                confirmBtn.innerHTML = originalBtnText;
+                
+                // Executar impressão
+                executePrint(visibleColumnsCount);
+                
+                window.pendingPrintData = null;
+            };
+            
+            // Adicionar listener temporário (será removido após uso)
+            confirmBtn.addEventListener('click', printHandler, { once: true });
+            
+            // Se clicar em "Exportar Excel" do modal de impressão, também restaurar textos
+            const switchToExcelBtn = document.getElementById('switch-to-excel');
+            if (switchToExcelBtn) {
+                const excelHandler = function() {
+                    // Restaurar textos originais antes de fechar
+                    modalTitle.innerHTML = originalTitle;
+                    modalBody.innerHTML = originalBody;
+                    confirmBtn.innerHTML = originalBtnText;
+                    window.pendingPrintData = null;
+                };
+                switchToExcelBtn.addEventListener('click', excelHandler, { once: true });
+            }
+            
+            modal.show();
+            return; // Para aqui e aguarda confirmação
+        }
+        
+        // Se passou da validação, imprimir diretamente
+        executePrint(visibleColumnsCount);
+        
+    } catch (error) {
+        console.error('Erro na função imprimirInvoice:', error);
+        alert('Erro ao preparar impressão. Verifique o console para mais detalhes.');
+    }
+}
+
+// ⭐ NOVA: Função para executar impressão com configurações dinâmicas
+function executePrint(visibleColumnsCount) {
     // Criar uma nova janela apenas com o conteúdo da invoice
     const conteudoInvoice = document.getElementById('invoice-content').cloneNode(true);
 
     // Remover elementos que não devem ser impressos
     const elementosRemover = conteudoInvoice.querySelectorAll('.no-print, .btn, button, .modal, .dropdown');
     elementosRemover.forEach(el => el.remove());
+    
+    // ⭐ APLICAR REDUÇÕES QUANDO > 14 COLUNAS
+    if (visibleColumnsCount > 14) {
+        const table = conteudoInvoice.querySelector('#loadsTable');
+        if (table) {
+            table.style.fontSize = '9px';
+            const headers = table.querySelectorAll('th');
+            headers.forEach(header => {
+                header.style.fontSize = '9px';
+                header.style.padding = '4px 6px';
+            });
+            const cells = table.querySelectorAll('td');
+            cells.forEach(cell => {
+                cell.style.fontSize = '9px';
+                cell.style.padding = '4px 6px';
+            });
+        }
+        conteudoInvoice.style.fontSize = '9px';
+    }
 
     // Criar janela de impressão
     const janelaImpressao = window.open('', '_blank');
@@ -973,6 +1339,30 @@ function imprimirInvoice() {
     const carrierName = "{{ $charge->carrier->user->name ?? 'Unknown Carrier' }}";
     const invoiceDate = "{{ $charge->created_at->format('m/d/Y') }}";
     
+    // ⭐ DETERMINAR TAMANHO DE PÁGINA E MARGENS DINAMICAMENTE
+    let pageSize = 'A4';
+    let pageOrientation = 'portrait';
+    let pageMargin = '0.5in';
+    let bodyFontSize = '14px';
+    
+    if (visibleColumnsCount <= 10) {
+        pageSize = 'A4';
+        pageOrientation = 'landscape';
+        pageMargin = '0.5in';
+        bodyFontSize = '14px';
+    } else if (visibleColumnsCount <= 14) {
+        pageSize = 'A3';
+        pageOrientation = 'landscape';
+        pageMargin = '0.4in';
+        bodyFontSize = '12px';
+    } else {
+        // Mais de 14 colunas: reduzir tudo
+        pageSize = 'A3';
+        pageOrientation = 'landscape';
+        pageMargin = '0.3in';
+        bodyFontSize = '9px';
+    }
+    
     janelaImpressao.document.write(`
         <!DOCTYPE html>
         <html>
@@ -981,8 +1371,8 @@ function imprimirInvoice() {
             <meta charset="utf-8">
             <style>
                 @page {
-                    size: A4;
-                    margin: 0.5in;
+                    size: ${pageSize} ${pageOrientation};
+                    margin: ${pageMargin};
                 }
 
                 body {
@@ -991,7 +1381,7 @@ function imprimirInvoice() {
                     padding: 20px;
                     background: white;
                     color: black;
-                    font-size: 14px;
+                    font-size: ${bodyFontSize};
                 }
 
                 .invoice-header {
@@ -1023,18 +1413,20 @@ function imprimirInvoice() {
                 .custom-table th {
                     background: #013d81 !important;
                     color: white !important;
-                    padding: 12px;
+                    padding: ${visibleColumnsCount > 14 ? '4px 6px' : '12px'};
                     text-align: left;
                     font-weight: 600;
                     border: 1px solid #000;
+                    font-size: ${visibleColumnsCount > 14 ? '9px' : 'inherit'};
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
 
                 .custom-table td {
-                    padding: 10px 12px;
+                    padding: ${visibleColumnsCount > 14 ? '4px 6px' : '10px 12px'};
                     border: 1px solid #ddd;
                     vertical-align: middle;
+                    font-size: ${visibleColumnsCount > 14 ? '9px' : 'inherit'};
                 }
 
                 .custom-table tbody tr:nth-child(even) {
@@ -1252,7 +1644,7 @@ function imprimirAlternativo() {
 
 // Funcionalidade de seleção de colunas
 function initColumnSelector() {
-    const modal = document.getElementById('columnSelectorModal');
+    const modal = document.getElementById('columnSelectionModal');
     const selectAllBtn = document.getElementById('selectAllColumns');
     const deselectAllBtn = document.getElementById('deselectAllColumns');
     const resetDefaultBtn = document.getElementById('resetToDefault');
@@ -1291,23 +1683,38 @@ function initColumnSelector() {
     
     // Aplicar seleção
     applyBtn.addEventListener('click', function() {
-        const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+        const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
         const table = document.getElementById('loadsTable');
+        
+        if (!table) {
+            console.error('Tabela não encontrada');
+            return;
+        }
         
         checkboxes.forEach(checkbox => {
             const columnName = checkbox.getAttribute('data-column');
             const isChecked = checkbox.checked;
             
-            // Mostrar/ocultar colunas usando as classes CSS
-            const columnElements = table.querySelectorAll(`.column-${columnName}`);
-            columnElements.forEach(cell => {
+            if (!columnName) return;
+            
+            // Mostrar/ocultar cabeçalhos (th)
+            const headers = table.querySelectorAll(`th[data-column="${columnName}"], th.column-${columnName}`);
+            headers.forEach(header => {
+                header.style.display = isChecked ? '' : 'none';
+            });
+            
+            // Mostrar/ocultar células do corpo (td)
+            const cells = table.querySelectorAll(`td.column-${columnName}, td[data-column="${columnName}"]`);
+            cells.forEach(cell => {
                 cell.style.display = isChecked ? '' : 'none';
             });
         });
         
         // Fechar modal
         const bootstrapModal = bootstrap.Modal.getInstance(modal);
-        bootstrapModal.hide();
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+        }
     });
 }
 

@@ -687,6 +687,12 @@ class BillingService
         $subscription = $mainUser->subscription()->with('plan')->first();
 
         if (!$subscription || !$subscription->plan) {
+            \Illuminate\Support\Facades\Log::info('checkUserLimit - Sem subscription ou plano', [
+                'user_id' => $mainUser->id,
+                'has_subscription' => $subscription ? true : false,
+                'has_plan' => $subscription && $subscription->plan ? true : false,
+            ]);
+            
             return [
                 'allowed' => false,
                 'message' => 'Você precisa de uma assinatura ativa.',
@@ -695,6 +701,20 @@ class BillingService
         }
 
         $plan = $subscription->plan;
+        
+        // ⭐ NOVO: Log para debug
+        \Illuminate\Support\Facades\Log::info('checkUserLimit - Verificando limites', [
+            'user_id' => $mainUser->id,
+            'user_type' => $userType,
+            'plan_id' => $plan->id,
+            'plan_name' => $plan->name,
+            'plan_max_employees' => $plan->max_employees,
+            'plan_max_carriers' => $plan->max_carriers,
+            'plan_max_drivers' => $plan->max_drivers,
+            'plan_max_brokers' => $plan->max_brokers,
+            'plan_is_custom' => $plan->is_custom ?? false,
+            'subscription_updated_at' => $subscription->updated_at,
+        ]);
 
         // Contar usuários ativos do dispatcher principal
         $dispatcher = \App\Models\Dispatcher::where('user_id', $mainUser->id)->first();
@@ -763,8 +783,22 @@ class BillingService
                 ];
             }
 
-            // Se maxCount é 0, significa que o plano NÃO permite criar esse tipo
+            // ⭐ CORRIGIDO: Se maxCount é 0, significa que o plano NÃO permite criar esse tipo
+            // Mas precisamos verificar se o plano foi atualizado recentemente após pagamento
             if ($maxCount === 0) {
+                // ⭐ NOVO: Log para debug
+                \Illuminate\Support\Facades\Log::info('checkUserLimit - maxCount é 0', [
+                    'user_id' => $mainUser->id,
+                    'user_type' => $userType,
+                    'plan_id' => $plan->id,
+                    'plan_name' => $plan->name,
+                    'max_employees' => $plan->max_employees,
+                    'max_carriers' => $plan->max_carriers,
+                    'max_drivers' => $plan->max_drivers,
+                    'max_brokers' => $plan->max_brokers,
+                    'subscription_updated_at' => $subscription->updated_at,
+                ]);
+                
                 $typeName = ucfirst($userType);
                 return [
                     'allowed' => false,

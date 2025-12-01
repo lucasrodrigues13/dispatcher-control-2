@@ -90,9 +90,6 @@ class CarrierController extends Controller
             ->where('user_id', auth()->id())
             ->first();
 
-        // ⭐ NOVO: Se for admin, passar lista de owners disponíveis
-        $owners = Auth::user()->isAdmin() ? User::getAvailableOwners() : collect();
-
         // Verificar se deve mostrar modal de upgrade (caso ainda tenha permissão mas esteja próximo do limite)
         $usageCheck = $userLimitCheck; // Reutilizar o mesmo resultado
         $showUpgradeModal = false;
@@ -102,7 +99,7 @@ class CarrierController extends Controller
             $showUpgradeModal = true;
         }
 
-        return view('carrier.self.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck', 'owners'));
+        return view('carrier.self.create', compact('dispatchers', 'showUpgradeModal', 'usageCheck'));
     }
 
     public function store(Request $request)
@@ -132,10 +129,6 @@ class CarrierController extends Controller
             'dispatcher_id' => 'nullable|exists:dispatchers,id',
         ];
         
-        // ⭐ NOVO: Se for admin, adicionar validação de owner_id
-        if (Auth::user()->isAdmin()) {
-            $validationRules['owner_id'] = 'required|exists:users,id';
-        }
         
         $validated = $request->validate($validationRules);
 
@@ -157,19 +150,8 @@ class CarrierController extends Controller
                     ->with('error', 'Tenant selecionado não encontrado.');
             }
             
-            // Se admin forneceu owner_id no request, validar; senão, usar o tenant selecionado
-            if ($request->filled('owner_id')) {
-                $selectedOwner = User::find($request->owner_id);
-                if ($selectedOwner && $selectedOwner->isOwner() && !$selectedOwner->isAdmin()) {
-                    $targetOwnerId = $selectedOwner->id;
-                } else {
-                    return redirect()->back()
-                        ->withErrors(['owner_id' => 'Owner selecionado é inválido.'])
-                        ->withInput();
-                }
-            } else {
-                $targetOwnerId = $viewingTenant->id;
-            }
+            // ⭐ CORRIGIDO: Sempre usar o tenant selecionado no topo da tela
+            $targetOwnerId = $viewingTenant->id;
         } else {
             $targetOwnerId = $authUser->getOwnerId();
             
