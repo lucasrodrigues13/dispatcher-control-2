@@ -270,15 +270,15 @@
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h5 class="mb-0">Filtered Loads ({{ $loads->count() }} records)</h5>
-                <div class="text-muted">
-                    Total: ${{ number_format($totalAmount ?? 0, 2) }}
+                <div class="d-flex align-items-center gap-2">
+                    <div class="text-muted">
+                        Total: ${{ number_format($totalAmount ?? 0, 2) }}
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#selectColums">
+                        <i class="fas fa-columns me-1"></i>
+                        Select Columns
+                    </button>
                 </div>
-            </div>
-            <div>
-                <a href="#" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#selectColums">
-                    <i class="fa fa-eye"></i>
-                    <span class="d-none d-md-inline">Show/Hide Columns</span>
-                </a>
             </div>
         </div>
 
@@ -289,42 +289,47 @@
                     <th class="text-center" style="width: 50px;">
                         <input type="checkbox" id="select-all-loads" title="Select/Deselect All">
                     </th>
-                    <th style="min-width: 100px;">LOAD ID</th>
-                    <th style="min-width: 120px;">CARRIER</th>
-                    <th style="min-width: 100px;">DRIVER</th>
-                    <th style="min-width: 120px;">DISPATCHER</th>
-                    <th class="text-end column-price" style="min-width: 100px;">PRICE</th>
-                    <th class="text-center" style="min-width: 120px;">CHARGE STATUS</th>
-
-                    {{-- ⭐ COLUNAS DOS FILTROS DE DATAS --}}
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="load_id" class="column-load_id" style="min-width: 100px;">LOAD ID</th>
+                    <th data-column="carrier" class="column-carrier" style="min-width: 120px;">CARRIER</th>
+                    <th data-column="driver" class="column-driver" style="min-width: 100px;">DRIVER</th>
+                    <th data-column="dispatcher" class="column-dispatcher" style="min-width: 120px;">DISPATCHER</th>
+                    <th data-column="price" class="text-end column-price" style="min-width: 100px;">PRICE</th>
+                    <th data-column="charge_status" class="text-center column-charge_status" style="min-width: 120px;">CHARGE STATUS</th>
+                    <th data-column="internal_load_id" class="column-internal_load_id" style="display: none; min-width: 120px;">INTERNAL LOAD ID</th>
+                    <th data-column="year_make_model" class="column-year_make_model" style="display: none; min-width: 120px;">VEHICLE</th>
+                    <th data-column="vin" class="column-vin" style="display: none; min-width: 120px;">VIN</th>
+                    <th data-column="lot_number" class="column-lot_number" style="display: none; min-width: 120px;">LOT NUMBER</th>
+                    <th data-column="broker_fee" class="text-end column-broker_fee" style="display: none; min-width: 100px;">BROKER FEE</th>
+                    <th data-column="driver_pay" class="text-end column-driver_pay" style="display: none; min-width: 100px;">DRIVER PAY</th>
+                    <th data-column="payment_status" class="text-center column-payment_status" style="display: none; min-width: 120px;">PAYMENT STATUS</th>
+                    <th data-column="invoice_number" class="text-center column-invoice_number" style="display: none; min-width: 120px;">INVOICE NUMBER</th>
+                    <th data-column="pickup_name" class="column-pickup_name" style="display: none; min-width: 150px;">PICKUP LOCATION</th>
+                    <th data-column="delivery_name" class="column-delivery_name" style="display: none; min-width: 150px;">DELIVERY LOCATION</th>
+                    <th data-column="creation_date" class="text-center bg-info text-white column-creation_date" style="min-width: 120px;">
                         <small>CREATION DATE</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="actual_pickup_date" class="text-center bg-info text-white column-actual_pickup_date" style="min-width: 120px;">
                         <small>ACTUAL PICKUP</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="actual_delivery_date" class="text-center bg-info text-white column-actual_delivery_date" style="min-width: 120px;">
                         <small>ACTUAL DELIVERY</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="scheduled_pickup_date" class="text-center bg-info text-white column-scheduled_pickup_date" style="min-width: 120px;">
                         <small>SCHEDULED PICKUP</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="scheduled_delivery_date" class="text-center bg-info text-white column-scheduled_delivery_date" style="min-width: 120px;">
                         <small>SCHEDULED DELIVERY</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="invoice_date" class="text-center bg-info text-white column-invoice_date" style="min-width: 120px;">
                         <small>INVOICE DATE</small>
                     </th>
-                    <th class="text-center bg-info text-white" style="min-width: 120px;">
+                    <th data-column="receipt_date" class="text-center bg-info text-white column-receipt_date" style="min-width: 120px;">
                         <small>RECEIPT DATE</small>
                     </th>
-
-                    {{-- ⭐ CAMPO AMOUNT_TYPE (PRICE vs PAID_AMOUNT) --}}
-                    <th class="text-end bg-warning text-dark column-paid-amount" style="min-width: 100px;">
+                    <th data-column="paid_amount" class="text-end bg-warning text-dark column-paid-amount" style="min-width: 100px;">
                         <small>PAID AMOUNT</small>
                     </th>
-
-                    <th class="text-center" style="width: 100px;">ACTIONS</th>
+                    <th class="text-center column-actions" style="width: 100px;">ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
@@ -339,7 +344,7 @@
                         </td>
 
                         {{-- Load ID --}}
-                        <td>
+                        <td class="column-load_id">
                             <strong>{{ $load->load_id }}</strong>
                             @if($load->already_charged)
                                 <br>
@@ -351,7 +356,7 @@
                         </td>
 
                         {{-- Carrier --}}
-                        <td>
+                        <td class="column-carrier">
                             @if($load->carrier)
                                 <strong>{{ $load->carrier->company_name ?? $load->carrier->user->name ?? '-' }}</strong>
                             @else
@@ -360,12 +365,12 @@
                         </td>
 
                         {{-- Driver --}}
-                        <td>
+                        <td class="column-driver">
                             {{ $load->driver ?? '-' }}
                         </td>
 
                         {{-- Dispatcher --}}
-                        <td>
+                        <td class="column-dispatcher">
                             @if($load->dispatcher)
                                 {{ $load->dispatcher->user->name ?? '-' }}
                             @else
@@ -383,9 +388,8 @@
                             </strong>
                         </td>
 
-
                         {{-- Charge Status --}}
-                        <td class="text-center">
+                        <td class="text-center column-charge_status">
                             @if($load->already_charged)
                                 <span class="badge bg-warning text-dark"
                                       data-bs-toggle="tooltip"
@@ -405,10 +409,69 @@
                             @endif
                         </td>
 
+                        {{-- Internal Load ID --}}
+                        <td class="column-internal_load_id" style="display: none;">
+                            {{ $load->internal_load_id ?? '-' }}
+                        </td>
+
+                        {{-- Vehicle --}}
+                        <td class="column-year_make_model" style="display: none;">
+                            {{ $load->year_make_model ?? '-' }}
+                        </td>
+
+                        {{-- VIN --}}
+                        <td class="column-vin" style="display: none;">
+                            {{ $load->vin ?? '-' }}
+                        </td>
+
+                        {{-- Lot Number --}}
+                        <td class="column-lot_number" style="display: none;">
+                            {{ $load->lot_number ?? '-' }}
+                        </td>
+
+                        {{-- Broker Fee --}}
+                        <td class="text-end column-broker_fee" style="display: none;">
+                            ${{ number_format($load->broker_fee ?? 0, 2) }}
+                        </td>
+
+                        {{-- Driver Pay --}}
+                        <td class="text-end column-driver_pay" style="display: none;">
+                            ${{ number_format($load->driver_pay ?? 0, 2) }}
+                        </td>
+
+                        {{-- Payment Status --}}
+                        <td class="text-center column-payment_status" style="display: none;">
+                            @php
+                                $paymentStatus = $load->payment_status ?? 'pending';
+                            @endphp
+                            @if($paymentStatus === 'paid')
+                                <span class="badge bg-success">Paid</span>
+                            @elseif($paymentStatus === 'partial')
+                                <span class="badge bg-warning text-dark">Partial</span>
+                            @else
+                                <span class="badge bg-secondary">Pending</span>
+                            @endif
+                        </td>
+
+                        {{-- Invoice Number --}}
+                        <td class="text-center column-invoice_number" style="display: none;">
+                            {{ $load->invoice_number ?? '-' }}
+                        </td>
+
+                        {{-- Pickup Location --}}
+                        <td class="column-pickup_name" style="display: none;">
+                            {{ $load->pickup_name ?? '-' }}
+                        </td>
+
+                        {{-- Delivery Location --}}
+                        <td class="column-delivery_name" style="display: none;">
+                            {{ $load->delivery_name ?? '-' }}
+                        </td>
+
                         {{-- ⭐ COLUNAS DOS FILTROS DE DATAS --}}
 
                         {{-- Creation Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-creation_date">
                             @if($load->creation_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->creation_date)->format('m/d/Y') }}
@@ -419,7 +482,7 @@
                         </td>
 
                         {{-- Actual Pickup Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-actual_pickup_date">
                             @if($load->actual_pickup_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->actual_pickup_date)->format('m/d/Y') }}
@@ -430,7 +493,7 @@
                         </td>
 
                         {{-- Actual Delivery Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-actual_delivery_date">
                             @if($load->actual_delivery_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->actual_delivery_date)->format('m/d/Y') }}
@@ -441,7 +504,7 @@
                         </td>
 
                         {{-- Scheduled Pickup Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-scheduled_pickup_date">
                             @if($load->scheduled_pickup_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->scheduled_pickup_date)->format('m/d/Y') }}
@@ -452,7 +515,7 @@
                         </td>
 
                         {{-- Scheduled Delivery Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-scheduled_delivery_date">
                             @if($load->scheduled_delivery_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->scheduled_delivery_date)->format('m/d/Y') }}
@@ -463,7 +526,7 @@
                         </td>
 
                         {{-- Invoice Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-invoice_date">
                             @if($load->invoice_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->invoice_date)->format('m/d/Y') }}
@@ -474,7 +537,7 @@
                         </td>
 
                         {{-- Receipt Date --}}
-                        <td class="text-center">
+                        <td class="text-center column-receipt_date">
                             @if($load->receipt_date)
                                 <span class="badge bg-light text-dark">
                                     {{ \Carbon\Carbon::parse($load->receipt_date)->format('m/d/Y') }}
@@ -484,7 +547,7 @@
                             @endif
                         </td>
 
-                        {{-- ⭐ PAID AMOUNT (para comparar com PRICE) --}}
+                        {{-- PAID AMOUNT --}}
                         <td class="text-end column-paid-amount">
                             @php
                                 $paidAmount = $load->paid_amount ?? 0;
@@ -499,7 +562,7 @@
                         </td>
 
                         {{-- Actions --}}
-                        <td class="text-center">
+                        <td class="text-center column-actions">
                             <button type="button"
                                     class="btn btn-sm btn-outline-danger delete-load-btn"
                                     data-load-id="{{ $load->id }}"
@@ -2653,53 +2716,166 @@ function deleteService(serviceId) {
 }
 </script>
 
-<!-- Modal Show/Hide Columns -->
-<div class="modal fade" id="selectColums" tabindex="-1" aria-labelledby="selectColumsLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="selectColumsLabel">Select Columns</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body">
-        <div class="mb-3">
-          <input type="text" id="searchColumnsInput" class="form-control" placeholder="Search columns...">
+<!-- Column Selection Modal -->
+<div class="modal fade" id="selectColums" tabindex="-1" aria-labelledby="columnSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="columnSelectionModalLabel">
+                    <i class="fas fa-columns me-2"></i>
+                    Select Columns to Display
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-success" id="selectAllColumns">
+                                <i class="fas fa-check-double me-1"></i>
+                                Select All
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="deselectAllColumns">
+                                <i class="fas fa-times me-1"></i>
+                                Deselect All
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="resetToDefault">
+                                <i class="fas fa-undo me-1"></i>
+                                Reset to Default
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Basic Information</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_load_id" data-column="load_id" checked>
+                            <label class="form-check-label" for="col_load_id">Load ID</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_internal_load_id" data-column="internal_load_id">
+                            <label class="form-check-label" for="col_internal_load_id">Internal Load ID</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_year_make_model" data-column="year_make_model" checked>
+                            <label class="form-check-label" for="col_year_make_model">Vehicle</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_vin" data-column="vin">
+                            <label class="form-check-label" for="col_vin">VIN</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_lot_number" data-column="lot_number">
+                            <label class="form-check-label" for="col_lot_number">Lot Number</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_creation_date" data-column="creation_date">
+                            <label class="form-check-label" for="col_creation_date">Creation Date</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Financial Information</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_price" data-column="price" checked>
+                            <label class="form-check-label" for="col_price">Price</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_broker_fee" data-column="broker_fee" checked>
+                            <label class="form-check-label" for="col_broker_fee">Broker Fee</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_driver_pay" data-column="driver_pay" checked>
+                            <label class="form-check-label" for="col_driver_pay">Driver Pay</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_payment_status" data-column="payment_status" checked>
+                            <label class="form-check-label" for="col_payment_status">Payment Status</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_invoice_number" data-column="invoice_number">
+                            <label class="form-check-label" for="col_invoice_number">Invoice Number</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_invoice_date" data-column="invoice_date">
+                            <label class="form-check-label" for="col_invoice_date">Invoice Date</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_receipt_date" data-column="receipt_date">
+                            <label class="form-check-label" for="col_receipt_date">Receipt Date</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_paid_amount" data-column="paid_amount" checked>
+                            <label class="form-check-label" for="col_paid_amount">Paid Amount</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Status</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_charge_status" data-column="charge_status" checked>
+                            <label class="form-check-label" for="col_charge_status">Charge Status</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">People & Locations</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_carrier" data-column="carrier" checked>
+                            <label class="form-check-label" for="col_carrier">Carrier</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_dispatcher" data-column="dispatcher" checked>
+                            <label class="form-check-label" for="col_dispatcher">Dispatcher</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_driver" data-column="driver" checked>
+                            <label class="form-check-label" for="col_driver">Driver</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_pickup_name" data-column="pickup_name">
+                            <label class="form-check-label" for="col_pickup_name">Pickup Location</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_delivery_name" data-column="delivery_name">
+                            <label class="form-check-label" for="col_delivery_name">Delivery Location</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Dates</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_scheduled_pickup_date" data-column="scheduled_pickup_date">
+                            <label class="form-check-label" for="col_scheduled_pickup_date">Scheduled Pickup</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_actual_pickup_date" data-column="actual_pickup_date">
+                            <label class="form-check-label" for="col_actual_pickup_date">Actual Pickup</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_scheduled_delivery_date" data-column="scheduled_delivery_date">
+                            <label class="form-check-label" for="col_scheduled_delivery_date">Scheduled Delivery</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input column-toggle" type="checkbox" id="col_actual_delivery_date" data-column="actual_delivery_date">
+                            <label class="form-check-label" for="col_actual_delivery_date">Actual Delivery</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="applyColumnSelection">
+                    <i class="fas fa-check me-1"></i>
+                    Apply Changes
+                </button>
+            </div>
         </div>
-        <div class="col-12">
-          <label>
-            <input type="checkbox" id="toggle-all-columns" checked>
-            Show/Hide All Columns
-          </label>
-        </div>
-        <div>
-          <hr>
-        </div>
-
-        <div class="row" style="max-height: 300px; overflow: auto;">
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="LOAD ID" checked> Load ID</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CARRIER" checked> Carrier</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="DRIVER" checked> Driver</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="DISPATCHER" checked> Dispatcher</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="PRICE" checked> Price</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CHARGE STATUS" checked> Charge Status</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="CREATION DATE" checked> Creation Date</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTUAL PICKUP" checked> Actual Pickup</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTUAL DELIVERY" checked> Actual Delivery</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="SCHEDULED PICKUP" checked> Scheduled Pickup</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="SCHEDULED DELIVERY" checked> Scheduled Delivery</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="INVOICE DATE" checked> Invoice Date</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="RECEIPT DATE" checked> Receipt Date</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="PAID AMOUNT" checked> Paid Amount</label></div>
-          <div class="col-md-6 mb-4"><label><input type="checkbox" class="toggle-column" data-column="ACTIONS" checked> Actions</label></div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
     </div>
-  </div>
 </div>
 
 <style>
@@ -2962,6 +3138,123 @@ document.addEventListener("DOMContentLoaded", function () {
     updateTableTotals();
   }
   rebuildTfoot();
+});
+
+// Função para inicializar o modal de seleção de colunas
+function initColumnSelector() {
+    const modal = document.getElementById('selectColums');
+    const selectAllBtn = document.getElementById('selectAllColumns');
+    const deselectAllBtn = document.getElementById('deselectAllColumns');
+    const resetDefaultBtn = document.getElementById('resetToDefault');
+    const applyBtn = document.getElementById('applyColumnSelection');
+    
+    if (!modal) return;
+    
+    // Colunas padrão (visíveis inicialmente)
+    const defaultColumns = [
+        'load_id', 'carrier', 'driver', 'dispatcher', 'price', 'charge_status',
+        'creation_date', 'actual_pickup_date', 'actual_delivery_date',
+        'scheduled_pickup_date', 'scheduled_delivery_date', 'invoice_date',
+        'receipt_date', 'paid_amount', 'broker_fee', 'driver_pay', 'payment_status'
+    ];
+    
+    // Selecionar todas as colunas
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+    }
+    
+    // Desselecionar todas as colunas
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    }
+    
+    // Redefinir para padrão
+    if (resetDefaultBtn) {
+        resetDefaultBtn.addEventListener('click', function() {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+            checkboxes.forEach(checkbox => {
+                const columnName = checkbox.getAttribute('data-column');
+                checkbox.checked = defaultColumns.includes(columnName);
+            });
+        });
+    }
+    
+    // Aplicar seleção quando clicar em "Apply Changes"
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function() {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+            const table = document.querySelector(".table-responsive table");
+            
+            if (!table) {
+                console.error('Table not found');
+                return;
+            }
+            
+            checkboxes.forEach(checkbox => {
+                const columnName = checkbox.getAttribute('data-column');
+                const isChecked = checkbox.checked;
+                
+                if (!columnName) return;
+                
+                // Mostrar/ocultar cabeçalhos (th)
+                const headers = table.querySelectorAll(`th[data-column="${columnName}"], th.column-${columnName}`);
+                headers.forEach(header => {
+                    header.style.display = isChecked ? '' : 'none';
+                });
+                
+                // Mostrar/ocultar células do corpo (td)
+                const cells = table.querySelectorAll(`td.column-${columnName}, td[data-column="${columnName}"]`);
+                cells.forEach(cell => {
+                    cell.style.display = isChecked ? '' : 'none';
+                });
+            });
+            
+            // Recalcular totais e reconstruir tfoot
+            if (typeof updateTableTotals === 'function') {
+                updateTableTotals();
+            }
+            if (typeof rebuildTfoot === 'function') {
+                rebuildTfoot();
+            }
+            
+            // Fechar modal
+            const bootstrapModal = bootstrap.Modal.getInstance(modal);
+            if (bootstrapModal) {
+                bootstrapModal.hide();
+            }
+        });
+    }
+    
+    // Inicializar checkboxes do modal quando ele for aberto
+    modal.addEventListener('show.bs.modal', function () {
+        const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+        const table = document.querySelector(".table-responsive table");
+        
+        if (table) {
+            checkboxes.forEach(checkbox => {
+                const columnName = checkbox.getAttribute('data-column');
+                if (columnName) {
+                    const header = table.querySelector(`th[data-column="${columnName}"], th.column-${columnName}`);
+                    checkbox.checked = header && header.style.display !== 'none';
+                }
+            });
+        }
+    });
+}
+
+// Inicializar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    initColumnSelector();
 });
 
 // Pesquisa dinâmica de colunas
