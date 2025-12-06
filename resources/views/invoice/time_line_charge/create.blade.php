@@ -293,7 +293,7 @@
                     <th style="min-width: 120px;">CARRIER</th>
                     <th style="min-width: 100px;">DRIVER</th>
                     <th style="min-width: 120px;">DISPATCHER</th>
-                    <th class="text-end" style="min-width: 100px;">PRICE</th>
+                    <th class="text-end column-price" style="min-width: 100px;">PRICE</th>
                     <th class="text-center" style="min-width: 120px;">CHARGE STATUS</th>
 
                     {{-- ⭐ COLUNAS DOS FILTROS DE DATAS --}}
@@ -320,7 +320,7 @@
                     </th>
 
                     {{-- ⭐ CAMPO AMOUNT_TYPE (PRICE vs PAID_AMOUNT) --}}
-                    <th class="text-end bg-warning text-dark" style="min-width: 100px;">
+                    <th class="text-end bg-warning text-dark column-paid-amount" style="min-width: 100px;">
                         <small>PAID AMOUNT</small>
                     </th>
 
@@ -374,11 +374,11 @@
                         </td>
 
                         {{-- Price --}}
-                        <td class="text-end">
+                        <td class="text-end column-price">
                             @php
                                 $price = $load->price ?? 0;
                             @endphp
-                            <strong class="{{ $price > 0 ? 'text-success' : 'text-muted' }}">
+                            <strong class="{{ $price > 0 ? 'text-success' : 'text-muted' }}" data-price="{{ $price }}">
                                 ${{ number_format($price, 2) }}
                             </strong>
                         </td>
@@ -485,16 +485,16 @@
                         </td>
 
                         {{-- ⭐ PAID AMOUNT (para comparar com PRICE) --}}
-                        <td class="text-end">
+                        <td class="text-end column-paid-amount">
                             @php
                                 $paidAmount = $load->paid_amount ?? 0;
                             @endphp
                             @if($paidAmount > 0)
-                                <strong class="text-info">
+                                <strong class="text-info" data-paid-amount="{{ $paidAmount }}">
                                     ${{ number_format($paidAmount, 2) }}
                                 </strong>
                             @else
-                                <span class="text-muted">$0.00</span>
+                                <span class="text-muted" data-paid-amount="0">$0.00</span>
                             @endif
                         </td>
 
@@ -523,39 +523,32 @@
             <tfoot class="table-light">
                 <tr>
                     <th></th>
-                    <th colspan="7" class="text-end">
-                        TOTAL:
-                        <small class="text-muted">(Selected loads only)</small>
+                    <th class="text-end" id="total-label-cell">
+                        <strong>TOTAL:</strong>
                     </th>
-                    {{-- Colunas de datas vazias --}}
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    {{-- Total na coluna do Paid Amount --}}
-                    <th class="text-end text-info">
-                        <strong>
-                            @php
-                                $totalPaidAmount = $loads->sum('paid_amount') ?? 0;
-                            @endphp
-                            ${{ number_format($totalPaidAmount, 2) }}
+                    {{-- Total na coluna do PRICE (coluna 5) --}}
+                    <th class="text-end column-price">
+                        <strong class="text-success" id="table-total-price">
+                            ${{ number_format($loads->sum('price') ?? 0, 2) }}
                         </strong>
                     </th>
+                    {{-- Coluna CHARGE STATUS vazia (coluna 6) --}}
+                    <th></th>
+                    {{-- Colunas de datas vazias (colunas 7-12) --}}
                     <th></th>
                     <th></th>
-                </tr>
-                <tr>
                     <th></th>
-                    <th colspan="5" class="text-end">
-                        <small class="text-primary">TOTAL PRICE ({{ request('amount_type', 'price') === 'price' ? 'Selected' : 'Reference' }}):</small>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    {{-- Total na coluna do Paid Amount (coluna 13) --}}
+                    <th class="text-end column-paid-amount">
+                        <strong class="text-info" id="table-total-paid-amount">
+                            ${{ number_format($loads->sum('paid_amount') ?? 0, 2) }}
+                        </strong>
                     </th>
-                    <th class="text-end text-primary">
-                        <strong id="table-total">${{ number_format($totalAmount ?? 0, 2) }}</strong>
-                    </th>
-                    {{-- Colunas vazias --}}
-                    <th colspan="8"></th>
+                    {{-- Coluna ACTIONS vazia (coluna 14) --}}
+                    <th></th>
                 </tr>
             </tfoot>
         </table>
@@ -1254,40 +1247,69 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
 document.addEventListener('DOMContentLoaded', function() {
 
 
-    // Função para atualizar o total da tabela
-    function updateTableTotal() {
-        let total = 0;
-        const priceColumns = document.querySelectorAll('tbody tr td:nth-child(6)'); // Coluna do price
+    // Função para atualizar os totais da tabela
+    function updateTableTotals() {
+        let totalPrice = 0;
+        let totalPaidAmount = 0;
 
-        priceColumns.forEach(function(cell) {
-            const priceText = cell.textContent.replace(/[$,]/g, '').trim();
-            const price = parseFloat(priceText) || 0;
-            total += price;
+        // Calcula total de PRICE - busca em todas as linhas do tbody, mesmo que a coluna esteja oculta
+        const allRows = document.querySelectorAll('tbody tr');
+        allRows.forEach(function(row) {
+            // Verifica se a linha não está oculta
+            if (row.style.display === 'none') return;
+            
+            // Busca a célula de PRICE na linha (mesmo que esteja oculta)
+            const priceCell = row.querySelector('.column-price [data-price]');
+            if (priceCell) {
+                const price = parseFloat(priceCell.getAttribute('data-price')) || 0;
+                totalPrice += price;
+            }
+            
+            // Busca a célula de PAID AMOUNT na linha (mesmo que esteja oculta)
+            const paidAmountCell = row.querySelector('.column-paid-amount [data-paid-amount]');
+            if (paidAmountCell) {
+                const paidAmount = parseFloat(paidAmountCell.getAttribute('data-paid-amount')) || 0;
+                totalPaidAmount += paidAmount;
+            }
         });
 
-        // Atualiza o total na tabela
-        const totalElement = document.getElementById('table-total');
-        if (totalElement) {
-            totalElement.textContent = '$' + total.toLocaleString('en-US', {
+        // Atualiza o total de PRICE na tabela
+        const totalPriceElement = document.getElementById('table-total-price');
+        if (totalPriceElement) {
+            totalPriceElement.textContent = '$' + totalPrice.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
         }
 
-        // Atualiza o total no formulário
+        // Atualiza o total de PAID AMOUNT na tabela
+        const totalPaidAmountElement = document.getElementById('table-total-paid-amount');
+        if (totalPaidAmountElement) {
+            totalPaidAmountElement.textContent = '$' + totalPaidAmount.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Atualiza o total no formulário (usa PRICE como padrão)
         const totalAmountInput = document.getElementById('total_amount');
         if (totalAmountInput) {
-            totalAmountInput.value = total.toFixed(2);
+            totalAmountInput.value = totalPrice.toFixed(2);
         }
 
         // Atualiza o contador de registros
-        const remainingRows = document.querySelectorAll('tbody tr').length;
+        const remainingRows = document.querySelectorAll('tbody tr:not([style*="display: none"])').length;
         const headerCount = document.querySelector('.table-responsive h5');
         if (headerCount) {
             headerCount.textContent = `Filtered Loads (${remainingRows} records)`;
         }
 
-        return { total, remainingRows };
+        // Reconstrói o tfoot após atualizar os totais
+        if (typeof rebuildTfoot === 'function') {
+          rebuildTfoot();
+        }
+        
+        return { totalPrice, totalPaidAmount, remainingRows };
     }
 
     // Função para deletar uma load
@@ -1308,7 +1330,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             setTimeout(() => {
                 row.remove();
-                const result = updateTableTotal();
+                const result = updateTableTotals();
 
                 // Se não há mais loads, mostra mensagem
                 if (result.remainingRows === 0) {
@@ -1416,36 +1438,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('select-all-loads');
     const loadCheckboxes = document.querySelectorAll('.load-checkbox');
 
-    // Função para atualizar o total baseado nas cargas selecionadas
+    // Função para atualizar os totais baseado nas cargas visíveis (não apenas selecionadas)
     function updateSelectedTotal() {
-        let total = 0;
+        // Atualiza os totais de todos os registros visíveis
+        updateTableTotals();
+        
+        // Conta apenas os selecionados para exibição
         let selectedCount = 0;
-
         loadCheckboxes.forEach(function(checkbox) {
             if (checkbox.checked) {
-                const row = checkbox.closest('tr');
-                const priceCell = row.querySelector('td:nth-child(7)'); // Coluna do price
-                const priceText = priceCell.textContent.replace(/[$,]/g, '').trim();
-                const price = parseFloat(priceText) || 0;
-                total += price;
                 selectedCount++;
             }
         });
-
-        // Atualiza o total na tabela
-        const totalElement = document.getElementById('table-total');
-        if (totalElement) {
-            totalElement.textContent = '$' + total.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        // Atualiza o total no formulário
-        const totalAmountInput = document.getElementById('total_amount');
-        if (totalAmountInput) {
-            totalAmountInput.value = total.toFixed(2);
-        }
 
         // Atualiza o contador de registros
         const headerCount = document.querySelector('.table-responsive h5');
@@ -1454,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headerCount.textContent = `Filtered Loads (${totalLoads} total, ${selectedCount} selected)`;
         }
 
-        return { total, selectedCount };
+        return { selectedCount };
     }
 
     // Select All functionality
@@ -1621,7 +1625,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Inicializar total na página
+    // Inicializar totais na página
+    updateTableTotals();
     updateSelectedTotal();
 
     // Aviso ao tentar salvar com cargas duplicadas
@@ -2758,6 +2763,104 @@ document.addEventListener("DOMContentLoaded", function () {
     return -1;
   }
 
+  // Função para reconstruir o tfoot dinamicamente baseado no thead
+  function rebuildTfoot() {
+    const table = document.querySelector(".table-responsive table");
+    if (!table) return;
+    
+    const headerRow = table.querySelector("thead tr");
+    if (!headerRow) return;
+    
+    const tfoot = table.querySelector("tfoot");
+    if (!tfoot) return;
+    
+    let tfootRow = tfoot.querySelector("tr");
+    if (!tfootRow) {
+      tfootRow = document.createElement('tr');
+      tfoot.appendChild(tfootRow);
+    }
+    
+    // Calcula os totais diretamente das linhas do tbody (mesmo que colunas estejam ocultas)
+    let totalPrice = 0;
+    let totalPaidAmount = 0;
+    
+    const allRows = document.querySelectorAll('tbody tr');
+    allRows.forEach(function(row) {
+        // Ignora linhas ocultas
+        if (row.style.display === 'none') return;
+        
+        // Busca a célula de PRICE na linha (mesmo que esteja oculta com classe hidden)
+        const priceCell = row.querySelector('.column-price [data-price]');
+        if (priceCell) {
+            const price = parseFloat(priceCell.getAttribute('data-price')) || 0;
+            totalPrice += price;
+        }
+        
+        // Busca a célula de PAID AMOUNT na linha (mesmo que esteja oculta com classe hidden)
+        const paidAmountCell = row.querySelector('.column-paid-amount [data-paid-amount]');
+        if (paidAmountCell) {
+            const paidAmount = parseFloat(paidAmountCell.getAttribute('data-paid-amount')) || 0;
+            totalPaidAmount += paidAmount;
+        }
+    });
+    
+    // Formata os valores
+    const totalPriceFormatted = '$' + totalPrice.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    const totalPaidAmountFormatted = '$' + totalPaidAmount.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    // Limpa o tfoot
+    tfootRow.innerHTML = '';
+    
+    // Percorre todas as células do thead e cria células correspondentes no tfoot
+    const headerCells = Array.from(headerRow.querySelectorAll("th"));
+    
+    headerCells.forEach((headerCell, index) => {
+      const th = document.createElement('th');
+      
+      // Se for a primeira coluna (checkbox), adiciona o texto TOTAL
+      if (index === 0) {
+        th.className = 'text-end';
+        th.id = 'total-label-cell';
+          th.innerHTML = '<strong>TOTAL:</strong>';
+      }
+      // Se for a coluna PRICE, adiciona o totalizador
+      else if (headerCell.classList.contains('column-price')) {
+        th.className = 'text-end column-price';
+        if (!headerCell.classList.contains('hidden')) {
+          th.innerHTML = '<strong class="text-success" id="table-total-price">' + totalPriceFormatted + '</strong>';
+        } else {
+          th.classList.add('hidden');
+          th.innerHTML = '';
+        }
+      }
+      // Se for a coluna PAID AMOUNT, adiciona o totalizador
+      else if (headerCell.classList.contains('column-paid-amount')) {
+        th.className = 'text-end column-paid-amount';
+        if (!headerCell.classList.contains('hidden')) {
+          th.innerHTML = '<strong class="text-info" id="table-total-paid-amount">' + totalPaidAmountFormatted + '</strong>';
+        } else {
+          th.classList.add('hidden');
+          th.innerHTML = '';
+        }
+      }
+      // Para outras colunas, deixa vazia mas mantém a mesma visibilidade
+      else {
+        if (headerCell.classList.contains('hidden')) {
+          th.classList.add('hidden');
+        }
+        th.innerHTML = '';
+      }
+      
+      tfootRow.appendChild(th);
+    });
+  }
+
   function toggleColumnByName(columnName, show) {
     const colIndex = getColumnIndexByName(columnName);
     if (colIndex === -1) {
@@ -2774,6 +2877,29 @@ document.addEventListener("DOMContentLoaded", function () {
         cell.classList.toggle("hidden", !show);
       }
     });
+    
+    // Se PRICE ou PAID AMOUNT foram mostradas novamente, recalcula os totais primeiro
+    if (show && (columnName.toUpperCase() === 'PRICE' || columnName.toUpperCase() === 'PAID AMOUNT')) {
+      // Aguarda um pouco para garantir que o DOM foi atualizado e as colunas estão visíveis
+      setTimeout(function() {
+        // Reconstrói o tfoot que já calcula os totais diretamente das linhas do tbody
+        // Isso garante que os valores sejam calculados mesmo que as colunas tenham estado ocultas
+        if (typeof rebuildTfoot === 'function') {
+          rebuildTfoot();
+        }
+        // Atualiza também os elementos do formulário e outros lugares
+        if (typeof updateTableTotals === 'function') {
+          updateTableTotals();
+        }
+      }, 200);
+    } else {
+      // Reconstrói o tfoot para alinhar com o thead
+      rebuildTfoot();
+      // Atualiza os totais normalmente
+      if (typeof updateTableTotals === 'function') {
+        updateTableTotals();
+      }
+    }
   }
 
   function toggleActionsColumn() {
@@ -2817,10 +2943,25 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     toggleActionsColumn();
+    
+    // Se mostrando todas as colunas e PRICE/PAID AMOUNT estão incluídas, recalcula totais
+    if (show) {
+      setTimeout(function() {
+        if (typeof updateTableTotals === 'function') {
+          updateTableTotals();
+          rebuildTfoot();
+        }
+      }, 100);
+    }
   });
 
   // Executar ao carregar para garantir consistência inicial
   toggleActionsColumn();
+  // Atualiza os totais primeiro, depois reconstrói o tfoot
+  if (typeof updateTableTotals === 'function') {
+    updateTableTotals();
+  }
+  rebuildTfoot();
 });
 
 // Pesquisa dinâmica de colunas
