@@ -105,6 +105,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/salvar_roles_users', [adminController::class, 'salvar_roles_users'])->name('salvar_roles_users');
     Route::post('/actualizar_roles_users', [adminController::class, 'actualizar_roles_users'])->name('actualizar_roles_users');
     Route::post('/salvar_permissions_roles', [adminController::class, 'salvar_permissions_roles'])->name('salvar_permissions_roles');
+    Route::get('/my-profile', [adminController::class, 'myProfile'])->name('my.profile');
+    Route::post('/update-profile', [adminController::class, 'updateProfile'])->name('update.profile');
 });
 
 // Rotas de autenticação estão definidas em routes/auth.php

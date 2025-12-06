@@ -20,7 +20,7 @@
             <div class="content content-full">
               <div class="py-5 text-center">
                 <a class="img-link" href="javascript::void(0)">
-                  <img id="img-avatar" class="img-avatar img-avatar96 img-avatar-thumb" src="{{$user->foto ?? 'assets/media/avatars/avatar10.jpg'}}" alt="">
+                  <img id="img-avatar" class="img-avatar img-avatar96 img-avatar-thumb" src="{{$user->photo ? asset('storage/' . $user->photo) : asset('assets/media/avatars/avatar10.jpg')}}" alt="">
                 </a>
                 <h1 class="fw-bold my-2 text-white">Meu Perfil</h1>
                 <h2 class="h4 fw-bold text-white-75">
@@ -38,7 +38,7 @@
 
           <div class="block block-rounded">
             <div class="block-content">
-              <form id="profile-form" action="/actualizar_perfil" method="POST" enctype="multipart/form-data">
+              <form id="profile-form" action="{{ route('update.profile') }}" method="POST" enctype="multipart/form-data">
                 <!-- Perfil do Usuário -->
                 @csrf
                 <h2 class="content-heading pt-0">
@@ -64,10 +64,10 @@
                     <div class="mb-4">
                       <label class="form-label">Teu Avatar</label>
                       <div class="push">
-                        <img class="img-avatar" src="{{$user->foto ?? 'assets/media/avatars/avatar10.jpg'}}" alt="">
+                        <img class="img-avatar" src="{{$user->photo ? asset('storage/' . $user->photo) : asset('assets/media/avatars/avatar10.jpg')}}" alt="">
                       </div>
                       <label class="form-label" for="dm-profile-edit-avatar">Escolha uma Foto</label>
-                      <input class="form-control" type="file" name="foto" id="dm-profile-edit-avatar">
+                      <input class="form-control" type="file" name="foto" id="dm-profile-edit-avatar" accept="image/jpeg,image/png,image/jpg,image/gif">
                     </div>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Permission;
 use App\Models\Role;
@@ -27,7 +28,7 @@ class adminController extends Controller
         return view('admin.app_permissions', compact('user', 'permissoes'));
     }
 
-    public function meu_perfil(){
+    public function myProfile(){
 
         $user = Auth::user();
 
@@ -407,6 +408,95 @@ class adminController extends Controller
         }
 
         Alert::toast('Alteração efetuada Com Sucesso', 'success');
+        return back();
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        Log::info('Profile update started (updateProfile)', [
+            'user_id' => $user->id,
+            'has_file' => $request->hasFile('foto'),
+            'all_files' => $request->allFiles(),
+        ]);
+
+        // Validar dados básicos
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
+        ]);
+
+        // Atualizar nome e email
+        $user->name = $request->name;
+        $user->email = $request->email;
+
+        // Handle photo upload
+        if ($request->hasFile('foto')) {
+            $photo = $request->file('foto');
+            
+            Log::info('Photo file received', [
+                'user_id' => $user->id,
+                'file_name' => $photo->getClientOriginalName(),
+                'file_size' => $photo->getSize(),
+                'mime_type' => $photo->getMimeType(),
+                'extension' => $photo->getClientOriginalExtension(),
+            ]);
+
+            // Create user-specific directory
+            $userDir = 'profile-photos/user-' . $user->id;
+            
+            // Create directory if it doesn't exist
+            $storagePath = storage_path('app/public/' . $userDir);
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+                Log::info('Created directory', ['path' => $storagePath]);
+            }
+
+            // Delete old photo if exists
+            if ($user->photo) {
+                $oldPhotoPath = storage_path('app/public/' . $user->photo);
+                if (file_exists($oldPhotoPath)) {
+                    @unlink($oldPhotoPath);
+                    Log::info('Deleted old photo', ['path' => $oldPhotoPath]);
+                }
+            }
+
+            // Generate unique filename
+            $filename = 'photo-' . time() . '.' . $photo->getClientOriginalExtension();
+            
+            // Store photo using Laravel's storage
+            // storeAs returns path like: public/profile-photos/user-1/photo-123.jpg
+            $storedPath = $photo->storeAs('public/' . $userDir, $filename);
+            
+            Log::info('Photo stored', [
+                'stored_path' => $storedPath,
+                'full_path' => storage_path('app/' . $storedPath),
+                'file_exists' => file_exists(storage_path('app/' . $storedPath)),
+            ]);
+            
+            // Save photo path (relative to storage/app/public)
+            // Remove 'public/' prefix from stored path
+            // storedPath: "public/profile-photos/user-1/photo-123.jpg"
+            // user->photo: "profile-photos/user-1/photo-123.jpg"
+            $user->photo = preg_replace('/^public\//', '', $storedPath);
+            
+            Log::info('Photo path saved to user', [
+                'user_id' => $user->id,
+                'photo_path' => $user->photo,
+                'asset_path' => asset('storage/' . $user->photo),
+            ]);
+        }
+
+        $user->save();
+        
+        Log::info('User saved', [
+            'user_id' => $user->id,
+            'photo' => $user->photo,
+        ]);
+
+        Alert::toast('Perfil atualizado com sucesso!', 'success');
         return back();
     }
 }
