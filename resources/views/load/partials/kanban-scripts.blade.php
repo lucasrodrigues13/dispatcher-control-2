@@ -31,14 +31,7 @@ document.getElementById('delete-all-loads').addEventListener('click', function (
     });
 });
 
-// Toggle de modo
-document.getElementById('toggle-mode-btn').addEventListener('click', function(event) {
-    event.preventDefault();
-    const ok = confirm('Do you really want to change the view mode?');
-    if (ok) {
-        window.location.href = this.href;
-    }
-});
+// Removed: toggle-mode-btn functionality moved to dedicated button "Go to Table View"
 
 // Scripts de configuração de campos
 document.addEventListener('DOMContentLoaded', function () {

@@ -24,9 +24,6 @@
               <i class="fa fa-ellipsis-v"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuDropdown">
-              <li class="mb-1">
-                <a class="dropdown-item p-3" href="/loads" id="toggle-mode-btn">Change View Mode</a>
-              </li>
               <li>
                 <a class="dropdown-item p-3" href="#" data-bs-toggle="modal" data-bs-target="#cardFieldsConfigModal">
                   <i class="fa fa-cog me-2"></i>Configure Card Fields
@@ -42,6 +39,15 @@
     </div>
 
     <div class="col my-2 d-flex justify-content-md-end align-items-center gap-2">
+      <!-- Botão para alternar visualização -->
+      <a href="{{ route('loads.index') }}" class="btn btn-info btn-sm">
+        <i class="fa fa-table"></i>
+        <span class="d-none d-md-inline">Go to Table View</span>
+      </a>
+      
+      <!-- Separador visual -->
+      <div style="width: 1px; height: 35px; background-color: #dee2e6; margin: 0 10px;"></div>
+      
       <a href="#" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#selectColums">
         <i class="fa fa-eye"></i>
         <span class="d-none d-md-inline">Show/Hide Columns</span>

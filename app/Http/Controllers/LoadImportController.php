@@ -558,7 +558,62 @@ class LoadImportController extends Controller
         // Construir query com filtros
         $query = Load::query();
 
-        // Aplicar filtros se fornecidos
+        // Busca geral em todos os campos da tabela
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                // Campos principais
+                $q->where('load_id', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('internal_load_id', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('dispatcher', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('vin', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('lot_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('year_make_model', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('trip', 'like', '%' . $searchTerm . '%')
+                  // Campos de pickup
+                  ->orWhere('pickup_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_address', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_city', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_state', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_zip', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_phone', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_mobile', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('pickup_notes', 'like', '%' . $searchTerm . '%')
+                  // Campos de delivery
+                  ->orWhere('delivery_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_address', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_city', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_state', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_zip', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_phone', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_mobile', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('delivery_notes', 'like', '%' . $searchTerm . '%')
+                  // Campos financeiros
+                  ->orWhere('price', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('expenses', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('broker_fee', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('driver_pay', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('paid_amount', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('payment_method', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('paid_method', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('reference_number', 'like', '%' . $searchTerm . '%')
+                  // Outros campos
+                  ->orWhere('shipper_name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('shipper_phone', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('driver', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('dispatched_to_carrier', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('has_terminal', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('buyer_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('payment_terms', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('payment_notes', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('payment_status', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('invoice_number', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('invoice_notes', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('invoiced_fee', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        // Aplicar filtros específicos se fornecidos (mantém compatibilidade com filtros antigos)
         if ($request->filled('load_id')) {
             $query->where('load_id', 'like', '%' . $request->load_id . '%');
         }

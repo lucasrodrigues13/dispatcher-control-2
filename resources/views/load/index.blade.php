@@ -56,6 +56,40 @@
     opacity: 1;
     /* text-decoration: underline; */
   }
+
+  /* Loading Overlay */
+  #loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    text-align: center;
+    color: white;
+  }
+
+  .loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+  }
+
+  .loading-spinner p {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+  }
 </style>
 
 <div class="container">
@@ -79,19 +113,27 @@
           <div class="card-header">
             <div class="row">
               <div class="col-md-4 my-2">
-                <form method="GET" action="{{ route('loads.index') }}">
+                <form method="GET" action="{{ route('loads.index') }}" id="search-form">
                   <div class="input-group">
                     <!-- Campo de busca -->
-                    <input name="search" type="text"
+                    <input name="search" 
+                          type="text"
+                          id="search-input"
                           value="{{ request('search') }}"
                           placeholder="Search Loads..."
                           class="form-control"
-                          data-bs-toggle="modal" data-bs-target="#searchData" />
+                          autocomplete="off" />
 
                     <!-- Botões alinhados -->
                     <button type="submit" class="btn btn-outline-secondary" title="Search">
                       <i class="fa fa-search"></i>
                     </button>
+
+                    @if(request('search'))
+                      <a href="{{ route('loads.index') }}" class="btn btn-outline-secondary" title="Clear Search">
+                        <i class="fa fa-times"></i>
+                      </a>
+                    @endif
 
                     <button type="button" class="ps-4 btn btn-outline-secondary mx-1" title="Filter" data-bs-toggle="modal" data-bs-target="#applyFilter">
                       <i class="fa fa-filter"></i>
@@ -103,9 +145,6 @@
                         <i class="fa fa-ellipsis-v"></i>
                       </button>
                       <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuDropdown">
-                        <li class="mb-1">
-                          <a class="dropdown-item p-3" href="/loads/mode"  id="toggle-mode-btn">Change View Mode</a>
-                        </li>
                         <li>
                           <a href="#" id="delete-all-loads" class="p-3 dropdown-item text-danger">Delete All Loads</a>
                         </li>
@@ -117,10 +156,20 @@
 
 
               <div class="col my-2 d-flex justify-content-md-end align-items-center gap-2">
+                <!-- Botão para alternar visualização -->
+                <a href="{{ route('loads.mode') }}" class="btn btn-info btn-sm">
+                  <i class="fa fa-th-large"></i>
+                  <span class="d-none d-md-inline">Go to Kanban View</span>
+                </a>
+                
+                <!-- Separador visual -->
+                <div style="width: 1px; height: 35px; background-color: #dee2e6; margin: 0 10px;"></div>
+                
                 <a href="#" id="delete-selected" class="btn btn-danger btn-sm">
                   <i class="fa fa-trash"></i>
                   <span class="d-none d-md-inline">Delete</span>
                 </a>
+                
                 <a href="#" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#selectColums">
                   <i class="fa fa-eye"></i>
                   <span class="d-none d-md-inline">
@@ -598,50 +647,6 @@
   </div>
 </div>
 
-<!-- Where do your search -->
-<div class="modal fade" id="searchData" tabindex="-1" aria-labelledby="importLoadsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="importLoadsModalLabel">Search Data</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form method="GET" action="{{ route('loads.search') }}" class="mb-4">
-          <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label">Search in Field</label>
-              <select name="search_field" class="form-select" style="height: 42px;">
-                <option value="">-- Select Field --</option>
-                <option value="load_id" {{ request('search_field') == 'load_id' ? 'selected' : '' }}>Load ID</option>
-                <option value="internal_load_id" {{ request('search_field') == 'internal_load_id' ? 'selected' : '' }}>Internal Load ID</option>
-                <option value="dispatcher" {{ request('search_field') == 'dispatcher' ? 'selected' : '' }}>Dispatcher</option>
-                <option value="vin" {{ request('search_field') == 'vin' ? 'selected' : '' }}>VIN</option>
-                <option value="pickup_city" {{ request('search_field') == 'pickup_city' ? 'selected' : '' }}>Pickup City</option>
-                <option value="delivery_city" {{ request('search_field') == 'delivery_city' ? 'selected' : '' }}>Delivery City</option>
-                <option value="driver" {{ request('search_field') == 'driver' ? 'selected' : '' }}>Driver</option>
-                <!-- Adicione outros campos relevantes -->
-              </select>
-            </div>
-
-            <div class="col-md-5">
-              <label class="form-label">Search Value</label>
-              <input name="search" type="text" value="{{ request('search') }}" placeholder="Enter search term..." class="form-control" />
-            </div>
-
-            <div class="col-md-4 d-flex align-items-end justify-content-end">
-              <button type="submit" class="btn btn-primary">Find</button>
-              <a href="{{ route('loads.index') }}" class="btn btn-secondary ms-2">Clear</a>
-            </div>
-          </div>
-        </form>
-
-      </div>
-    </div>
-  </div>
-</div>
-
-
 <style>
   .hidden {
     display: none !important;
@@ -846,19 +851,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const toggleModeBtn = document.getElementById('toggle-mode-btn');
-  if (toggleModeBtn) {
-    toggleModeBtn.addEventListener('click', function(event) {
-      event.preventDefault();  // impede a navegação imediata
-
-      const ok = confirm('Do you really want to change the view mode?');
-      if (ok) {
-        // Se confirmar, navega para a URL do href
-        window.location.href = this.href;
-      }
-      // Senão, não faz nada
-    });
-  }
+  // Removed: toggle-mode-btn functionality moved to dedicated button "Go to Kanban View"
 });
 </script>
 
@@ -938,5 +931,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 </script>
+
+  // Loading overlay durante busca
+  const searchForm = document.getElementById('search-form');
+  const searchInput = document.getElementById('search-input');
+  const loadingOverlay = document.getElementById('loading-overlay');
+
+  if (searchForm) {
+    searchForm.addEventListener('submit', function(e) {
+      const searchValue = searchInput.value.trim();
+      if (searchValue) {
+        loadingOverlay.classList.add('show');
+      }
+    });
+  }
+
+  // Esconder overlay quando a página carregar (após busca)
+  window.addEventListener('load', function() {
+    loadingOverlay.classList.remove('show');
+  });
+
+  // Permitir busca com Enter
+  if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const searchValue = this.value.trim();
+        if (searchValue) {
+          loadingOverlay.classList.add('show');
+          searchForm.submit();
+        }
+      }
+    });
+  }
+</script>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay">
+  <div class="loading-spinner">
+    <div class="spinner-border text-light" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p>Searching loads...</p>
+  </div>
+</div>
 
 @endsection
