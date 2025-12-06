@@ -1244,28 +1244,44 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
         const data = await res.json();
 
         if (!res.ok) {
-            if (data.message) {
+            // Restaurar botão
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            }
+
+            // Tratar erro específico de Deal não encontrado
+            if (res.status === 422 && data.error && data.redirect_to_deals) {
+                let errorMessage = data.error;
+                
+                // Se houver lista de carriers sem Deal, formatar mensagem
+                if (data.carriers_sem_deal && data.carriers_sem_deal.length > 0) {
+                    const carrierNames = data.carriers_sem_deal.map(c => c.carrier_name).join(', ');
+                    errorMessage = `Cannot create invoice. The following carriers do not have a Deal created:\n${carrierNames}\n\nPlease create a Deal for each carrier before generating the invoice.`;
+                }
+                
+                // Criar modal customizado com botão para redirecionar
+                showDealRequiredModal(errorMessage);
+            } else if (data.message) {
                 if (typeof showAlertModal === 'function') {
                     showAlertModal('Error', data.message || 'Error saving Time Line Charge.', 'error');
                 } else {
-                    if (typeof showAlertModal === 'function') {
-                        showAlertModal('Error', data.message || 'Error saving Time Line Charge.', 'error');
-                    } else {
-                        alert(data.message || 'Error saving Time Line Charge.');
-                    }
+                    alert(data.message || 'Error saving Time Line Charge.');
+                }
+            } else if (data.error) {
+                if (typeof showAlertModal === 'function') {
+                    showAlertModal('Error', data.error || 'Error saving Time Line Charge.', 'error');
+                } else {
+                    alert(data.error || 'Error saving Time Line Charge.');
                 }
             } else {
                 if (typeof showAlertModal === 'function') {
                     showAlertModal('Error', 'Error saving Time Line Charge.', 'error');
                 } else {
-                    if (typeof showAlertModal === 'function') {
-                        showAlertModal('Error', 'Error saving Time Line Charge.', 'error');
-                    } else {
-                        alert('Error saving Time Line Charge.');
-                    }
+                    alert('Error saving Time Line Charge.');
                 }
             }
-            throw new Error(data.message || 'Error saving');
+            throw new Error(data.message || data.error || 'Error saving');
         }
 
         return data;
@@ -1297,6 +1313,11 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
     })
     .catch(err => {
         console.error("Error:", err.message);
+        // Restaurar botão em caso de erro
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+        }
 
         // Reabilita o botão em caso de erro
         submitButton.disabled = false;
@@ -3277,6 +3298,58 @@ if (searchColumnsInput) {
       }
     });
   });
+}
+
+// Function to show Deal Required modal with redirect button
+function showDealRequiredModal(message) {
+    // Criar modal dinamicamente se não existir
+    let modalElement = document.getElementById('dealRequiredModal');
+    if (!modalElement) {
+        modalElement = document.createElement('div');
+        modalElement.id = 'dealRequiredModal';
+        modalElement.className = 'modal fade';
+        modalElement.setAttribute('tabindex', '-1');
+        modalElement.setAttribute('aria-labelledby', 'dealRequiredModalLabel');
+        modalElement.setAttribute('aria-hidden', 'true');
+        modalElement.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title" id="dealRequiredModalLabel">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Deal Required
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="dealRequiredModalMessage"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>
+                            Cancel
+                        </button>
+                        <a href="{{ route('deals.index') }}" class="btn btn-primary" id="goToDealsBtn">
+                            <i class="fas fa-handshake me-1"></i>
+                            Go to Deals
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalElement);
+    }
+    
+    // Atualizar mensagem
+    const messageElement = document.getElementById('dealRequiredModalMessage');
+    if (messageElement) {
+        // Converter quebras de linha em <br> ou parágrafos
+        messageElement.innerHTML = message.replace(/\n/g, '<br>');
+    }
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
 }
 </script>
 

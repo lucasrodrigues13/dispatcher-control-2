@@ -253,6 +253,7 @@ class TimeLineChargeController extends Controller
 
             $criados = [];
             $existentes = [];
+            $semDeal = [];
 
             foreach ($carriers as $carrierId) {
                 $carrierLoadIds = \App\Models\Load::whereIn('load_id', $loadIds)
@@ -262,6 +263,18 @@ class TimeLineChargeController extends Controller
                     ->toArray();
 
                 if (empty($carrierLoadIds)) {
+                    continue;
+                }
+
+                // ⭐ VALIDAÇÃO: Verificar se existe Deal para este carrier
+                $deal = Deal::where('carrier_id', $carrierId)->first();
+                if (!$deal) {
+                    $carrier = Carrier::find($carrierId);
+                    $carrierName = $carrier ? ($carrier->company_name ?? $carrier->user->name ?? "ID: {$carrierId}") : "ID: {$carrierId}";
+                    $semDeal[] = [
+                        'carrier_id' => $carrierId,
+                        'carrier_name' => $carrierName
+                    ];
                     continue;
                 }
 
@@ -320,8 +333,18 @@ class TimeLineChargeController extends Controller
                 ];
             }
 
+            // Se houver carriers sem Deal, retornar erro
+            if (!empty($semDeal)) {
+                $carrierNames = array_column($semDeal, 'carrier_name');
+                return response()->json([
+                    'error' => 'Cannot create invoice. The following carriers do not have a Deal created: ' . implode(', ', $carrierNames) . '. Please create a Deal for each carrier before generating the invoice.',
+                    'carriers_sem_deal' => $semDeal,
+                    'redirect_to_deals' => true,
+                ], 422);
+            }
+
             return response()->json([
-                'message'    => 'Processamento concluído.',
+                'message'    => 'Invoice created successfully.',
                 'criadas'    => $criados,
                 'existentes' => $existentes,
             ], 201);
@@ -330,7 +353,27 @@ class TimeLineChargeController extends Controller
         // Se for um carrier_id específico
         if (!is_numeric($request->carrier_id)) {
             return response()->json([
-                'message' => 'Carrier ID inválido.',
+                'message' => 'Carrier ID invalid.',
+            ], 422);
+        }
+
+        // Validar que carrier pertence ao tenant
+        $carrier = Carrier::find($request->input('carrier_id'));
+        if (!$carrier || !in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
+            return response()->json([
+                'error' => 'Carrier does not belong to your tenant.'
+            ], 403);
+        }
+
+        // ⭐ VALIDAÇÃO: Verificar se existe Deal para este carrier
+        $deal = Deal::where('carrier_id', $request->carrier_id)->first();
+        if (!$deal) {
+            $carrierName = $carrier->company_name ?? $carrier->user->name ?? "ID: {$request->carrier_id}";
+            return response()->json([
+                'error' => "Cannot create invoice. The carrier '{$carrierName}' does not have a Deal created. Please create a Deal for this carrier before generating the invoice.",
+                'carrier_id' => $request->carrier_id,
+                'carrier_name' => $carrierName,
+                'redirect_to_deals' => true,
             ], 422);
         }
 
@@ -361,14 +404,6 @@ class TimeLineChargeController extends Controller
                 ->where('is_owner', true)
                 ->first();
             $dispatcherId = $ownerDispatcher ? $ownerDispatcher->id : $tenantDispatchers->first();
-        }
-        
-        // Validar que carrier pertence ao tenant
-        $carrier = Carrier::find($request->input('carrier_id'));
-        if (!$carrier || !in_array($carrier->dispatcher_id, $tenantDispatchers->toArray())) {
-            return response()->json([
-                'error' => 'Carrier does not belong to your tenant.'
-            ], 403);
         }
 
         $timeLineCharge = TimeLineCharge::create([
