@@ -761,7 +761,7 @@
                                     <input type="text" class="form-control" readonly value="{{ request('date_start') }} to {{ request('date_end') }}">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">Total Amount</label>
+                                    <label class="form-label fw-bold">Carrier Revenue</label>
                                     <input type="number"
                                            name="total_amount"
                                            id="total_amount"
