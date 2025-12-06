@@ -309,13 +309,16 @@
           <div class="main-header-logo">
             <!-- Logo Header -->
             <div class="logo-header" data-background-color="dark">
-              <a href="index.html" class="logo">
-                <!-- <img
-                  src="/assets/assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
-                  class="navbar-brand"
-                  height="20"
-                /> --> Logo
+              <a href="/dashboard" class="logo">
+                @php
+                  $owner = auth()->user()->is_owner ? auth()->user() : auth()->user()->owner;
+                  $logoUrl = $owner && $owner->logo ? asset('storage/' . $owner->logo) : null;
+                @endphp
+                @if($logoUrl)
+                  <img src="{{ $logoUrl }}" alt="Logo" style="max-height: 30px; max-width: 150px; object-fit: contain;">
+                @else
+                  Logo
+                @endif
               </a>
               <div class="nav-toggle">
                 <button class="btn btn-toggle toggle-sidebar">

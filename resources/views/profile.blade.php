@@ -36,6 +36,35 @@
         border: 4px solid #28a745;
         margin-bottom: 1rem;
     }
+    .logo-container {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .logo-preview {
+        max-width: 200px;
+        max-height: 100px;
+        object-fit: contain;
+        border: 4px solid #013d81;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        cursor: pointer;
+        transition: transform 0.3s;
+    }
+    .logo-preview:hover {
+        transform: scale(1.05);
+    }
+    .logo-placeholder {
+        width: 200px;
+        height: 100px;
+        border: 4px dashed #ccc;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
     label.btn.btn-primary {
         color: #ffffff !important;
     }
@@ -124,6 +153,45 @@
                             <label class="text-muted small">Member Since</label>
                             <p class="mb-0">{{ $user->created_at->format('M d, Y') }}</p>
                         </div>
+
+                        @if($user->isOwner() || $user->is_owner)
+                        <hr class="my-4">
+                        
+                        {{-- Site Logo --}}
+                        <div class="logo-container">
+                            @php
+                                $logoUrl = $user->logo ? asset('storage/' . $user->logo) . '?v=' . time() . '&r=' . rand(1000, 9999) : null;
+                            @endphp
+                            @if($logoUrl)
+                                <img src="{{ $logoUrl }}" 
+                                     alt="Site Logo" 
+                                     class="logo-preview" 
+                                     id="current-logo"
+                                     onerror="this.onerror=null; this.style.display='none'; document.getElementById('logo-placeholder').style.display='inline-flex';">
+                            @endif
+                            <div class="logo-placeholder {{ $user->logo ? 'd-none' : '' }}" id="logo-placeholder">
+                                <div class="text-muted">
+                                    <i class="fa fa-image fa-2x mb-2 d-block"></i>
+                                    <small>No logo uploaded</small>
+                                </div>
+                            </div>
+                            <img id="logo-preview" class="logo-preview d-none" alt="Preview">
+                        </div>
+
+                        {{-- Logo Upload Input - MUST be inside the form --}}
+                        <div class="mb-3 text-center">
+                            <label for="logo-input" class="btn btn-primary">
+                                <i class="fas fa-image me-2"></i>
+                                Change Logo
+                            </label>
+                            <input type="file" 
+                                   id="logo-input" 
+                                   name="logo" 
+                                   accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml"
+                                   class="d-none">
+                            <small class="text-muted d-block mt-2">Max size: 2MB. Formats: JPG, PNG, GIF, SVG</small>
+                        </div>
+                        @endif
 
                         @if($user->dispatcher)
                             <hr class="my-4">
@@ -308,6 +376,55 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Logo preview
+    const logoInput = document.getElementById('logo-input');
+    const logoPreview = document.getElementById('logo-preview');
+    const currentLogo = document.getElementById('current-logo');
+    const logoPlaceholder = document.getElementById('logo-placeholder');
+
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file size (2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                    if (typeof showAlertModal === 'function') {
+                        showAlertModal('File Too Large', 'File size must be less than 2MB', 'warning');
+                    } else {
+                        alert('File size must be less than 2MB');
+                    }
+                    logoInput.value = '';
+                    return;
+                }
+
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml'];
+                if (!validTypes.includes(file.type)) {
+                    if (typeof showAlertModal === 'function') {
+                        showAlertModal('Invalid File Type', 'Please select an image file (JPG, PNG, GIF, SVG)', 'warning');
+                    } else {
+                        alert('Please select an image file');
+                    }
+                    logoInput.value = '';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logoPreview.src = e.target.result;
+                    logoPreview.classList.remove('d-none');
+                    if (currentLogo) {
+                        currentLogo.style.display = 'none';
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.style.display = 'none';
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
     // Ensure photo is included when submitting form
     document.getElementById('profileForm').addEventListener('submit', function(e) {
         // Check if photo was selected
@@ -317,6 +434,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // No need to do anything else - FormData handles it
         } else {
             console.log('No photo file selected');
+        }
+        
+        // Check if logo was selected
+        if (logoInput && logoInput.files.length > 0) {
+            console.log('Logo file selected:', logoInput.files[0].name, logoInput.files[0].size);
+            // Logo will be included automatically via enctype="multipart/form-data"
         }
     });
 

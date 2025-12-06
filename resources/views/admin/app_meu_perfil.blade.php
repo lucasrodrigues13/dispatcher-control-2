@@ -67,7 +67,24 @@
                         <img class="img-avatar" src="{{$user->photo ? asset('storage/' . $user->photo) : asset('assets/media/avatars/avatar10.jpg')}}" alt="">
                       </div>
                       <label class="form-label" for="dm-profile-edit-avatar">Escolha uma Foto</label>
-                      <input class="form-control" type="file" name="foto" id="dm-profile-edit-avatar" accept="image/jpeg,image/png,image/jpg,image/gif">
+                      <input class="form-control" type="file" name="photo" id="dm-profile-edit-avatar" accept="image/jpeg,image/png,image/jpg,image/gif">
+                    </div>
+
+                    <div class="mb-4">
+                      <label class="form-label">Site Logo</label>
+                      <div class="push">
+                        @if(isset($user->logo) && $user->logo)
+                          <img class="img-avatar" src="{{ asset('storage/' . $user->logo) }}" alt="Site Logo" style="max-width: 200px; max-height: 100px; object-fit: contain;">
+                        @else
+                          <div class="text-muted" style="padding: 20px; border: 1px dashed #ccc; text-align: center;">
+                            <i class="fa fa-image fa-2x mb-2"></i><br>
+                            No logo uploaded
+                          </div>
+                        @endif
+                      </div>
+                      <label class="form-label" for="dm-profile-edit-logo">Choose a Logo</label>
+                      <input class="form-control" type="file" name="logo" id="dm-profile-edit-logo" accept="image/jpeg,image/png,image/jpg,image/gif,image/svg+xml">
+                      <small class="text-muted">Recommended size: 200x100px. Max file size: 2MB</small>
                     </div>
                   </div>
                 </div>

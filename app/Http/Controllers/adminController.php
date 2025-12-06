@@ -404,11 +404,9 @@ class adminController extends Controller
 
             $roles->save();
 
-            return $roles;
+            Alert::toast('Alteração efetuada Com Sucesso', 'success');
+            return back();
         }
-
-        Alert::toast('Alteração efetuada Com Sucesso', 'success');
-        return back();
     }
 
     public function updateProfile(Request $request)
@@ -417,7 +415,9 @@ class adminController extends Controller
 
         Log::info('Profile update started (updateProfile)', [
             'user_id' => $user->id,
-            'has_file' => $request->hasFile('foto'),
+            'has_photo' => $request->hasFile('photo'),
+            'has_logo' => $request->hasFile('logo'),
+            'is_owner' => $user->is_owner,
             'all_files' => $request->allFiles(),
         ]);
 
@@ -425,7 +425,8 @@ class adminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // 2MB max - apenas para owner
         ]);
 
         // Atualizar nome e email
@@ -433,8 +434,8 @@ class adminController extends Controller
         $user->email = $request->email;
 
         // Handle photo upload
-        if ($request->hasFile('foto')) {
-            $photo = $request->file('foto');
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
             
             Log::info('Photo file received', [
                 'user_id' => $user->id,
@@ -489,6 +490,59 @@ class adminController extends Controller
             ]);
         }
 
+        // Handle logo upload (only for dispatcher owner)
+        if ($user->is_owner && $request->hasFile('logo')) {
+            $logo = $request->file('logo');
+            
+            Log::info('Logo file received', [
+                'user_id' => $user->id,
+                'file_name' => $logo->getClientOriginalName(),
+                'file_size' => $logo->getSize(),
+                'mime_type' => $logo->getMimeType(),
+                'extension' => $logo->getClientOriginalExtension(),
+            ]);
+
+            // Create user-specific directory for logos
+            $logoDir = 'logos/user-' . $user->id;
+            
+            // Create directory if it doesn't exist
+            $storagePath = storage_path('app/public/' . $logoDir);
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+                Log::info('Created logo directory', ['path' => $storagePath]);
+            }
+
+            // Delete old logo if exists
+            if ($user->logo) {
+                $oldLogoPath = storage_path('app/public/' . $user->logo);
+                if (file_exists($oldLogoPath)) {
+                    @unlink($oldLogoPath);
+                    Log::info('Deleted old logo', ['path' => $oldLogoPath]);
+                }
+            }
+
+            // Generate unique filename
+            $filename = 'logo-' . time() . '.' . $logo->getClientOriginalExtension();
+            
+            // Store logo using Laravel's storage
+            $storedPath = $logo->storeAs('public/' . $logoDir, $filename);
+            
+            Log::info('Logo stored', [
+                'stored_path' => $storedPath,
+                'full_path' => storage_path('app/' . $storedPath),
+                'file_exists' => file_exists(storage_path('app/' . $storedPath)),
+            ]);
+            
+            // Save logo path (relative to storage/app/public)
+            $user->logo = preg_replace('/^public\//', '', $storedPath);
+            
+            Log::info('Logo path saved to user', [
+                'user_id' => $user->id,
+                'logo_path' => $user->logo,
+                'asset_path' => asset('storage/' . $user->logo),
+            ]);
+        }
+
         $user->save();
         
         Log::info('User saved', [
@@ -496,7 +550,7 @@ class adminController extends Controller
             'photo' => $user->photo,
         ]);
 
-        Alert::toast('Perfil atualizado com sucesso!', 'success');
+        Alert::toast('Profile updated successfully!', 'success');
         return back();
     }
 }

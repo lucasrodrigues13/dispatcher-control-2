@@ -31,7 +31,9 @@ class ProfileController extends Controller
 
         \Log::info('Profile update started', [
             'user_id' => $user->id,
-            'has_file' => $request->hasFile('photo'),
+            'has_photo' => $request->hasFile('photo'),
+            'has_logo' => $request->hasFile('logo'),
+            'is_owner' => $user->is_owner,
             'all_files' => $request->allFiles(),
         ]);
 
@@ -109,10 +111,76 @@ class ProfileController extends Controller
             ]);
         }
 
+        // Handle logo upload (only for dispatcher owner)
+        if ($user->isOwner() && $request->hasFile('logo')) {
+            $logo = $request->file('logo');
+            
+            \Log::info('Logo file received', [
+                'user_id' => $user->id,
+                'file_name' => $logo->getClientOriginalName(),
+                'file_size' => $logo->getSize(),
+                'mime_type' => $logo->getMimeType(),
+                'extension' => $logo->getClientOriginalExtension(),
+            ]);
+
+            // Validate logo
+            try {
+                $request->validate([
+                    'logo' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048', // 2MB max
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('Logo validation failed', [
+                    'errors' => $e->errors(),
+                ]);
+                return Redirect::route('profile.edit')->withErrors($e->errors());
+            }
+
+            // Create user-specific directory for logos
+            $logoDir = 'logos/user-' . $user->id;
+            
+            // Create directory if it doesn't exist
+            $storagePath = storage_path('app/public/' . $logoDir);
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+                \Log::info('Created logo directory', ['path' => $storagePath]);
+            }
+
+            // Delete old logo if exists
+            if ($user->logo) {
+                $oldLogoPath = storage_path('app/public/' . $user->logo);
+                if (file_exists($oldLogoPath)) {
+                    @unlink($oldLogoPath);
+                    \Log::info('Deleted old logo', ['path' => $oldLogoPath]);
+                }
+            }
+
+            // Generate unique filename
+            $filename = 'logo-' . time() . '.' . $logo->getClientOriginalExtension();
+            
+            // Store logo using Laravel's storage
+            $storedPath = $logo->storeAs('public/' . $logoDir, $filename);
+            
+            \Log::info('Logo stored', [
+                'stored_path' => $storedPath,
+                'full_path' => storage_path('app/' . $storedPath),
+                'file_exists' => file_exists(storage_path('app/' . $storedPath)),
+            ]);
+            
+            // Save logo path (relative to storage/app/public)
+            $user->logo = preg_replace('/^public\//', '', $storedPath);
+            
+            \Log::info('Logo path saved to user', [
+                'user_id' => $user->id,
+                'logo_path' => $user->logo,
+                'asset_path' => asset('storage/' . $user->logo),
+            ]);
+        }
+
         // Update basic fields (name, email) AFTER photo handling
         $validated = $request->validated();
-        // Remove photo from validated data since we handle it separately
+        // Remove photo and logo from validated data since we handle them separately
         unset($validated['photo']);
+        unset($validated['logo']);
         $user->fill($validated);
 
         if ($user->isDirty('email')) {

@@ -3,7 +3,17 @@
   <div class="sidebar-logo">
     <!-- Logo Header -->
     <div class="logo-header" data-background-color="dark">
-      <a href="/dashboard" class="logo text-white">Logo</a>
+      <a href="/dashboard" class="logo text-white">
+        @php
+          $owner = auth()->user()->is_owner ? auth()->user() : auth()->user()->owner;
+          $logoUrl = $owner && $owner->logo ? asset('storage/' . $owner->logo) : null;
+        @endphp
+        @if($logoUrl)
+          <img src="{{ $logoUrl }}" alt="Logo" style="max-height: 40px; max-width: 150px; object-fit: contain;">
+        @else
+          Logo
+        @endif
+      </a>
       <div class="nav-toggle">
         <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-left"></i></button>
         <button class="btn btn-toggle sidenav-toggler"><i class="gg-menu-left"></i></button>
