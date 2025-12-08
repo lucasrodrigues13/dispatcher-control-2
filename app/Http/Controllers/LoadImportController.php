@@ -558,6 +558,21 @@ class LoadImportController extends Controller
         // Construir query com filtros
         $query = Load::query();
 
+        // ⭐ FILTER BY ROLE: Carriers and Drivers only see their own data
+        $user = auth()->user();
+        if (!$user->canViewAllTenantData()) {
+            // If carrier, filter only their loads
+            if ($user->isCarrier()) {
+                $carrierId = $user->getCarrierId();
+                if ($carrierId) {
+                    $query->where('carrier_id', $carrierId);
+                }
+            }
+            // If driver, filter only loads where they are the driver
+            // (assuming there is a driver_email or driver_id field)
+            // For now, leave only for carriers
+        }
+
         // Busca geral em todos os campos da tabela
         if ($request->filled('search')) {
             $searchTerm = $request->search;

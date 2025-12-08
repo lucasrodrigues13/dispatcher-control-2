@@ -75,14 +75,17 @@ Route::middleware(['auth'])->post('/admin/switch-tenant', [\App\Http\Controllers
 // Routas
 Route::middleware(['auth', 'verified'])->get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
-Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
-Route::get('/commissions/add', [CommissionController::class, 'create'])->name('commissions.create');
-Route::post('/commissions', [CommissionController::class, 'store'])->name('commissions.store');
-Route::get('/commissions/{id}', [CommissionController::class, 'show'])->name('commissions.show');
-Route::get('/commissions/{id}/edit', [CommissionController::class, 'edit'])->name('commissions.edit');
-Route::put('/commissions/{id}', [CommissionController::class, 'update'])->name('commissions.update');
-Route::delete('/commissions/{id}', [CommissionController::class, 'destroy'])->name('commissions.destroy');
-Route::get('/deals/{id}/commissions', [CommissionController::class, 'commissions'])->name('deals.commissions');
+// Commissions - Only for Owners, Subowners and Admins
+Route::middleware(['auth', 'can.access.agreements'])->group(function () {
+    Route::get('/commissions', [CommissionController::class, 'index'])->name('commissions.index');
+    Route::get('/commissions/add', [CommissionController::class, 'create'])->name('commissions.create');
+    Route::post('/commissions', [CommissionController::class, 'store'])->name('commissions.store');
+    Route::get('/commissions/{id}', [CommissionController::class, 'show'])->name('commissions.show');
+    Route::get('/commissions/{id}/edit', [CommissionController::class, 'edit'])->name('commissions.edit');
+    Route::put('/commissions/{id}', [CommissionController::class, 'update'])->name('commissions.update');
+    Route::delete('/commissions/{id}', [CommissionController::class, 'destroy'])->name('commissions.destroy');
+    Route::get('/deals/{id}/commissions', [CommissionController::class, 'commissions'])->name('deals.commissions');
+});
 
 Route::get('/attachments/list', [AttachementController::class, 'index'])->name('attachments.index');
 Route::get('/attachments/add', [AttachementController::class, 'create'])->name('attachments.create');
@@ -138,7 +141,7 @@ Route::post('/employees', [EmployeeController::class, 'store'])->name('employees
 Route::post('/carriers', [CarrierController::class, 'store'])->name('carriers.store');
 Route::post('/drivers', [DriverController::class, 'store'])->name('drivers.store');
 Route::post('/brokers', [BrokerController::class, 'store'])->name('brokers.store');
-Route::post('/deals', [DealController::class, 'store'])->name('deals.store');
+Route::middleware(['auth', 'can.access.agreements'])->post('/deals', [DealController::class, 'store'])->name('deals.store');
 
 // Rotas protegidas por assinatura
 Route::middleware(['auth', 'check.subscription'])->group(function () {
@@ -183,12 +186,15 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::delete('/brokers/{id}', [BrokerController::class, 'destroy'])->name('brokers.destroy');
     Route::patch('/brokers/{id}/toggle-status', [BrokerController::class, 'toggleStatus'])->name('brokers.toggle-status');
 
-    Route::get('/deals', [DealController::class, 'index'])->name('deals.index');
-    Route::get('/deals/add', [DealController::class, 'create'])->name('deals.create');
-    Route::get('/deals/{id}', [DealController::class, 'show'])->name('deals.show');
-    Route::get('/deals/{id}/edit', [DealController::class, 'edit'])->name('deals.edit');
-    Route::put('/deals/{id}', [DealController::class, 'update'])->name('deals.update');
-    Route::delete('/deals/{id}', [DealController::class, 'destroy'])->name('deals.destroy');
+    // Deals - Only for Owners, Subowners and Admins
+    Route::middleware(['can.access.agreements'])->group(function () {
+        Route::get('/deals', [DealController::class, 'index'])->name('deals.index');
+        Route::get('/deals/add', [DealController::class, 'create'])->name('deals.create');
+        Route::get('/deals/{id}', [DealController::class, 'show'])->name('deals.show');
+        Route::get('/deals/{id}/edit', [DealController::class, 'edit'])->name('deals.edit');
+        Route::put('/deals/{id}', [DealController::class, 'update'])->name('deals.update');
+        Route::delete('/deals/{id}', [DealController::class, 'destroy'])->name('deals.destroy');
+    });
 
 
     //LOADS

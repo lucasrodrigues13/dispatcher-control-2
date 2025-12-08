@@ -66,7 +66,7 @@
                     <!-- Plan Information -->
                     <div class="card-body">
                         <div class="row">
-                            <!-- Limites do Plano (Esquerda) -->
+                            <!-- Plan Limits (Left) -->
                             <div class="col-md-6">
                                 <h6 class="text-muted mb-3 fw-bold">Plan Limits</h6>
                                 <ul class="list-unstyled mb-0">
@@ -75,7 +75,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @elseif($subscription->plan->slug == 'dispatcher-pro')
                                                     Unlimited
                                                 @else
@@ -89,7 +89,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @else
                                                     {{ $subscription->plan->max_employees }}
                                                 @endif
@@ -101,7 +101,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @elseif($subscription->plan->slug == 'dispatcher-pro')
                                                     Unlimited
                                                 @else
@@ -115,7 +115,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @else
                                                     {{ $subscription->plan->max_drivers }}
                                                 @endif
@@ -127,7 +127,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @else
                                                     {{ $subscription->plan->max_brokers ?? 0 }}
                                                 @endif
@@ -139,7 +139,7 @@
                                         <span>
                                             <strong>
                                                 @if($subscription->plan->slug == 'admin')
-                                                    <span class="text-muted">Depende do tenant selecionado</span>
+                                                    <span class="text-muted">Depends on selected tenant</span>
                                                 @elseif($subscription->plan->slug == 'dispatcher-pro')
                                                     Unlimited
                                                 @elseif(method_exists($subscription, 'isOnTrial') && $subscription->isOnTrial())

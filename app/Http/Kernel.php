@@ -56,6 +56,7 @@ class Kernel extends HttpKernel
         'check.subscription' => \App\Http\Middleware\CheckSubscription::class, // APENAS AQUI
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'subscription' => \App\Http\Middleware\CheckSubscription::class, // se ainda não estiver
+        'can.access.agreements' => \App\Http\Middleware\EnsureUserCanAccessAgreements::class,
     ];
 
     // REMOVER ESTA SEÇÃO DUPLICADA:

@@ -80,7 +80,8 @@
           </div>
         </li>
 
-        {{-- Agreements --}}
+        {{-- Agreements (Only for Owners, Subowners, and Admins) --}}
+        @if(auth()->user()->is_owner || auth()->user()->is_subowner || auth()->user()->is_admin)
         @php
             $isAgreementsActive = request()->is('deals*') || request()->is('commissions*');
         @endphp
@@ -99,6 +100,7 @@
             </ul>
           </div>
         </li>
+        @endif
 
         {{-- Loads --}}
         @can('pode_visualizar_loads')
@@ -224,11 +226,13 @@
               </li>
               @endcan
               @can('pode_visualizar_roles_users')
+              @if(auth()->user()->is_admin || auth()->user()->is_owner || auth()->user()->is_subowner)
               <li class="{{ request()->is('roles_users*') ? 'active' : '' }}">
                 <a href="/roles_users">
                   <i class="fa fa-user-lock"></i><span class="sub-item">Roles and Users</span>
                 </a>
               </li>
+              @endif
               @endcan
             </ul>
           </div>

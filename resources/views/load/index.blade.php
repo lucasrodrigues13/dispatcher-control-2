@@ -932,40 +932,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 
-  // Loading overlay durante busca
-  const searchForm = document.getElementById('search-form');
-  const searchInput = document.getElementById('search-input');
-  const loadingOverlay = document.getElementById('loading-overlay');
-
-  if (searchForm) {
-    searchForm.addEventListener('submit', function(e) {
-      const searchValue = searchInput.value.trim();
-      if (searchValue) {
-        loadingOverlay.classList.add('show');
-      }
-    });
-  }
-
-  // Esconder overlay quando a página carregar (após busca)
-  window.addEventListener('load', function() {
-    loadingOverlay.classList.remove('show');
-  });
-
-  // Permitir busca com Enter
-  if (searchInput) {
-    searchInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const searchValue = this.value.trim();
-        if (searchValue) {
-          loadingOverlay.classList.add('show');
-          searchForm.submit();
-        }
-      }
-    });
-  }
-</script>
-
 <!-- Loading Overlay -->
 <div id="loading-overlay">
   <div class="loading-spinner">

@@ -51,10 +51,32 @@ class adminController extends Controller
     public function roles_users()
 {
     $user = Auth::user();
-    $roles = Role::all();           // todas as roles
-    $users = User::all();
+    $roles = Role::all();
 
-    // pega, via query, o role_id de cada user_id
+    // ⭐ FILTER BY ROLE: 
+    // - Admins: see all users
+    // - Owners: see themselves and their sub-users
+    // - Subowners: see sub-users of their owner
+    // - Sub-users: cannot access (handled by middleware/menu)
+    
+    if ($user->is_admin) {
+        // Admins see all users
+        $users = User::all();
+    } elseif ($user->is_owner) {
+        // Owners see themselves and their sub-users
+        $users = User::where('owner_id', $user->id)
+            ->orWhere('id', $user->id)
+            ->get();
+    } elseif ($user->is_subowner) {
+        // Subowners see all sub-users of their owner (including themselves)
+        $ownerId = $user->owner_id;
+        $users = User::where('owner_id', $ownerId)->get();
+    } else {
+        // Sub-users cannot access - return empty or redirect
+        abort(403, 'You do not have permission to access this section.');
+    }
+
+    // Get role_id for each user_id via query
     $userRoleMap = DB::table('roles_users')
         ->pluck('role_id', 'user_id'); // [ user_id => role_id, ... ]
 
@@ -369,22 +391,76 @@ class adminController extends Controller
 
     public function salvar_roles_users(Request $request)
     {
-        //
+        $authUser = Auth::user();
+        $targetUser = User::find($request->user_id);
+
+        // ⭐ SECURITY: 
+        // - Admins: can change any user's role
+        // - Owners: can change their sub-users' roles
+        // - Subowners: can change sub-users of their owner
+        // - Sub-users: cannot change roles
+        
+        if (!$authUser->is_admin) {
+            if ($authUser->is_owner) {
+                // Owner can only change their sub-users
+                if ($targetUser->owner_id !== $authUser->id) {
+                    Alert::toast('You do not have permission to change this user\'s role', 'error');
+                    return back();
+                }
+            } elseif ($authUser->is_subowner) {
+                // Subowner can change sub-users of their owner
+                if ($targetUser->owner_id !== $authUser->owner_id) {
+                    Alert::toast('You do not have permission to change this user\'s role', 'error');
+                    return back();
+                }
+            } else {
+                // Sub-users cannot change roles
+                Alert::toast('You do not have permission to change roles', 'error');
+                return back();
+            }
+        }
+
         $roles = new RolesUsers();
         $roles->user_id = $request->user_id;
         $roles->role_id = $request->role_id;
 
         $roles->save();
 
-        Alert::toast('Alteração efetuada Com Sucesso', 'success');
+        Alert::toast('Change made successfully', 'success');
         return $roles;
     }
 
     public function actualizar_roles_users(Request $request)
     {
-        $user = Auth::user();
+        $authUser = Auth::user();
+        $targetUser = User::find($request->user_id);
 
-        //
+        // ⭐ SECURITY: 
+        // - Admins: can change any user's role
+        // - Owners: can change their sub-users' roles
+        // - Subowners: can change sub-users of their owner
+        // - Sub-users: cannot change roles
+        
+        if (!$authUser->is_admin) {
+            if ($authUser->is_owner) {
+                // Owner can only change their sub-users
+                if ($targetUser->owner_id !== $authUser->id) {
+                    Alert::toast('You do not have permission to change this user\'s role', 'error');
+                    return back();
+                }
+            } elseif ($authUser->is_subowner) {
+                // Subowner can change sub-users of their owner
+                if ($targetUser->owner_id !== $authUser->owner_id) {
+                    Alert::toast('You do not have permission to change this user\'s role', 'error');
+                    return back();
+                }
+            } else {
+                // Sub-users cannot change roles
+                Alert::toast('You do not have permission to change roles', 'error');
+                return back();
+            }
+        }
+
         $user_id = RolesUsers::where('user_id', $request->user_id)->first();
 
         if($user_id){
@@ -404,7 +480,7 @@ class adminController extends Controller
 
             $roles->save();
 
-            Alert::toast('Alteração efetuada Com Sucesso', 'success');
+            Alert::toast('Change made successfully', 'success');
             return back();
         }
     }

@@ -130,6 +130,39 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if user can view all tenant data (Owner, Subowner or Admin)
+     */
+    public function canViewAllTenantData(): bool
+    {
+        return $this->is_owner || $this->is_subowner || $this->is_admin;
+    }
+
+    /**
+     * Get the carrier_id if user is a carrier
+     */
+    public function getCarrierId(): ?int
+    {
+        $carrier = $this->carriers->first();
+        return $carrier ? $carrier->id : null;
+    }
+
+    /**
+     * Check if user is a carrier (has record in carriers table)
+     */
+    public function isCarrier(): bool
+    {
+        return $this->carriers()->exists();
+    }
+
+    /**
+     * Check if user is a driver (has record in drivers table)
+     */
+    public function isDriver(): bool
+    {
+        return Driver::where('email', $this->email)->exists();
+    }
+
+    /**
      * Retorna o ID do tenant (owner_id se não for owner, ou id se for owner)
      */
     public function getTenantId(): ?int
@@ -213,11 +246,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->roles()->where('name', $roleName)->exists();
     }
 
-    public function isCarrier(): bool
-    {
-        return $this->hasRole('Carrier');
-    }
-
+    
     public function isDispatcher(): bool
     {
         return $this->hasRole('Dispatcher');

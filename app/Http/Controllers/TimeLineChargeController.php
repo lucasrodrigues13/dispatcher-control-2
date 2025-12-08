@@ -23,9 +23,20 @@ class TimeLineChargeController extends Controller
      */
     public function index()
     {
-        $timeLineCharges = TimeLineCharge::with(['carrier.user', 'dispatcher.user'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $query = TimeLineCharge::with(['carrier.user', 'dispatcher.user']);
+
+        // ⭐ FILTER BY ROLE: Carriers only see their own invoices
+        $user = auth()->user();
+        if (!$user->canViewAllTenantData()) {
+            if ($user->isCarrier()) {
+                $carrierId = $user->getCarrierId();
+                if ($carrierId) {
+                    $query->where('carrier_id', $carrierId);
+                }
+            }
+        }
+
+        $timeLineCharges = $query->orderBy('created_at', 'desc')->paginate(10);
 
         // Para cada invoice, calcula o total dos loads
         // Isso pode ser otimizado se necessário, mas para 10 registros por página está ok
