@@ -334,7 +334,16 @@
             </thead>
             <tbody>
                 @foreach($loads as $load)
-                    <tr id="load-row-{{ $load->id }}" class="{{ $load->already_charged ? 'table-warning' : '' }}">
+                    @php
+                        $dealValue = 0;
+                        if ($load->carrier_id && isset($deals[$load->carrier_id])) {
+                            $dealValue = $deals[$load->carrier_id]->value ?? 0;
+                        }
+                    @endphp
+                    <tr id="load-row-{{ $load->id }}" 
+                        class="{{ $load->already_charged ? 'table-warning' : '' }}"
+                        data-deal-value="{{ $dealValue }}"
+                        data-carrier-id="{{ $load->carrier_id }}">
                         {{-- Checkbox --}}
                         <td class="text-center">
                             <input type="checkbox"
@@ -787,15 +796,15 @@
                                     <label class="form-label fw-bold">Total Loads</label>
                                     <input type="text" class="form-control" readonly value="{{ $loads->count() }} loads">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label fw-bold">Amount Type</label>
                                     <input type="text" class="form-control" readonly value="{{ ucfirst(str_replace('_', ' ', request('amount_type', 'price'))) }}">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label fw-bold">Date Range</label>
                                     <input type="text" class="form-control" readonly value="{{ request('date_start') }} to {{ request('date_end') }}">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label fw-bold">Carrier Revenue</label>
                                     <input type="number"
                                            name="total_amount"
@@ -803,6 +812,21 @@
                                            class="form-control fw-bold text-success"
                                            readonly
                                            value="{{ $totalAmount ?? 0 }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-calculator me-1"></i>Dispatcher Revenue
+                                        <i class="fas fa-info-circle text-info ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Calculated based on Deal percentage for each carrier"></i>
+                                    </label>
+                                    <input type="number"
+                                           id="dispatcher_revenue"
+                                           class="form-control fw-bold text-primary"
+                                           readonly
+                                           value="0.00"
+                                           step="0.01">
+                                    <small class="text-muted">Based on Deal %</small>
                                 </div>
                             </div>
 
@@ -1421,7 +1445,47 @@ function updateTableTotals() {
             headerCount.textContent = `Filtered Loads (${remainingRows} records)`;
         }
 
+        // ⭐ Atualiza o Dispatcher Revenue baseado nos Deals
+        updateDispatcherRevenue();
+
         return { totalPrice, totalPaidAmount, remainingRows };
+}
+
+// ⭐ Função global para calcular Dispatcher Revenue baseado em Deals
+function updateDispatcherRevenue() {
+    let totalDispatcherRevenue = 0;
+
+    // Busca todas as linhas do tbody
+    const allRows = document.querySelectorAll('tbody tr');
+    allRows.forEach(function(row) {
+        // Ignora linhas ocultas
+        if (row.style.display === 'none') return;
+
+        // Busca o checkbox para verificar se o load está selecionado
+        const checkbox = row.querySelector('.load-checkbox');
+        if (!checkbox || !checkbox.checked) return;
+
+        // Pega o valor do price
+        const priceCell = row.querySelector('.column-price [data-price]');
+        if (!priceCell) return;
+
+        const price = parseFloat(priceCell.getAttribute('data-price')) || 0;
+
+        // Pega o valor do deal (porcentagem) do data attribute da linha
+        const dealValue = parseFloat(row.getAttribute('data-deal-value')) || 0;
+
+        // Calcula a comissão do dispatcher: price * (dealValue / 100)
+        const dispatcherCommission = price * (dealValue / 100);
+        totalDispatcherRevenue += dispatcherCommission;
+    });
+
+    // Atualiza o campo de Dispatcher Revenue
+    const dispatcherRevenueInput = document.getElementById('dispatcher_revenue');
+    if (dispatcherRevenueInput) {
+        dispatcherRevenueInput.value = totalDispatcherRevenue.toFixed(2);
+    }
+
+    return totalDispatcherRevenue;
 }
 
 // Inicialização do gerenciamento de exclusão de loads

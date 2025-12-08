@@ -202,12 +202,20 @@ class TimeLineChargeController extends Controller
             ]);
         }
 
+        // ⭐ Carregar Deals para cada carrier dos loads
+        $deals = collect();
+        if ($loads->isNotEmpty()) {
+            $carrierIds = $loads->pluck('carrier_id')->unique()->filter();
+            $deals = Deal::whereIn('carrier_id', $carrierIds)->get()->keyBy('carrier_id');
+        }
+
         // Retorna a view com os dados
         return view('invoice.time_line_charge.create', compact(
             'carriers',
             'dispatchers',
             'loads',
-            'totalAmount'
+            'totalAmount',
+            'deals'
         ));
     }
 
