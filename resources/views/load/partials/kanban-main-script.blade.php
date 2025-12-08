@@ -5,7 +5,8 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute
 const loads = @json($loads);
 const containersFromServer = @json($containers);
 
-let loadsArray = Object.values(loads.data);
+// Convert loads to array (loads is already a collection, not paginated)
+let loadsArray = Array.isArray(loads) ? loads : (loads && loads.data ? Object.values(loads.data) : []);
 
 // Mapeia todos os cards para o container fixo "Loads"
 const cards = loadsArray.map((item) => ({
@@ -162,8 +163,9 @@ $(document).ready(function() {
 
     // Inicializar o quadro
     function initializeBoard() {
-        renderBoard();
+        // Board estático já renderizado pelo Blade (kanban-board.blade.php)
         setupDragAndDrop();
+        console.log('Kanban board inicializado');
     }
 
     function loadCardFieldsConfiguration() {
@@ -171,7 +173,7 @@ $(document).ready(function() {
             .then(response => response.json())
             .then(config => {
                 cardFieldsConfig = config;
-                renderBoard();
+                console.log('Card config carregada:', cardFieldsConfig);
             })
             .catch(error => {
                 console.error('Error loading card config:', error);
@@ -183,12 +185,16 @@ $(document).ready(function() {
                     'delivery_city': true,
                     'scheduled_pickup_date': true
                 };
-                renderBoard();
             });
     }
 
     function renderBoard() {
+        // Board agora é renderizado estaticamente pelo Blade
+        console.log('renderBoard() - board estático gerenciado pelo Blade');
         const boardContainer = $('#board-container');
+        if (!boardContainer.length) {
+            return; // Board estático não precisa ser renderizado
+        }
         boardContainer.empty();
 
         containers.forEach(container => {
@@ -201,12 +207,9 @@ $(document).ready(function() {
             });
         });
 
-        // Reconfigura os eventos
-        $('.container-name').off('click').click(editContainerName);
-        $('.delete-container').off('click').click(deleteContainer);
-        $('.task-card').off('click').click(openShipmentDetails);
-        $('#new-container-btn').off('click').click(createNewContainer);
-
+        // Reconfigura os eventos (apenas para compatibilidade com código legado)
+        // Os eventos do novo kanban são gerenciados no kanban-scripts.blade.php
+        
         // Reaplica drag and drop após renderização
         setupDragAndDrop();
     }
@@ -369,67 +372,11 @@ $(document).ready(function() {
         return date.toLocaleDateString('pt-BR');
     }
 
-    // Configurar drag and drop
+    // Configurar drag and drop (HTML5 nativo implementado no kanban-board.blade.php)
     function setupDragAndDrop() {
-        $(".card-list").sortable({
-            connectWith: ".card-list",
-            placeholder: "container-placeholder",
-
-            receive: function(event, ui) {
-                const rawCardId = ui.item.data("card-id");
-                const rawContainerId = $(this).closest(".container-column").data("container-id");
-
-                const cardId = String(rawCardId).split("-")[1];
-                const containerId = String(rawContainerId).split("-")[1];
-                const position = $(this).children().index(ui.item);
-
-                let movedCard = null;
-
-                // Remover o card do container antigo
-                containers.forEach(container => {
-                    const cardIndex = container.cards.findIndex(card => card.cardId == cardId);
-                    if (cardIndex !== -1) {
-                        movedCard = container.cards.splice(cardIndex, 1)[0];
-                    }
-                });
-
-                // Adicionar ao novo container
-                if (movedCard) {
-                    const targetContainer = containers.find(c => c.id == `container-${containerId}`);
-                    if (targetContainer) {
-                        targetContainer.cards.push(movedCard);
-                    }
-                }
-
-                // Enviar via AJAX
-                fetch("/mode/container_loads/store", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": csrfToken,
-                    },
-                    body: JSON.stringify({
-                        container_id: containerId,
-                        load_id: cardId,
-                        position: position,
-                        moved_at: new Date().toISOString(),
-                    }),
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error("Erro ao salvar movimentação.");
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Movimentação salva com sucesso:", data);
-                })
-                .catch(error => {
-                    console.error("Erro na requisição AJAX:", error);
-                    alert("Erro ao salvar movimentação.");
-                });
-
-                console.log(`Moveu card ID ${cardId} para o container ID ${containerId}, posição ${position}`);
-            }
-        }).disableSelection();
+        // Drag and drop nativo HTML5 já está implementado no template kanban-board.blade.php
+        // Esta função foi mantida vazia para compatibilidade com chamadas existentes
+        console.log('Drag and drop nativo HTML5 ativo');
     }
 
     // Editar nome do container

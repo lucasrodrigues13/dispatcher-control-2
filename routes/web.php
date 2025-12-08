@@ -244,15 +244,13 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::post('/loads/apagar-varios', [LoadImportController::class, 'apagarVarios'])->name('loads.apagar_varios');
 
 
-    // Kanba Mode
-    Route::get('/loads/mode', [KanbanController::class, 'kanbaMode'])
+    // Kanban Mode
+    Route::get('/loads/mode', [KanbanController::class, 'kanbanMode'])
         ->name('loads.mode');
-    Route::get('/loads/mode/filter', [KanbanController::class, 'kanbaFilter'])
-        ->name('mode.filter');
-    Route::get('/loads/mode/search', [KanbanController::class, 'kanbaSearch'])
-        ->name('mode.search');
     Route::put('/loads/update-ajax/{id}', [KanbanController::class, 'updateLoadAjax'])
         ->name('loads.update.ajax');
+    Route::patch('/loads/{id}/kanban-status', [KanbanController::class, 'updateKanbanStatus'])
+        ->name('loads.kanban.status');
     Route::get('/loads/card-fields-config', [KanbanController::class, 'getCardFieldsConfig'])
         ->name('loads.card.fields.config');
     Route::post('/loads/card-fields-config', [KanbanController::class, 'saveCardFieldsConfig'])
@@ -262,7 +260,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
         ->name('loads.drivers.list');
 
 
-    // kanba Container
+    // Kanban Container
     Route::get('/mode/container/list', [ContainerController::class, 'index'])->name('container.index');
     Route::get('/mode/container/add', [ContainerController::class, 'create'])->name('container.create');
     Route::post('/mode/container/store', [ContainerController::class, 'store'])->name('container.store');

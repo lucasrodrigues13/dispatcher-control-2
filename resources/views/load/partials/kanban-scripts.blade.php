@@ -5,31 +5,34 @@
 
 <script>
 // Deletar todos os loads
-document.getElementById('delete-all-loads').addEventListener('click', function (e) {
-    e.preventDefault();
-    if (!confirm('Tem certeza que deseja excluir todas as cargas?')) return;
+const deleteAllBtn = document.getElementById('delete-all-loads');
+if (deleteAllBtn) {
+    deleteAllBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('Tem certeza que deseja excluir todas as cargas?')) return;
 
-    fetch("{{ route('loads.destroyAll') }}", {
-        method: "DELETE",
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Erro ao excluir');
-        return response.json();
-    })
-    .then(data => {
-        alert(data.message);
-        location.reload();
-    })
-    .catch(error => {
-        alert('Erro ao excluir cargas');
-        console.error(error);
+        fetch("{{ route('loads.destroyAll') }}", {
+            method: "DELETE",
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Erro ao excluir');
+            return response.json();
+        })
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(error => {
+            alert('Erro ao excluir cargas');
+            console.error(error);
+        });
     });
-});
+}
 
 // Removed: toggle-mode-btn functionality moved to dedicated button "Go to Table View"
 
@@ -39,7 +42,10 @@ document.addEventListener('DOMContentLoaded', function () {
     loadCardFieldsConfig();
 
     // Salvar configuração
-    document.getElementById('saveCardConfigBtn').addEventListener('click', saveCardFieldsConfig);
+    const saveCardConfigBtn = document.getElementById('saveCardConfigBtn');
+    if (saveCardConfigBtn) {
+        saveCardConfigBtn.addEventListener('click', saveCardFieldsConfig);
+    }
 
     // Toggle sections no modal de detalhes
     document.querySelectorAll('.toggle-section').forEach(button => {
@@ -49,20 +55,34 @@ document.addEventListener('DOMContentLoaded', function () {
             const icon = this.querySelector('i');
             const text = this.querySelector('.expand-text');
 
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                text.textContent = 'Collapse';
-                icon.className = 'fas fa-chevron-up';
-            } else {
-                section.style.display = 'none';
-                text.textContent = 'Expand';
-                icon.className = 'fas fa-chevron-down';
+            if (section && icon && text) {
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    text.textContent = 'Collapse';
+                    icon.className = 'fas fa-chevron-up';
+                } else {
+                    section.style.display = 'none';
+                    text.textContent = 'Expand';
+                    icon.className = 'fas fa-chevron-down';
+                }
             }
         });
     });
 
     // Salvar mudanças no modal de edição
-    document.getElementById('saveShipmentBtn').addEventListener('click', saveShipmentChanges);
+    const saveShipmentBtn = document.getElementById('saveShipmentBtn');
+    if (saveShipmentBtn) {
+        saveShipmentBtn.addEventListener('click', saveShipmentChanges);
+    }
+
+    // Event listener para botões de editar nos cards
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-edit-load')) {
+            const button = e.target.closest('.btn-edit-load');
+            const loadId = button.getAttribute('data-load-id');
+            openLoadEditModal(loadId);
+        }
+    });
 });
 
 // Função para carregar configuração de campos
@@ -160,6 +180,12 @@ function updateCardInBoard(loadData) {
         // Atualizar outros campos visíveis conforme configuração
         // Implementar conforme necessário
     }
+}
+
+// Função para abrir tela de edição do load (redireciona para página completa)
+function openLoadEditModal(loadId) {
+    // Redireciona para a mesma tela de edição usada na lista de loads
+    window.location.href = `/loads/edit/${loadId}`;
 }
 </script>
 

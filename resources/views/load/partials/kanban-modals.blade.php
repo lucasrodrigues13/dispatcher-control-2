@@ -501,7 +501,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form action="{{ route('mode.filter') }}" method="GET" class="mb-4">
+                <form action="{{ route('loads.mode') }}" method="GET" class="mb-4">
                     <div class="row g-2">
                         <div class="col-md-3">
                             <label class="form-label">Load ID</label>
@@ -527,7 +527,7 @@
                             @endif
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Carrier</label>
+                            <label class="form-label">Carrier (Select)</label>
                             <select name="carrier_id" class="form-select">
                                 <option value="">-- Select Carrier --</option>
                                 @foreach($carriers as $carrier)
@@ -536,6 +536,10 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Carrier (Name)</label>
+                            <input type="text" name="carrier" class="form-control" placeholder="Carrier Name" value="{{ request('carrier') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">VIN</label>
@@ -644,42 +648,81 @@
 </div>
 
 <!-- Modal de Search (mantido igual) -->
-<div class="modal fade" id="searchData" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Search Data</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- Modal Apply Filter -->
+<div class="modal fade" id="applyFilter" tabindex="-1" aria-labelledby="applyFilterLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="applyFilterLabel">Apply Filter</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{{ route('loads.mode') }}" method="GET" class="mb-4">
+          <div class="row g-2">
+            <div class="col-md-3">
+              <input type="text" name="load_id" class="form-control" placeholder="Load ID" value="{{ request('load_id') }}">
             </div>
-            <div class="modal-body">
-                <form method="GET" action="{{ route('mode.search') }}" class="mb-4">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Search in Field</label>
-                            <select name="search_field" class="form-select">
-                                <option value="">-- Select Field --</option>
-                                <option value="load_id" {{ request('search_field') == 'load_id' ? 'selected' : '' }}>Load ID</option>
-                                <option value="internal_load_id" {{ request('search_field') == 'internal_load_id' ? 'selected' : '' }}>Internal Load ID</option>
-                                <option value="dispatcher" {{ request('search_field') == 'dispatcher' ? 'selected' : '' }}>Dispatcher</option>
-                                <option value="vin" {{ request('search_field') == 'vin' ? 'selected' : '' }}>VIN</option>
-                                <option value="pickup_city" {{ request('search_field') == 'pickup_city' ? 'selected' : '' }}>Pickup City</option>
-                                <option value="delivery_city" {{ request('search_field') == 'delivery_city' ? 'selected' : '' }}>Delivery City</option>
-                                <option value="driver" {{ request('search_field') == 'driver' ? 'selected' : '' }}>Driver</option>
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">Search Value</label>
-                            <input name="search" type="text" value="{{ request('search') }}" placeholder="Enter search term..." class="form-control" />
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end justify-content-end">
-                            <button type="submit" class="btn btn-primary">Find</button>
-                            <a href="{{ route('loads.mode') }}" class="btn btn-secondary ms-2">Clear</a>
-                        </div>
-                    </div>
-                </form>
+            <div class="col-md-3">
+              <input type="text" name="internal_load_id" class="form-control" placeholder="Internal Load ID" value="{{ request('internal_load_id') }}">
             </div>
-        </div>
+
+            <!-- Select Dispatcher -->
+            <div class="col-md-3 mb-4">
+              <select name="dispatcher_id" class="form-select">
+                <option value="">Filter Dispatcher</option>
+                @if($dispatchers)
+                    <option value="{{ $dispatchers->id }}" {{ request('dispatcher_id') == $dispatchers->id ? 'selected' : '' }}>{{ $dispatchers->user->name }}</option>
+                @endif
+              </select>
+            </div>
+
+            <div class="col-md-3 mb-4">
+              <select name="carrier_id" class="form-select">
+                <option value="">Filter Carrier</option>
+                @foreach($carriers as $item)
+                  <option value="{{ $item->id }}" {{ request('carrier_id') == $item->id ? 'selected' : '' }}>
+                    {{ $item->company_name }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+
+            <!-- Select Employee -->
+            <div class="col-md-3 mb-4">
+              <select name="employee_id" class="form-select">
+                <option value="">Filter Employee</option>
+                @foreach($employees as $item)
+                  <option value="{{ $item->id }}" {{ request('employee_id') == $item->id ? 'selected' : '' }}>
+                    {{ $item->name }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <input type="text" name="vin" class="form-control" placeholder="VIN" value="{{ request('vin') }}">
+            </div>
+            <div class="col-md-3">
+              <input type="text" name="pickup_city" class="form-control" placeholder="Pickup City" value="{{ request('pickup_city') }}">
+            </div>
+            <div class="col-md-3">
+              <input type="text" name="delivery_city" class="form-control" placeholder="Delivery City" value="{{ request('delivery_city') }}">
+            </div>
+            <div class="col-md-3">
+              <input type="date" name="scheduled_pickup_date" class="form-control" placeholder="Scheduled Pickup Date" value="{{ request('scheduled_pickup_date') }}">
+            </div>
+            <div class="col-md-3">
+              <input type="text" name="driver" class="form-control" placeholder="Driver" value="{{ request('driver') }}">
+            </div>
+            <div class="col-md-12 d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">Filter</button>
+              <a href="{{ route('loads.mode') }}" class="btn btn-secondary ms-2">Clear</a>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Modal Show/Hide Columns (mantido igual) -->

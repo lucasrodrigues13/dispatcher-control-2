@@ -503,7 +503,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form action="{{ route('mode.filter') }}" method="GET" class="mb-4">
+        <form action="{{ route('loads.mode') }}" method="GET" class="mb-4">
           <div class="row g-2">
             <div class="col-md-3">
               <input type="text" name="load_id" class="form-control" placeholder="Load ID" value="{{ request('load_id') }}">
@@ -549,7 +549,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form method="GET" action="{{ route('mode.search') }}" class="mb-4">
+        <form method="GET" action="{{ route('loads.mode') }}" class="mb-4">
           <div class="row g-3">
             <div class="col-md-3">
               <label class="form-label">Search in Field</label>

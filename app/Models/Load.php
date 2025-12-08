@@ -96,6 +96,7 @@ class Load extends Model
         // Driver e status
         'driver',
         'status_move',
+        'kanban_status',
     ];
 
     /**

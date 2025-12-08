@@ -1,4 +1,4 @@
-{{-- resources/views/load/kanbaMode.blade.php --}}
+{{-- resources/views/load/kanbanMode.blade.php --}}
 @extends('layouts.app2')
 
 @section('conteudo')
