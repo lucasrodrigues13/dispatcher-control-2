@@ -3220,16 +3220,37 @@ function initColumnSelector() {
                 
                 if (!columnName) return;
                 
-                // Mostrar/ocultar cabeçalhos (th)
-                const headers = table.querySelectorAll(`th[data-column="${columnName}"], th.column-${columnName}`);
+                // Mostrar/ocultar cabeçalhos do thead (th) usando classes
+                const headers = table.querySelectorAll(`thead th[data-column="${columnName}"], thead th.column-${columnName}`);
                 headers.forEach(header => {
-                    header.style.display = isChecked ? '' : 'none';
+                    if (isChecked) {
+                        header.classList.remove('hidden');
+                        header.style.display = ''; // Remove inline style se existir
+                    } else {
+                        header.classList.add('hidden');
+                    }
                 });
                 
-                // Mostrar/ocultar células do corpo (td)
+                // Mostrar/ocultar células do tbody (td) usando classes
                 const cells = table.querySelectorAll(`td.column-${columnName}, td[data-column="${columnName}"]`);
                 cells.forEach(cell => {
-                    cell.style.display = isChecked ? '' : 'none';
+                    if (isChecked) {
+                        cell.classList.remove('hidden');
+                        cell.style.display = ''; // Remove inline style se existir
+                    } else {
+                        cell.classList.add('hidden');
+                    }
+                });
+                
+                // Mostrar/ocultar células do tfoot (th) usando classes
+                const footerCells = table.querySelectorAll(`tfoot th.column-${columnName}`);
+                footerCells.forEach(footerCell => {
+                    if (isChecked) {
+                        footerCell.classList.remove('hidden');
+                        footerCell.style.display = ''; // Remove inline style se existir
+                    } else {
+                        footerCell.classList.add('hidden');
+                    }
                 });
             });
             
@@ -3256,8 +3277,9 @@ function initColumnSelector() {
                 checkboxes.forEach(checkbox => {
                     const columnName = checkbox.getAttribute('data-column');
                     if (columnName) {
-                        const header = table.querySelector(`th[data-column="${columnName}"], th.column-${columnName}`);
-                        checkbox.checked = header && header.style.display !== 'none';
+                        const header = table.querySelector(`thead th[data-column="${columnName}"], thead th.column-${columnName}`);
+                        // Verifica se a coluna está visível (não tem classe hidden e não tem display: none)
+                        checkbox.checked = header && !header.classList.contains('hidden') && header.style.display !== 'none';
                     }
                 });
             }
