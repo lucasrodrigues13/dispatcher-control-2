@@ -15,9 +15,11 @@ use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Traits\ToggleUserStatus;
 
 class EmployeeController extends Controller
 {
+    use ToggleUserStatus;
     /**
      * Display a listing of the resource.
      */

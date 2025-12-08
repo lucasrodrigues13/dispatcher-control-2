@@ -18,9 +18,11 @@ use App\Providers\RouteServiceProvider;
 use App\Services\BillingService;
 use Illuminate\Auth\Events\Registered;
 use App\Mail\NewCarrierCredentialsMail;
+use App\Http\Controllers\Traits\ToggleUserStatus;
 
 class DispatcherController extends Controller
 {
+    use ToggleUserStatus;
     // Lista com paginação
     public function index()
     {

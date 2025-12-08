@@ -17,9 +17,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
+use App\Http\Controllers\Traits\ToggleUserStatus;
 
 class CarrierController extends Controller
 {
+    use ToggleUserStatus;
     public function index()
     {
         // Busca o dispatcher do usuário logado

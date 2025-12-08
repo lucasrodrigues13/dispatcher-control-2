@@ -115,107 +115,117 @@ class SubscriptionManagementController extends Controller
     }
 
     /**
-     * Organiza usuários hierarquicamente baseado em roles e relações
+     * Organiza usuários hierarquicamente baseado em owner_id
      */
     private function organizeUsersHierarchically($users)
     {
         $organized = [];
         $processedUsers = [];
         
-        // Primeiro, processar usuários principais (Dispatchers com assinatura)
+        // Primeiro: processar ADMINS (is_admin = true)
         foreach ($users as $user) {
             if (in_array($user->id, $processedUsers)) continue;
             
-            if ($user->hasRole('Dispatcher') && $user->subscription) {
+            if ($user->is_admin) {
+                $userArray = $user->toArray();
+                $userArray['user_type'] = 'admin';
+                $userArray['role_name'] = 'Admin';
+                $userArray['is_admin'] = true;
+                $userArray['sub_users_count'] = 0;
+                $userArray['parent_id'] = null;
+                $organized[] = $userArray;
+                $processedUsers[] = $user->id;
+            }
+        }
+        
+        // Segundo: processar OWNERS (is_owner = true)
+        foreach ($users as $user) {
+            if (in_array($user->id, $processedUsers)) continue;
+            
+            if ($user->is_owner) {
+                // Contar sub-users: todos os Users com owner_id = este user.id
+                $subUsersCount = \App\Models\User::where('owner_id', $user->id)->count();
+                
+                // Determinar o tipo de owner
+                $roleName = 'Owner';
+                if ($user->hasRole('Dispatcher')) {
+                    $roleName = 'Dispatcher';
+                } elseif ($user->hasRole('Carrier')) {
+                    $roleName = 'Carrier';
+                } elseif ($user->hasRole('Broker')) {
+                    $roleName = 'Broker';
+                }
+                
                 $userArray = $user->toArray();
                 $userArray['user_type'] = 'main';
-                $userArray['role_name'] = 'Dispatcher (Main Account)';
-                $userArray['level'] = 0;
+                $userArray['role_name'] = $roleName;
+                $userArray['is_admin'] = false;
+                $userArray['sub_users_count'] = $subUsersCount;
+                $userArray['parent_id'] = null;
                 $organized[] = $userArray;
                 $processedUsers[] = $user->id;
                 
-                // Adicionar carriers relacionados a este dispatcher
-                $relatedCarriers = $users->filter(function($u) use ($user) {
-                    return $u->hasRole('Carrier') && 
-                           $u->carriers->where('dispatcher_id', $user->dispatchers->first()->id ?? null)->count() > 0;
-                });
-                
-                foreach ($relatedCarriers as $carrier) {
-                    if (in_array($carrier->id, $processedUsers)) continue;
+                // Adicionar sub-users deste owner
+                $subUsers = \App\Models\User::where('owner_id', $user->id)->get();
+                foreach ($subUsers as $subUser) {
+                    if (in_array($subUser->id, $processedUsers)) continue;
                     
-                    $carrierArray = $carrier->toArray();
-                    $carrierArray['user_type'] = 'sub';
-                    $carrierArray['role_name'] = 'Carrier';
-                    $carrierArray['level'] = 1;
-                    $carrierArray['parent_name'] = $user->name;
-                    $organized[] = $carrierArray;
-                    $processedUsers[] = $carrier->id;
+                    // Determinar o tipo do sub-user
+                    $subRoleName = 'User';
+                    if ($subUser->hasRole('Dispatcher')) {
+                        $subRoleName = 'Dispatcher';
+                    } elseif ($subUser->hasRole('Carrier')) {
+                        $subRoleName = 'Carrier';
+                    } elseif ($subUser->hasRole('Driver')) {
+                        $subRoleName = 'Driver';
+                    } elseif ($subUser->hasRole('Broker')) {
+                        $subRoleName = 'Broker';
+                    } elseif ($subUser->hasRole('Employee')) {
+                        $subRoleName = 'Employee';
+                    }
                     
-                    // Adicionar employees e drivers relacionados ao carrier
-                    $this->addSubUsers($carrier, $users, $organized, $processedUsers, 2);
+                    $subArray = $subUser->toArray();
+                    $subArray['user_type'] = 'sub';
+                    $subArray['role_name'] = $subRoleName;
+                    $subArray['is_admin'] = false;
+                    $subArray['sub_users_count'] = 0;
+                    $subArray['parent_id'] = $user->id;
+                    $subArray['parent_name'] = $user->name;
+                    $organized[] = $subArray;
+                    $processedUsers[] = $subUser->id;
                 }
             }
         }
         
-        // Processar Carriers independentes (com assinatura própria)
+        // Terceiro: processar usuários restantes (sem is_owner e sem is_admin)
+        // Estes podem ser sub-users órfãos ou usuários standalone
         foreach ($users as $user) {
             if (in_array($user->id, $processedUsers)) continue;
             
-            if ($user->hasRole('Carrier') && $user->subscription) {
-                $userArray = $user->toArray();
-                $userArray['user_type'] = 'main';
-                $userArray['role_name'] = 'Carrier (Main Account)';
-                $userArray['level'] = 0;
-                $organized[] = $userArray;
-                $processedUsers[] = $user->id;
-                
-                // Adicionar sub-usuários
-                $this->addSubUsers($user, $users, $organized, $processedUsers, 1);
+            $roleName = 'User';
+            if ($user->hasRole('Dispatcher')) {
+                $roleName = 'Dispatcher';
+            } elseif ($user->hasRole('Carrier')) {
+                $roleName = 'Carrier';
+            } elseif ($user->hasRole('Driver')) {
+                $roleName = 'Driver';
+            } elseif ($user->hasRole('Broker')) {
+                $roleName = 'Broker';
+            } elseif ($user->hasRole('Employee')) {
+                $roleName = 'Employee';
             }
-        }
-        
-        // Processar usuários restantes sem assinatura
-        foreach ($users as $user) {
-            if (in_array($user->id, $processedUsers)) continue;
             
             $userArray = $user->toArray();
             $userArray['user_type'] = 'standalone';
-            $userArray['level'] = 0;
-            
-            if ($user->hasRole('Dispatcher')) {
-                $userArray['role_name'] = 'Dispatcher (No Subscription)';
-            } elseif ($user->hasRole('Carrier')) {
-                $userArray['role_name'] = 'Carrier (No Subscription)';
-            } else {
-                $userArray['role_name'] = 'User (No Role)';
-            }
-            
+            $userArray['role_name'] = $roleName;
+            $userArray['is_admin'] = false;
+            $userArray['sub_users_count'] = 0;
+            $userArray['parent_id'] = null;
             $organized[] = $userArray;
             $processedUsers[] = $user->id;
         }
         
         return $organized;
-    }
-    
-    /**
-     * Adiciona sub-usuários (drivers) relacionados a um usuário principal
-     * Nota: Employees não têm login próprio, então não aparecem como usuários separados
-     */
-    private function addSubUsers($mainUser, $allUsers, &$organized, &$processedUsers, $level)
-    {
-        // Adicionar drivers
-        foreach ($mainUser->drivers as $driver) {
-            $driverUser = $allUsers->find($driver->user_id);
-            if ($driverUser && !in_array($driverUser->id, $processedUsers)) {
-                $driverArray = $driverUser->toArray();
-                $driverArray['user_type'] = 'sub';
-                $driverArray['role_name'] = 'Driver';
-                $driverArray['level'] = $level;
-                $driverArray['parent_name'] = $mainUser->name;
-                $organized[] = $driverArray;
-                $processedUsers[] = $driverUser->id;
-            }
-        }
     }
 
     /**
@@ -417,6 +427,36 @@ class SubscriptionManagementController extends Controller
             'success' => true,
             'message' => 'User deleted successfully'
         ]);
+    }
+
+    /**
+     * Ativa/Desativa um usuário (apenas para sub-users)
+     */
+    public function toggleUserStatus($userId)
+    {
+        $user = User::findOrFail($userId);
+
+        // Verificar se é um sub-user (não é owner)
+        if ($user->is_owner || $user->is_admin) {
+            return redirect()->back()->with('error', 'Cannot deactivate owner or admin users');
+        }
+
+        // Toggle do status
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        // Log da ação
+        \Log::info('User status toggled by admin', [
+            'admin_user_id' => auth()->id(),
+            'target_user_id' => $userId,
+            'new_status' => $user->is_active ? 'active' : 'inactive'
+        ]);
+
+        $message = $user->is_active 
+            ? 'User activated successfully' 
+            : 'User deactivated successfully';
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

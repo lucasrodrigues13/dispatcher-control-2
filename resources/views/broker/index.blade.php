@@ -56,6 +56,7 @@
                     <th>Pagamento</th>
                     <th>Termos</th>
                     <th>Anexos</th>
+                    <th>Status</th>
                     <th class="text-center">Ações</th>
                   </tr>
                 </thead>
@@ -78,20 +79,41 @@
                       <td>
                         <a href="/attachments/list/{{ $broker->user_id }}" class="text-decoration-underline">anexos</a>
                       </td>
+                      <td>
+                        <x-user-status-badge :user="$broker->user" />
+                      </td>
                       <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                          @can('pode_editar_brokers')
-                          <a href="{{ route('brokers.edit', $broker->id) }}" class="btn btn-sm btn-primary" title="Editar">
-                            <i class="fa fa-edit"></i>
-                          </a>
-                          @endcan
-
-                          @can('pode_eliminar_brokers')
-                          <form action="{{ route('brokers.destroy', $broker->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este broker?')" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                              <i class="fa fa-times"></i>
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            @can('pode_editar_brokers')
+                            <li>
+                              <a class="dropdown-item" href="{{ route('brokers.edit', $broker->id) }}">
+                                <i class="fa fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            @endcan
+                            
+                            @if(auth()->user()->is_owner || auth()->user()->is_admin)
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <x-toggle-status-button 
+                                  :user="$broker->user" 
+                                  :route="route('brokers.toggle-status', $broker->id)" 
+                                />
+                              </li>
+                            @endif
+                            
+                            @can('pode_eliminar_brokers')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <form action="{{ route('brokers.destroy', $broker->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este broker?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                  <i class="fa fa-times me-2"></i>Delete
                             </button>
                           </form>
                           @endcan
@@ -100,7 +122,7 @@
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="15" class="text-center text-muted">Nenhum broker encontrado.</td>
+                      <td colspan="16" class="text-center text-muted">Nenhum broker encontrado.</td>
                     </tr>
                   @endforelse
                 </tbody>

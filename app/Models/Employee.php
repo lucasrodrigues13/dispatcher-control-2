@@ -39,5 +39,13 @@ class Employee extends Model
         return $this->belongsTo(\App\Models\Dispatcher::class);
     }
 
+    /**
+     * Relacionamento com User através do email
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'email', 'email');
+    }
+
 }
 

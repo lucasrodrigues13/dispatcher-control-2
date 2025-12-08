@@ -47,6 +47,7 @@
                     <th>Carrier</th>
                     <th>Phone</th>
                     <th>SSN/Tax ID</th>
+                    <th>Status</th>
                     <th class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -58,29 +59,52 @@
                       <td>{{ $item->carrier->company_name ?? 'N/A' }}</td>
                       <td>{{ $item->phone ?? 'N/A' }}</td>
                       <td>{{ $item->ssn_tax_id ?? 'N/A' }}</td>
+                      <td>
+                        <x-user-status-badge :user="$item->user" />
+                      </td>
                       <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                          @can('pode_editar_drivers')
-                          <a href="{{ route('drivers.edit', $item->id) }}" class="btn btn-sm btn-primary" title="Editar">
-                            <i class="fa fa-edit"></i>
-                          </a>
-                          @endcan
-
-                          @can('pode_eliminar_drivers')
-                          <form action="{{ route('drivers.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este driver?')" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </form>
-                          @endcan
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            @can('pode_editar_drivers')
+                            <li>
+                              <a class="dropdown-item" href="{{ route('drivers.edit', $item->id) }}">
+                                <i class="fa fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            @endcan
+                            
+                            @if(auth()->user()->is_owner || auth()->user()->is_admin)
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <x-toggle-status-button 
+                                  :user="$item->user" 
+                                  :route="route('drivers.toggle-status', $item->id)" 
+                                />
+                              </li>
+                            @endif
+                            
+                            @can('pode_eliminar_drivers')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <form action="{{ route('drivers.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este driver?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                  <i class="fa fa-times me-2"></i>Delete
+                                </button>
+                              </form>
+                            </li>
+                            @endcan
+                          </ul>
                         </div>
                       </td>
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="7" class="text-center text-muted">Nenhum driver encontrado.</td>
+                      <td colspan="8" class="text-center text-muted">Nenhum driver encontrado.</td>
                     </tr>
                   @endforelse
                 </tbody>

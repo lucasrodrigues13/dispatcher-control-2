@@ -18,9 +18,11 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Traits\ToggleUserStatus;
 
 class DriverController extends Controller
 {
+    use ToggleUserStatus;
     /**
      * Display a listing of the resource.
      */

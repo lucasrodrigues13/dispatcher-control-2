@@ -192,7 +192,6 @@
                                         <th>Status</th>
                                         <th>Started</th>
                                         <th>Expires</th>
-                                        <th>Usage</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -204,47 +203,99 @@
                                             $plan = $subscription['plan'] ?? null;
                                             $userType = $userObj->user_type ?? 'main';
                                             $level = $userObj->level ?? 0;
-                                            $roleName = $userObj->role_name ?? 'User';
                                             $parentName = $userObj->parent_name ?? null;
-
-                                            // Definir ícones e cores baseados no tipo de usuário
-                                            $iconClass = match($userType) {
-                                                'main' => 'fas fa-crown text-warning',
-                                                'sub' => 'fas fa-user text-info',
-                                                'standalone' => 'fas fa-user-circle text-muted',
-                                                default => 'fas fa-user text-secondary'
-                                            };
-
-                                            $bgClass = match($userType) {
-                                                'main' => 'bg-warning',
-                                                'sub' => 'bg-info',
-                                                'standalone' => 'bg-secondary',
-                                                default => 'bg-primary'
-                                            };
+                                            $parentId = $userObj->parent_id ?? null;
+                                            $subUsersCount = $userObj->sub_users_count ?? 0;
+                                            
+                                            // Verificar se é admin
+                                            $isAdmin = $userObj->is_admin ?? false;
+                                            
+                                            // Gerar iniciais do nome
+                                            $nameParts = explode(' ', $userObj->name);
+                                            $initials = '';
+                                            if (count($nameParts) >= 2) {
+                                                $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+                                            } else {
+                                                $initials = strtoupper(substr($userObj->name, 0, 2));
+                                            }
+                                            
+                                            // Gerar cor de fundo baseada no nome (consistente para o mesmo usuário)
+                                            $colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22'];
+                                            $colorIndex = ord(strtoupper($userObj->name[0])) % count($colors);
+                                            $avatarColor = $colors[$colorIndex];
+                                            
+                                            // Foto do perfil (pode ser avatar, profile_photo, photo, etc)
+                                            $profilePhoto = $userObj->avatar ?? $userObj->profile_photo ?? $userObj->photo ?? null;
                                         @endphp
-                                        <tr class="{{ $userType === 'sub' ? 'table-light' : '' }}">
+                                        
+                                        <tr class="user-row {{ $userType === 'sub' ? 'sub-user-row' : '' }}" 
+                                            data-user-id="{{ $userObj->id }}"
+                                            data-user-type="{{ $userType }}"
+                                            data-parent-id="{{ $parentId }}"
+                                            style="{{ $userType === 'sub' ? 'display: none;' : '' }}">
                                             <td>
-                                                <div class="d-flex align-items-center" style="margin-left: {{ $level * 20 }}px;">
-                                                    @if($level > 0)
-                                                        <div class="me-2">
-                                                            <i class="fas fa-level-up-alt fa-rotate-90 text-muted"></i>
-                                                        </div>
+                                                <div class="d-flex align-items-center" style="padding-left: {{ $userType === 'sub' ? '50px' : '0' }};">
+                                                    {{-- Botão de expandir/colapsar (apenas para Owners com sub-users) --}}
+                                                    @if($userType === 'main' && $subUsersCount > 0)
+                                                        <button class="btn btn-sm btn-link p-0 toggle-sub-users me-2" 
+                                                                data-owner-id="{{ $userObj->id }}"
+                                                                style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+                                                            <i class="fas fa-plus-circle text-primary" style="font-size: 16px;"></i>
+                                                        </button>
                                                     @endif
-                                                    <div class="avatar avatar-sm me-2">
-                                                        <span class="avatar-title rounded-circle {{ $bgClass }}">
-                                                            <i class="{{ $iconClass }}"></i>
-                                                        </span>
+                                                    
+                                                    {{-- Foto do usuário ou iniciais --}}
+                                                    <div class="user-avatar" style="width: 40px; height: 40px; flex-shrink: 0; margin-right: 12px;">
+                                                        @if($profilePhoto)
+                                                            <img src="{{ Storage::url($profilePhoto) }}" 
+                                                                 alt="{{ $userObj->name }}" 
+                                                                 class="rounded-circle"
+                                                                 style="width: 40px; height: 40px; object-fit: cover; border: 2px solid #dee2e6;"
+                                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                            {{-- Fallback para iniciais caso a imagem não carregue --}}
+                                                            <div class="rounded-circle d-none align-items-center justify-content-center text-white fw-bold" 
+                                                                 style="width: 40px; height: 40px; background-color: {{ $avatarColor }}; font-size: 14px;">
+                                                                {{ $initials }}
+                                                            </div>
+                                                        @else
+                                                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" 
+                                                                 style="width: 40px; height: 40px; background-color: {{ $avatarColor }}; font-size: 14px;">
+                                                                {{ $initials }}
+                                                            </div>
+                                                        @endif
                                                     </div>
-                                                    <div>
-                                                        <div class="d-flex align-items-center">
-                                                            <strong>{{ $userObj->name }}</strong>
-                                                            <span class="badge badge-sm ms-2 {{ $userType === 'main' ? 'bg-success' : ($userType === 'sub' ? 'bg-info' : 'bg-secondary') }}">
-                                                                {{ $roleName }}
-                                                            </span>
+                                                    
+                                                    <div style="flex-grow: 1; min-width: 0;">
+                                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                            <strong style="white-space: nowrap;">{{ $userObj->name }}</strong>
+                                                            
+                                                            {{-- Badge de ADMIN --}}
+                                                            @if($isAdmin)
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-shield-alt me-1"></i>ADMIN
+                                                                </span>
+                                                            {{-- Badge de OWNER --}}
+                                                            @elseif($userType === 'main')
+                                                                <span class="badge bg-warning text-dark">
+                                                                    <i class="fas fa-crown me-1"></i>OWNER
+                                                                </span>
+                                                                @if($subUsersCount > 0)
+                                                                    <span class="badge bg-primary">
+                                                                        {{ $subUsersCount }} sub-user{{ $subUsersCount > 1 ? 's' : '' }}
+                                                                    </span>
+                                                                @endif
+                                                            {{-- Badge de SUB-USER --}}
+                                                            @elseif($userType === 'sub')
+                                                                <span class="badge bg-info">
+                                                                    <i class="fas fa-user me-1"></i>SUB-USER
+                                                                </span>
+                                                            @endif
                                                         </div>
                                                         <small class="text-muted">{{ $userObj->email }}</small>
                                                         @if($parentName)
-                                                            <br><small class="text-info"><i class="fas fa-arrow-up"></i> Under: {{ $parentName }}</small>
+                                                            <br><small class="text-muted">
+                                                                <i class="fas fa-link me-1"></i>Owner: <strong>{{ $parentName }}</strong>
+                                                            </small>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -262,7 +313,9 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if($subscription)
+                                                @if($isAdmin)
+                                                    <span class="badge bg-dark">System Access</span>
+                                                @elseif($subscription)
                                                     @php
                                                         $status = $subscription['status'];
                                                         $badgeClass = match($status) {
@@ -274,17 +327,27 @@
                                                         };
                                                     @endphp
                                                     <span class="badge {{ $badgeClass }}">{{ ucfirst($status) }}</span>
-                                                @else
-                                                    @if($userType === 'sub')
-                                                        <span class="badge bg-light text-dark"><i class="fas fa-link"></i> Sub-user</span>
+                                                @elseif($userType === 'sub')
+                                                    {{-- Sub-users mostram seu próprio is_active --}}
+                                                    @php
+                                                        $isActive = $userObj->is_active ?? true;
+                                                    @endphp
+                                                    @if($isActive)
+                                                        <span class="badge bg-success">Active</span>
                                                     @else
-                                                        <span class="badge bg-secondary">No Subscription</span>
+                                                        <span class="badge bg-danger">Inactive</span>
                                                     @endif
+                                                @else
+                                                    <span class="text-muted">-</span>
                                                 @endif
                                             </td>
                                             <td>
                                                 @if($subscription && isset($subscription['started_at']))
                                                     {{ \Carbon\Carbon::parse($subscription['started_at'])->format('M d, Y') }}
+                                                @elseif($userType === 'sub')
+                                                    {{-- Mostrar data de criação do sub-user --}}
+                                                    {{ \Carbon\Carbon::parse($userObj->created_at)->format('M d, Y') }}
+                                                    <br><small class="text-muted"><i class="fas fa-user-plus"></i> Added</small>
                                                 @else
                                                     -
                                                 @endif
@@ -304,41 +367,46 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if(isset($userObj->usage_tracking) && $userObj->usage_tracking)
-                                                    <div class="progress mb-1" style="height: 6px;">
-                                                        @php
-                                                            $usage = (object) $userObj->usage_tracking;
-                                                            $carriersUsed = $usage->carriers_count ?? 0;
-                                                            $carriersLimit = $plan ? ($plan['carriers_limit'] ?? 0) : 0;
-                                                            $carriersPercent = $carriersLimit > 0 ? min(($carriersUsed / $carriersLimit) * 100, 100) : 0;
-                                                        @endphp
-                                                        <div class="progress-bar bg-primary" style="width: {{ $carriersPercent }}%"></div>
-                                                    </div>
-                                                    <small class="text-muted">
-                                                        {{ $carriersUsed }}/{{ $carriersLimit ?: '∞' }} carriers
-                                                    </small>
-                                                @else
-                                                    @if($userType === 'sub')
-                                                        <span class="text-muted"><i class="fas fa-share-alt"></i> Shared</span>
-                                                    @else
-                                                        <span class="text-muted">No usage data</span>
-                                                    @endif
-                                                @endif
-                                            </td>
-                                            <td>
                                                 <div class="dropdown">
                                                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                                         Actions
                                                     </button>
                                                     <ul class="dropdown-menu">
-                                                        <li><a class="dropdown-item" href="{{ route('admin.subscriptions.show', $userObj->id) }}">View Details</a></li>
+                                                        <li><a class="dropdown-item" href="{{ route('admin.subscriptions.show', $userObj->id) }}">
+                                                            <i class="fas fa-eye me-2"></i>View Details
+                                                        </a></li>
+                                                        
+                                                        @if($userType === 'sub')
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            @if($userObj->is_active ?? true)
+                                                                <li>
+                                                                    <form action="{{ route('admin.subscriptions.toggle-user-status', $userObj->id) }}" method="POST" class="d-inline">
+                                                                        @csrf
+                                                                        @method('PATCH')
+                                                                        <button type="submit" class="dropdown-item text-danger">
+                                                                            <i class="fas fa-ban me-2"></i>Deactivate User
+                                                                        </button>
+                                                                    </form>
+                                                                </li>
+                                                            @else
+                                                                <li>
+                                                                    <form action="{{ route('admin.subscriptions.toggle-user-status', $userObj->id) }}" method="POST" class="d-inline">
+                                                                        @csrf
+                                                                        @method('PATCH')
+                                                                        <button type="submit" class="dropdown-item text-success">
+                                                                            <i class="fas fa-check-circle me-2"></i>Activate User
+                                                                        </button>
+                                                                    </form>
+                                                                </li>
+                                                            @endif
+                                                        @endif
                                                     </ul>
                                                 </div>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center">No users found</td>
+                                            <td colspan="6" class="text-center">No users found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -359,11 +427,60 @@
 {{-- @include('admin.subscriptions.modals.change-plan')
 @include('admin.subscriptions.modals.delete-user') --}}
 
+{{-- Custom Styles --}}
+<style>
+    .toggle-sub-users {
+        transition: all 0.2s ease;
+        border: none;
+    }
+    .toggle-sub-users:hover i {
+        transform: scale(1.15);
+    }
+    .toggle-sub-users:focus {
+        box-shadow: none;
+        outline: none;
+    }
+    .sub-user-row {
+        background-color: #f8f9fa !important;
+    }
+    .sub-user-row:hover {
+        background-color: #e9ecef !important;
+    }
+    .user-row {
+        vertical-align: middle;
+    }
+    .user-row td {
+        padding: 12px 8px;
+        vertical-align: middle;
+    }
+    .user-avatar {
+        position: relative;
+    }
+</style>
+
 {{-- Scripts --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+    // Toggle sub-users visibility
+    $('.toggle-sub-users').click(function(e) {
+        e.preventDefault();
+        const ownerId = $(this).data('owner-id');
+        const icon = $(this).find('i');
+        const subUsers = $(`.sub-user-row[data-parent-id="${ownerId}"]`);
+        
+        // Toggle visibility
+        subUsers.toggle();
+        
+        // Toggle icon between + and -
+        if (icon.hasClass('fa-plus-circle')) {
+            icon.removeClass('fa-plus-circle').addClass('fa-minus-circle');
+        } else {
+            icon.removeClass('fa-minus-circle').addClass('fa-plus-circle');
+        }
+    });
 
     // Block user
     $('.block-btn').click(function() {

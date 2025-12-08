@@ -48,6 +48,7 @@
                     <th>Position</th>
                     <th>SSN/Tax ID</th>
                     <th>Dispatcher</th>
+                    <th>Status</th>
                     <th class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -60,29 +61,56 @@
                       <td>{{ $item->position ?? 'N/A' }}</td>
                       <td>{{ $item->ssn_tax_id ?? 'N/A' }}</td>
                       <td>{{ $item->dispatcher->user->name ?? 'N/A' }}</td>
+                      <td>
+                        @if($item->user)
+                          <x-user-status-badge :user="$item->user" />
+                        @else
+                          <span class="text-muted">No user</span>
+                        @endif
+                      </td>
                       <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                          @can('pode_editar_employees')
-                          <a href="{{ route('employees.edit', $item->id) }}" class="btn btn-sm btn-primary" title="Editar">
-                            <i class="fa fa-edit"></i>
-                          </a>
-                          @endcan
-
-                          @can('pode_eliminar_employees')
-                          <form action="{{ route('employees.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?')" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </form>
-                          @endcan
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            @can('pode_editar_employees')
+                            <li>
+                              <a class="dropdown-item" href="{{ route('employees.edit', $item->id) }}">
+                                <i class="fa fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            @endcan
+                            
+                            @if($item->user && (auth()->user()->is_owner || auth()->user()->is_admin))
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <x-toggle-status-button 
+                                  :user="$item->user" 
+                                  :route="route('employees.toggle-status', $item->id)" 
+                                />
+                              </li>
+                            @endif
+                            
+                            @can('pode_eliminar_employees')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <form action="{{ route('employees.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                  <i class="fa fa-times me-2"></i>Delete
+                                </button>
+                              </form>
+                            </li>
+                            @endcan
+                          </ul>
                         </div>
                       </td>
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="8" class="text-center text-muted">Nenhum funcionário encontrado.</td>
+                      <td colspan="9" class="text-center text-muted">Nenhum funcionário encontrado.</td>
                     </tr>
                   @endforelse
                 </tbody>

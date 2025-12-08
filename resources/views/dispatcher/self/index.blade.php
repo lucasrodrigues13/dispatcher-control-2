@@ -75,6 +75,7 @@
                     <th>EIN/Tax ID</th>
                     <th>Address</th>
                     <th>Phone</th>
+                    <th>Status</th>
                     <th class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -90,29 +91,52 @@
                       <td>{{ $dispatcher->ein_tax_id ?? 'N/A' }}</td>
                       <td class="truncate-cell">{{ $dispatcher->address ?? 'N/A' }}</td>
                       <td>{{ $dispatcher->phone ?? 'N/A' }}</td>
+                      <td>
+                        <x-user-status-badge :user="$dispatcher->user" />
+                      </td>
                       <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                          @can('pode_editar_dispatchers')
-                          <a href="{{ route('dispatchers.edit', $dispatcher->id) }}" class="btn btn-sm btn-primary" title="Editar">
-                            <i class="fa fa-edit"></i>
-                          </a>
-                          @endcan
-
-                          @can('pode_eliminar_dispatchers')
-                          <form action="{{ route('dispatchers.destroy', $dispatcher->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este dispatcher?')" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </form>
-                          @endcan
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            @can('pode_editar_dispatchers')
+                            <li>
+                              <a class="dropdown-item" href="{{ route('dispatchers.edit', $dispatcher->id) }}">
+                                <i class="fa fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            @endcan
+                            
+                            @if(auth()->user()->is_owner || auth()->user()->is_admin)
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <x-toggle-status-button 
+                                  :user="$dispatcher->user" 
+                                  :route="route('dispatchers.toggle-status', $dispatcher->id)" 
+                                />
+                              </li>
+                            @endif
+                            
+                            @can('pode_eliminar_dispatchers')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <form action="{{ route('dispatchers.destroy', $dispatcher->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este dispatcher?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                  <i class="fa fa-times me-2"></i>Delete
+                                </button>
+                              </form>
+                            </li>
+                            @endcan
+                          </ul>
                         </div>
                       </td>
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="10" class="text-center text-muted">Nenhum dispatcher encontrado.</td>
+                      <td colspan="11" class="text-center text-muted">Nenhum dispatcher encontrado.</td>
                     </tr>
                   @endforelse
                 </tbody>

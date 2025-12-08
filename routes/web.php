@@ -148,6 +148,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/dispatchers/{id}/edit', [DispatcherController::class, 'edit'])->name('dispatchers.edit');
     Route::put('/dispatchers/{id}', [DispatcherController::class, 'update'])->name('dispatchers.update');
     Route::delete('/dispatchers/{id}', [DispatcherController::class, 'destroy'])->name('dispatchers.destroy');
+    Route::patch('/dispatchers/{id}/toggle-status', [DispatcherController::class, 'toggleStatus'])->name('dispatchers.toggle-status');
 
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/employees/add', [EmployeeController::class, 'create'])->name('employees.create');
@@ -155,6 +156,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/employees/{id}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
     Route::put('/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+    Route::patch('/employees/{id}/toggle-status', [EmployeeController::class, 'toggleStatus'])->name('employees.toggle-status');
     Route::get('/employees/{dispatcher_id}/getEmployee', [EmployeeController::class, 'getEmployee'])->name('employees.getEmployee');
 
     Route::get('/carriers', [CarrierController::class, 'index'])->name('carriers.index');
@@ -163,6 +165,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/carriers/{id}/edit', [CarrierController::class, 'edit'])->name('carriers.edit');
     Route::put('/carriers/{id}', [CarrierController::class, 'update'])->name('carriers.update');
     Route::delete('/carriers/{id}', [CarrierController::class, 'destroy'])->name('carriers.destroy');
+    Route::patch('/carriers/{id}/toggle-status', [CarrierController::class, 'toggleStatus'])->name('carriers.toggle-status');
 
     Route::get('/drivers', [DriverController::class, 'index'])->name('drivers.index');
     Route::get('/drivers/add', [DriverController::class, 'create'])->name('drivers.create');
@@ -170,6 +173,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/drivers/{id}/edit', [DriverController::class, 'edit'])->name('drivers.edit');
     Route::put('/drivers/{id}', [DriverController::class, 'update'])->name('drivers.update');
     Route::delete('/drivers/{id}', [DriverController::class, 'destroy'])->name('drivers.destroy');
+    Route::patch('/drivers/{id}/toggle-status', [DriverController::class, 'toggleStatus'])->name('drivers.toggle-status');
 
     Route::get('/brokers', [BrokerController::class, 'index'])->name('brokers.index');
     Route::get('/brokers/add', [BrokerController::class, 'create'])->name('brokers.create');
@@ -177,6 +181,7 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/brokers/{id}/edit', [BrokerController::class, 'edit'])->name('brokers.edit');
     Route::put('/brokers/{id}', [BrokerController::class, 'update'])->name('brokers.update');
     Route::delete('/brokers/{id}', [BrokerController::class, 'destroy'])->name('brokers.destroy');
+    Route::patch('/brokers/{id}/toggle-status', [BrokerController::class, 'toggleStatus'])->name('brokers.toggle-status');
 
     Route::get('/deals', [DealController::class, 'index'])->name('deals.index');
     Route::get('/deals/add', [DealController::class, 'create'])->name('deals.create');
@@ -350,6 +355,9 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
 
             Route::delete('/{user}/delete', [SubscriptionManagementController::class, 'deleteUser'])
                 ->name('delete');
+
+            Route::patch('/{user}/toggle-status', [SubscriptionManagementController::class, 'toggleUserStatus'])
+                ->name('toggle-user-status');
 
             Route::get('/export/users', [SubscriptionManagementController::class, 'exportUsers'])
                 ->name('export');

@@ -51,6 +51,7 @@
                     <th>EIN</th>
                     <th>Dispatcher</th>
                     <th>Attachments</th>
+                    <th>Status</th>
                     <th class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -66,29 +67,52 @@
                       <td>{{ $carrier->ein }}</td>
                       <td>{{ optional($carrier->dispatchers->user)->name ?? 'N/A' }}</td>
                       <td><a href="/attachments/list/{{ $carrier->user_id }}">Attachments</a></td>
+                      <td>
+                        <x-user-status-badge :user="$carrier->user" />
+                      </td>
                       <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                          @can('pode_editar_carriers')
-                          <a href="{{ route('carriers.edit', $carrier) }}" class="btn btn-sm btn-primary" title="Editar">
-                            <i class="fa fa-edit"></i>
-                          </a>
-                          @endcan
-
-                          @can('pode_eliminar_carriers')
-                          <form action="{{ route('carriers.destroy', $carrier) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este carrier?')" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
-                              <i class="fa fa-times"></i>
-                            </button>
-                          </form>
-                          @endcan
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            @can('pode_editar_carriers')
+                            <li>
+                              <a class="dropdown-item" href="{{ route('carriers.edit', $carrier) }}">
+                                <i class="fa fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            @endcan
+                            
+                            @if(auth()->user()->is_owner || auth()->user()->is_admin)
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <x-toggle-status-button 
+                                  :user="$carrier->user" 
+                                  :route="route('carriers.toggle-status', $carrier->id)" 
+                                />
+                              </li>
+                            @endif
+                            
+                            @can('pode_eliminar_carriers')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <form action="{{ route('carriers.destroy', $carrier) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este carrier?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="dropdown-item text-danger">
+                                  <i class="fa fa-times me-2"></i>Delete
+                                </button>
+                              </form>
+                            </li>
+                            @endcan
+                          </ul>
                         </div>
                       </td>
                     </tr>
                   @empty
                     <tr>
-                      <td colspan="10" class="text-center text-muted">Nenhum carrier encontrado.</td>
+                      <td colspan="11" class="text-center text-muted">Nenhum carrier encontrado.</td>
                     </tr>
                   @endforelse
                 </tbody>

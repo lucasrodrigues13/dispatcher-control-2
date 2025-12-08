@@ -23,6 +23,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_owner',
         'is_subowner',
         'is_admin',
+        'is_active',
         'photo',
         'logo',
     ];
@@ -38,6 +39,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_owner' => 'boolean',
         'is_subowner' => 'boolean',
         'is_admin' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function roles()
