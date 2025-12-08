@@ -585,33 +585,68 @@
             </tbody>
             <tfoot class="table-light">
                 <tr>
+                    {{-- Coluna 1: Checkbox - vazia --}}
                     <th></th>
-                    <th class="text-end" id="total-label-cell">
+                    {{-- Coluna 2: LOAD ID - Label TOTAL --}}
+                    <th class="text-end column-load_id" id="total-label-cell">
                         <strong>TOTAL:</strong>
                     </th>
-                    {{-- Total na coluna do PRICE (coluna 5) --}}
+                    {{-- Coluna 3: CARRIER - vazia --}}
+                    <th class="column-carrier"></th>
+                    {{-- Coluna 4: DRIVER - vazia --}}
+                    <th class="column-driver"></th>
+                    {{-- Coluna 5: DISPATCHER - vazia --}}
+                    <th class="column-dispatcher"></th>
+                    {{-- Coluna 6: PRICE - Total --}}
                     <th class="text-end column-price">
                         <strong class="text-success" id="table-total-price">
                             ${{ number_format($loads->sum('price') ?? 0, 2) }}
                         </strong>
                     </th>
-                    {{-- Coluna CHARGE STATUS vazia (coluna 6) --}}
-                    <th></th>
-                    {{-- Colunas de datas vazias (colunas 7-12) --}}
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    {{-- Total na coluna do Paid Amount (coluna 13) --}}
+                    {{-- Coluna 7: CHARGE STATUS - vazia --}}
+                    <th class="column-charge_status"></th>
+                    {{-- Coluna 8: INTERNAL LOAD ID - vazia e hidden --}}
+                    <th class="column-internal_load_id hidden"></th>
+                    {{-- Coluna 9: VEHICLE - vazia e hidden --}}
+                    <th class="column-year_make_model hidden"></th>
+                    {{-- Coluna 10: VIN - vazia e hidden --}}
+                    <th class="column-vin hidden"></th>
+                    {{-- Coluna 11: LOT NUMBER - vazia e hidden --}}
+                    <th class="column-lot_number hidden"></th>
+                    {{-- Coluna 12: BROKER FEE - vazia e hidden --}}
+                    <th class="column-broker_fee hidden"></th>
+                    {{-- Coluna 13: DRIVER PAY - vazia e hidden --}}
+                    <th class="column-driver_pay hidden"></th>
+                    {{-- Coluna 14: PAYMENT STATUS - vazia e hidden --}}
+                    <th class="column-payment_status hidden"></th>
+                    {{-- Coluna 15: INVOICE NUMBER - vazia e hidden --}}
+                    <th class="column-invoice_number hidden"></th>
+                    {{-- Coluna 16: PICKUP LOCATION - vazia e hidden --}}
+                    <th class="column-pickup_name hidden"></th>
+                    {{-- Coluna 17: DELIVERY LOCATION - vazia e hidden --}}
+                    <th class="column-delivery_name hidden"></th>
+                    {{-- Coluna 18: CREATION DATE - vazia --}}
+                    <th class="column-creation_date"></th>
+                    {{-- Coluna 19: ACTUAL PICKUP - vazia --}}
+                    <th class="column-actual_pickup_date"></th>
+                    {{-- Coluna 20: ACTUAL DELIVERY - vazia --}}
+                    <th class="column-actual_delivery_date"></th>
+                    {{-- Coluna 21: SCHEDULED PICKUP - vazia --}}
+                    <th class="column-scheduled_pickup_date"></th>
+                    {{-- Coluna 22: SCHEDULED DELIVERY - vazia --}}
+                    <th class="column-scheduled_delivery_date"></th>
+                    {{-- Coluna 23: INVOICE DATE - vazia --}}
+                    <th class="column-invoice_date"></th>
+                    {{-- Coluna 24: RECEIPT DATE - vazia --}}
+                    <th class="column-receipt_date"></th>
+                    {{-- Coluna 25: PAID AMOUNT - Total --}}
                     <th class="text-end column-paid-amount">
                         <strong class="text-info" id="table-total-paid-amount">
                             ${{ number_format($loads->sum('paid_amount') ?? 0, 2) }}
                         </strong>
                     </th>
-                    {{-- Coluna ACTIONS vazia (coluna 14) --}}
-                    <th></th>
+                    {{-- Coluna 26: ACTIONS - vazia --}}
+                    <th class="column-actions"></th>
                 </tr>
             </tfoot>
         </table>
@@ -1328,11 +1363,9 @@ document.getElementById('save-form')?.addEventListener('submit', function (e) {
 
 <script>
     // Script para gerenciar a exclusão de loads da tabela
-document.addEventListener('DOMContentLoaded', function() {
 
-
-    // Função para atualizar os totais da tabela
-    function updateTableTotals() {
+// ⭐ Função global para atualizar os totais da tabela
+function updateTableTotals() {
         let totalPrice = 0;
         let totalPaidAmount = 0;
 
@@ -1388,14 +1421,11 @@ document.addEventListener('DOMContentLoaded', function() {
             headerCount.textContent = `Filtered Loads (${remainingRows} records)`;
         }
 
-        // Reconstrói o tfoot após atualizar os totais
-        if (typeof rebuildTfoot === 'function') {
-          rebuildTfoot();
-        }
-        
         return { totalPrice, totalPaidAmount, remainingRows };
-    }
+}
 
+// Inicialização do gerenciamento de exclusão de loads
+document.addEventListener('DOMContentLoaded', function() {
     // Função para deletar uma load
     function deleteLoad(loadId, loadNumber, buttonElement) {
         if (!confirm(`Are you sure you want to remove Load ${loadNumber} from this invoice?`)) {
@@ -1906,8 +1936,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dueDateInput.value = defaultDate.toISOString().split('T')[0];
 
             // Reset payment terms para net_30 se a data foi ajustada
-            if (paymentTermsSelect) {
-                paymentTermsSelect.value = 'net_30';
+            if (paymentTermsOptionSelect) {
+                paymentTermsOptionSelect.value = '30';
             }
         } else if (selectedDate > new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)) {
             // Data muito no futuro (mais de 1 ano)
@@ -1962,13 +1992,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ⭐ INDICADOR VISUAL NO SELECT DE PAYMENT TERMS
-    if (paymentTermsSelect) {
-        paymentTermsSelect.addEventListener('focus', function() {
+    if (paymentTermsOptionSelect) {
+        paymentTermsOptionSelect.addEventListener('focus', function() {
             this.style.borderColor = '#0d6efd';
             this.style.boxShadow = '0 0 0 0.2rem rgba(13, 110, 253, 0.25)';
         });
 
-        paymentTermsSelect.addEventListener('blur', function() {
+        paymentTermsOptionSelect.addEventListener('blur', function() {
             this.style.removeProperty('border-color');
             this.style.removeProperty('box-shadow');
         });
@@ -2960,103 +2990,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return -1;
   }
 
-  // Função para reconstruir o tfoot dinamicamente baseado no thead
-  function rebuildTfoot() {
-    const table = document.querySelector(".table-responsive table");
-    if (!table) return;
-    
-    const headerRow = table.querySelector("thead tr");
-    if (!headerRow) return;
-    
-    const tfoot = table.querySelector("tfoot");
-    if (!tfoot) return;
-    
-    let tfootRow = tfoot.querySelector("tr");
-    if (!tfootRow) {
-      tfootRow = document.createElement('tr');
-      tfoot.appendChild(tfootRow);
-    }
-    
-    // Calcula os totais diretamente das linhas do tbody (mesmo que colunas estejam ocultas)
-    let totalPrice = 0;
-    let totalPaidAmount = 0;
-    
-    const allRows = document.querySelectorAll('tbody tr');
-    allRows.forEach(function(row) {
-        // Ignora linhas ocultas
-        if (row.style.display === 'none') return;
-        
-        // Busca a célula de PRICE na linha (mesmo que esteja oculta com classe hidden)
-        const priceCell = row.querySelector('.column-price [data-price]');
-        if (priceCell) {
-            const price = parseFloat(priceCell.getAttribute('data-price')) || 0;
-            totalPrice += price;
-        }
-        
-        // Busca a célula de PAID AMOUNT na linha (mesmo que esteja oculta com classe hidden)
-        const paidAmountCell = row.querySelector('.column-paid-amount [data-paid-amount]');
-        if (paidAmountCell) {
-            const paidAmount = parseFloat(paidAmountCell.getAttribute('data-paid-amount')) || 0;
-            totalPaidAmount += paidAmount;
-        }
-    });
-    
-    // Formata os valores
-    const totalPriceFormatted = '$' + totalPrice.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    const totalPaidAmountFormatted = '$' + totalPaidAmount.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    
-    // Limpa o tfoot
-    tfootRow.innerHTML = '';
-    
-    // Percorre todas as células do thead e cria células correspondentes no tfoot
-    const headerCells = Array.from(headerRow.querySelectorAll("th"));
-    
-    headerCells.forEach((headerCell, index) => {
-      const th = document.createElement('th');
-      
-      // Se for a primeira coluna (checkbox), adiciona o texto TOTAL
-      if (index === 0) {
-        th.className = 'text-end';
-        th.id = 'total-label-cell';
-          th.innerHTML = '<strong>TOTAL:</strong>';
-      }
-      // Se for a coluna PRICE, adiciona o totalizador
-      else if (headerCell.classList.contains('column-price')) {
-        th.className = 'text-end column-price';
-        if (!headerCell.classList.contains('hidden')) {
-          th.innerHTML = '<strong class="text-success" id="table-total-price">' + totalPriceFormatted + '</strong>';
-        } else {
-          th.classList.add('hidden');
-          th.innerHTML = '';
-        }
-      }
-      // Se for a coluna PAID AMOUNT, adiciona o totalizador
-      else if (headerCell.classList.contains('column-paid-amount')) {
-        th.className = 'text-end column-paid-amount';
-        if (!headerCell.classList.contains('hidden')) {
-          th.innerHTML = '<strong class="text-info" id="table-total-paid-amount">' + totalPaidAmountFormatted + '</strong>';
-        } else {
-          th.classList.add('hidden');
-          th.innerHTML = '';
-        }
-      }
-      // Para outras colunas, deixa vazia mas mantém a mesma visibilidade
-      else {
-        if (headerCell.classList.contains('hidden')) {
-          th.classList.add('hidden');
-        }
-        th.innerHTML = '';
-      }
-      
-      tfootRow.appendChild(th);
-    });
-  }
 
   function toggleColumnByName(columnName, show) {
     const colIndex = getColumnIndexByName(columnName);
@@ -3079,19 +3012,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (show && (columnName.toUpperCase() === 'PRICE' || columnName.toUpperCase() === 'PAID AMOUNT')) {
       // Aguarda um pouco para garantir que o DOM foi atualizado e as colunas estão visíveis
       setTimeout(function() {
-        // Reconstrói o tfoot que já calcula os totais diretamente das linhas do tbody
-        // Isso garante que os valores sejam calculados mesmo que as colunas tenham estado ocultas
-        if (typeof rebuildTfoot === 'function') {
-          rebuildTfoot();
-        }
-        // Atualiza também os elementos do formulário e outros lugares
+        // Atualiza os totais
         if (typeof updateTableTotals === 'function') {
           updateTableTotals();
         }
       }, 200);
     } else {
-      // Reconstrói o tfoot para alinhar com o thead
-      rebuildTfoot();
       // Atualiza os totais normalmente
       if (typeof updateTableTotals === 'function') {
         updateTableTotals();
@@ -3125,40 +3051,43 @@ document.addEventListener("DOMContentLoaded", function () {
       toggleColumnByName(columnName, checkbox.checked);
 
       const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      toggleAll.checked = allChecked;
+      if (toggleAll) {
+        toggleAll.checked = allChecked;
+      }
 
       toggleActionsColumn();
     });
   });
 
-  toggleAll.addEventListener("change", () => {
-    const show = toggleAll.checked;
-    checkboxes.forEach(cb => {
-      cb.checked = show;
-      const columnName = cb.dataset.column;
-      toggleColumnByName(columnName, show);
-    });
+  if (toggleAll) {
+    toggleAll.addEventListener("change", () => {
+      const show = toggleAll.checked;
+      checkboxes.forEach(cb => {
+        cb.checked = show;
+        const columnName = cb.dataset.column;
+        toggleColumnByName(columnName, show);
+      });
 
-    toggleActionsColumn();
-    
-    // Se mostrando todas as colunas e PRICE/PAID AMOUNT estão incluídas, recalcula totais
-    if (show) {
-      setTimeout(function() {
-        if (typeof updateTableTotals === 'function') {
-          updateTableTotals();
-          rebuildTfoot();
-        }
-      }, 100);
-    }
-  });
+      toggleActionsColumn();
+      
+      // Se mostrando todas as colunas e PRICE/PAID AMOUNT estão incluídas, recalcula totais
+      if (show) {
+        setTimeout(function() {
+          if (typeof updateTableTotals === 'function') {
+            updateTableTotals();
+          }
+        }, 100);
+      }
+    });
+  }
 
   // Executar ao carregar para garantir consistência inicial
   toggleActionsColumn();
-  // Atualiza os totais primeiro, depois reconstrói o tfoot
+  
+  // Atualiza os totais ao carregar
   if (typeof updateTableTotals === 'function') {
     updateTableTotals();
   }
-  rebuildTfoot();
 });
 
 // Função para inicializar o modal de seleção de colunas
@@ -3244,9 +3173,6 @@ function initColumnSelector() {
             if (typeof updateTableTotals === 'function') {
                 updateTableTotals();
             }
-            if (typeof rebuildTfoot === 'function') {
-                rebuildTfoot();
-            }
             
             // Fechar modal
             const bootstrapModal = bootstrap.Modal.getInstance(modal);
@@ -3257,48 +3183,50 @@ function initColumnSelector() {
     }
     
     // Inicializar checkboxes do modal quando ele for aberto
-    modal.addEventListener('show.bs.modal', function () {
-        const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
-        const table = document.querySelector(".table-responsive table");
-        
-        if (table) {
-            checkboxes.forEach(checkbox => {
-                const columnName = checkbox.getAttribute('data-column');
-                if (columnName) {
-                    const header = table.querySelector(`th[data-column="${columnName}"], th.column-${columnName}`);
-                    checkbox.checked = header && header.style.display !== 'none';
-                }
-            });
-        }
-    });
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"].column-toggle');
+            const table = document.querySelector(".table-responsive table");
+            
+            if (table) {
+                checkboxes.forEach(checkbox => {
+                    const columnName = checkbox.getAttribute('data-column');
+                    if (columnName) {
+                        const header = table.querySelector(`th[data-column="${columnName}"], th.column-${columnName}`);
+                        checkbox.checked = header && header.style.display !== 'none';
+                    }
+                });
+            }
+        });
+    }
 }
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
     initColumnSelector();
+    
+    // Pesquisa dinâmica de colunas
+    const searchColumnsInput = document.getElementById('searchColumnsInput');
+    if (searchColumnsInput) {
+      searchColumnsInput.addEventListener('input', function () {
+        const searchTerm = this.value.toLowerCase();
+        const checkboxes = document.querySelectorAll('#selectColums .toggle-column');
+
+        checkboxes.forEach(function (checkbox) {
+          const label = checkbox.closest('label');
+          const container = checkbox.closest('.col-md-6');
+
+          if (label && container) {
+            if (label.textContent.toLowerCase().includes(searchTerm)) {
+              container.style.display = 'block';
+            } else {
+              container.style.display = 'none';
+            }
+          }
+        });
+      });
+    }
 });
-
-// Pesquisa dinâmica de colunas
-const searchColumnsInput = document.getElementById('searchColumnsInput');
-if (searchColumnsInput) {
-  searchColumnsInput.addEventListener('input', function () {
-    const searchTerm = this.value.toLowerCase();
-    const checkboxes = document.querySelectorAll('#selectColums .toggle-column');
-
-    checkboxes.forEach(function (checkbox) {
-      const label = checkbox.closest('label');
-      const container = checkbox.closest('.col-md-6');
-
-      if (label && container) {
-        if (label.textContent.toLowerCase().includes(searchTerm)) {
-          container.style.display = 'block';
-        } else {
-          container.style.display = 'none';
-        }
-      }
-    });
-  });
-}
 
 // Function to show Deal Required modal with redirect button
 function showDealRequiredModal(message) {
