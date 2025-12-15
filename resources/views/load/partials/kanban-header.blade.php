@@ -58,6 +58,10 @@
       
       <!-- Separador visual -->
       <div style="width: 1px; height: 35px; background-color: #dee2e6; margin: 0 10px;"></div>
+      <button type="button" id="sync-new-kanban-status-btn" class="btn btn-warning btn-sm" title="Sync Status of New Loads">
+        <i class="fa fa-sync"></i>
+        <span class="d-none d-md-inline">Sync Kanban Status</span>
+      </button>
       <a href="#" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importLoadsModal">
         <i class="fa fa-upload"></i>
         <span class="d-none d-md-inline">Import</span>

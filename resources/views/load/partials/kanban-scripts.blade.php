@@ -34,6 +34,72 @@ if (deleteAllBtn) {
     });
 }
 
+// Sincronizar kanban_status dos loads em 'new'
+const syncNewKanbanStatusBtn = document.getElementById('sync-new-kanban-status-btn');
+if (syncNewKanbanStatusBtn) {
+    syncNewKanbanStatusBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        // Desabilitar botão durante o processo
+        const btn = this;
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span class="d-none d-md-inline">Syncing...</span>';
+        
+        fetch("{{ route('loads.sync.new.kanban.status') }}", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Erro ao sincronizar');
+            return response.json();
+        })
+        .then(data => {
+            // Mostrar mensagem de sucesso
+            if (data.success) {
+                // Usar SweetAlert se disponível, senão alert normal
+                if (typeof swal !== 'undefined') {
+                    swal({
+                        title: "Sucesso!",
+                        text: data.message + "\n\nDetalhes:\n" + 
+                              "Total processados: " + data.data.total_processed + "\n" +
+                              "Atualizados: " + data.data.updated,
+                        icon: "success",
+                        button: "OK"
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    alert(data.message);
+                    location.reload();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            if (typeof swal !== 'undefined') {
+                swal({
+                    title: "Erro!",
+                    text: "Erro ao sincronizar status dos loads.",
+                    icon: "error",
+                    button: "OK"
+                });
+            } else {
+                alert('Erro ao sincronizar status dos loads.');
+            }
+        })
+        .finally(() => {
+            // Reabilitar botão
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        });
+    });
+}
+
 // Removed: toggle-mode-btn functionality moved to dedicated button "Go to Table View"
 
 // Scripts de configuração de campos

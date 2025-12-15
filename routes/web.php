@@ -258,6 +258,9 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     // Rota para obter lista de drivers
     Route::get('/loads/get-drivers-list', [KanbanController::class, 'getDriversList'])
         ->name('loads.drivers.list');
+    // Sincronizar kanban_status dos loads em 'new'
+    Route::post('/loads/sync-new-kanban-status', [KanbanController::class, 'syncNewLoadsKanbanStatus'])
+        ->name('loads.sync.new.kanban.status');
 
 
     // Kanban Container

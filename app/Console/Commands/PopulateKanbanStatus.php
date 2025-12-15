@@ -73,36 +73,54 @@ class PopulateKanbanStatus extends Command
     /**
      * Determine load status based on field values
      * Priority order: paid > billed > delivered > picked_up > assigned > new
+     * 
+     * Regras de negócio:
+     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 2. billed -> quando tem invoice_number ou invoice_date
+     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
+     * 4. picked_up -> quando tem actual_pickup_date
+     * 5. assigned -> quando tem driver OU scheduled_pickup_date
+     * 6. new -> padrão
      */
     private function determineLoadStatus($load)
     {
-        // PAID: if has paid_amount or payment_status is 'paid'
-        if (($load->paid_amount && $load->paid_amount > 0) || 
-            (strtolower($load->payment_status ?? '') === 'paid')) {
+        // 1. PAID - Se tem valor pago ou status indica pago
+        if (!empty($load->paid_amount) && $load->paid_amount > 0) {
             return 'paid';
         }
+        
+        if (!empty($load->payment_status)) {
+            $paymentStatus = strtolower(trim($load->payment_status));
+            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
+            foreach ($paidStatuses as $status) {
+                if (strpos($paymentStatus, $status) !== false) {
+                    return 'paid';
+                }
+            }
+        }
 
-        // BILLED: if has invoice_date or invoice_number
-        if ($load->invoice_date || $load->invoice_number) {
+        // 2. BILLED - Se tem invoice (fatura)
+        if ($load->invoice_number || $load->invoice_date) {
             return 'billed';
         }
 
-        // DELIVERED: if has actual_delivery_date or scheduled_delivery_date
-        if ($load->actual_delivery_date || $load->scheduled_delivery_date) {
+        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
+        if ($load->actual_delivery_date) {
             return 'delivered';
         }
 
-        // PICKED UP: if has actual_pickup_date
+        // 4. PICKED_UP - Se tem data de coleta REAL
         if ($load->actual_pickup_date) {
             return 'picked_up';
         }
 
-        // ASSIGNED: if has scheduled_pickup_date
-        if ($load->scheduled_pickup_date) {
+        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
+        if ($load->driver || $load->scheduled_pickup_date) {
             return 'assigned';
         }
 
-        // NEW: default
+        // 6. NEW - Status padrão
         return 'new';
     }
 }
+

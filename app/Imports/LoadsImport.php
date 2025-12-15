@@ -243,8 +243,14 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 'driver' => $this->cleanString($this->getValue($row, [
                     'driver', 'driver_name', 'motorista', 'nome_motorista'
                 ])),
-                'status_move' => 'no_moved',
+                'status_move' => $this->normalizeStatus($this->getValue($row, [
+                    'status_move', 'status', 'load_status', 'estado', 'state', 'current_status'
+                ])),
             ];
+
+            // ⭐ NOVO: Determinar kanban_status baseado nas regras de negócio
+            // Deve ser calculado DEPOIS de montar $data para ter acesso a todos os campos
+            $data['kanban_status'] = $this->determineKanbanStatus($data);
 
             // ⭐ CRITICAL FIX: Only include fields that have values and exist in the fillable array AND database
             $fillableFields = (new Load)->getFillable();
@@ -355,6 +361,116 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
             ]);
             return null;
         }
+    }
+
+    /**
+     * ⭐ NOVO: Determinar kanban_status baseado nas regras de negócio
+     * Lógica em cascata (do mais avançado para o mais básico):
+     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 2. billed -> quando tem invoice_number ou invoice_date
+     * 3. delivered -> quando tem actual_delivery_date
+     * 4. picked_up -> quando tem actual_pickup_date
+     * 5. assigned -> quando tem driver OU scheduled_pickup_date
+     * 6. new -> padrão (quando não se encaixa em nenhum acima)
+     */
+    private function determineKanbanStatus($data)
+    {
+        // 1. PAID - Se tem valor pago ou status de pagamento indica pago
+        if (!empty($data['paid_amount']) && $data['paid_amount'] > 0) {
+            return 'paid';
+        }
+        
+        if (!empty($data['payment_status'])) {
+            $paymentStatus = strtolower(trim($data['payment_status']));
+            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
+            foreach ($paidStatuses as $status) {
+                if (strpos($paymentStatus, $status) !== false) {
+                    return 'paid';
+                }
+            }
+        }
+
+        // 2. BILLED - Se tem invoice (fatura)
+        if (!empty($data['invoice_number']) || !empty($data['invoice_date'])) {
+            return 'billed';
+        }
+
+        // 3. DELIVERED - Se tem data de entrega real
+        if (!empty($data['actual_delivery_date'])) {
+            return 'delivered';
+        }
+
+        // 4. PICKED_UP - Se tem data de coleta real
+        if (!empty($data['actual_pickup_date'])) {
+            return 'picked_up';
+        }
+
+        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
+        if (!empty($data['driver']) || !empty($data['scheduled_pickup_date'])) {
+            return 'assigned';
+        }
+
+        // 6. NEW - Status padrão
+        return 'new';
+    }
+
+    /**
+     * ⭐ NOVO: Normalizar status do SuperDispatcher para valores do sistema (status_move)
+     */
+    private function normalizeStatus($value)
+    {
+        if ($value === null || $value === '') {
+            return 'no_moved';
+        }
+
+        $value = strtolower(trim((string) $value));
+
+        // Mapeamento de status do SuperDispatcher para o sistema
+        $statusMap = [
+            // Status comuns do SuperDispatcher
+            'new' => 'no_moved',
+            'pending' => 'no_moved',
+            'available' => 'no_moved',
+            'not assigned' => 'no_moved',
+            'dispatched' => 'moved',
+            'in transit' => 'moved',
+            'picked up' => 'moved',
+            'en route' => 'moved',
+            'delivered' => 'moved',
+            'completed' => 'moved',
+            
+            // Status em português
+            'novo' => 'no_moved',
+            'pendente' => 'no_moved',
+            'disponível' => 'no_moved',
+            'disponivel' => 'no_moved',
+            'despachado' => 'moved',
+            'em transito' => 'moved',
+            'em trânsito' => 'moved',
+            'coletado' => 'moved',
+            'entregue' => 'moved',
+            'concluído' => 'moved',
+            'concluido' => 'moved',
+            
+            // Status diretos do sistema
+            'no_moved' => 'no_moved',
+            'moved' => 'moved',
+        ];
+
+        // Tentar buscar mapeamento exato
+        if (isset($statusMap[$value])) {
+            return $statusMap[$value];
+        }
+
+        // Tentar buscar por correspondência parcial
+        foreach ($statusMap as $key => $mapped) {
+            if (strpos($value, $key) !== false || strpos($key, $value) !== false) {
+                return $mapped;
+            }
+        }
+
+        // Se não encontrou mapeamento, retornar padrão
+        return 'no_moved';
     }
 
     /**

@@ -1,0 +1,35 @@
+feat: Implementar sistema de kanban_status e mapeamento de permissões
+
+- Adicionar cálculo automático de kanban_status na importação de loads
+  * Determina status baseado em regras: paid > billed > delivered > picked_up > assigned > new
+  * Considera paid_amount, invoice_number, actual_delivery_date, actual_pickup_date, driver, scheduled_pickup_date
+  * Atualiza LoadsImport.php com função determineKanbanStatus()
+
+- Adicionar botão de sincronização de kanban_status no Kanban
+  * Botão "Sync Kanban Status" no header do Kanban
+  * Sincroniza apenas loads com status 'new' após edições manuais
+  * Rota POST /loads/sync-new-kanban-status
+  * Método syncNewLoadsKanbanStatus() no KanbanController
+  * AJAX com feedback visual e reload automático
+
+- Criar seeder de mapeamento role-permissions
+  * RolePermissionMappingSeeder mapeia permissões para roles automaticamente
+  * Suporta múltiplas roles por usuário (união de permissões)
+  * Roles: Owner, Subowner, Admin, Dispatcher, Carrier, Broker, Employee, Driver
+  * Permissões específicas por tipo de usuário
+
+- Atualizar lógica de kanban_status em controllers
+  * KanbanController::determineLoadStatus() com regras atualizadas
+  * PopulateKanbanStatus command atualizado com mesma lógica
+  * Model Load com valor padrão 'new' para kanban_status
+
+Arquivos modificados:
+- app/Imports/LoadsImport.php
+- app/Http/Controllers/KanbanController.php
+- app/Console/Commands/PopulateKanbanStatus.php
+- app/Models/Load.php
+- routes/web.php
+- resources/views/load/partials/kanban-header.blade.php
+- resources/views/load/partials/kanban-scripts.blade.php
+- database/seeders/RolePermissionMappingSeeder.php (novo)
+

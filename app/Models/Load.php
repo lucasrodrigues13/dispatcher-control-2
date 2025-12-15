@@ -123,6 +123,7 @@ class Load extends Model
      */
     protected $attributes = [
         'status_move' => 'no_moved',
+        'kanban_status' => 'new',
     ];
 
     /**

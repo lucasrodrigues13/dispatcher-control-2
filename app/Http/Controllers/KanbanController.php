@@ -76,41 +76,53 @@ class KanbanController extends Controller
     /**
      * Determine load status based on field priority logic
      * Public so it can be used by Artisan command
+     * 
+     * Regras de negócio (em ordem de prioridade):
+     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 2. billed -> quando tem invoice_number ou invoice_date
+     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
+     * 4. picked_up -> quando tem actual_pickup_date
+     * 5. assigned -> quando tem driver OU scheduled_pickup_date
+     * 6. new -> padrão
      */
     public function determineLoadStatus($load)
     {
-        // Priority logic (highest to lowest):
-        // 1. If paid has value -> PAID
-        if (!empty($load->paid_amount) || !empty($load->receipt_date)) {
+        // 1. PAID - Se tem valor pago ou status indica pago
+        if (!empty($load->paid_amount) && $load->paid_amount > 0) {
             return 'paid';
         }
         
-        // 2. If invoiced has value -> BILLED
+        if (!empty($load->payment_status)) {
+            $paymentStatus = strtolower(trim($load->payment_status));
+            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
+            foreach ($paidStatuses as $status) {
+                if (strpos($paymentStatus, $status) !== false) {
+                    return 'paid';
+                }
+            }
+        }
+        
+        // 2. BILLED - Se tem invoice (fatura)
         if (!empty($load->invoice_number) || !empty($load->invoice_date)) {
             return 'billed';
         }
         
-        // 3. If actual delivered date has value -> DELIVERED
+        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
         if (!empty($load->actual_delivery_date)) {
             return 'delivered';
         }
         
-        // 4. If schedule delivery date has value -> DELIVERED
-        if (!empty($load->scheduled_delivery_date)) {
-            return 'delivered';
-        }
-        
-        // 5. If actual picked up date has value -> PICKED UP
+        // 4. PICKED_UP - Se tem data de coleta REAL
         if (!empty($load->actual_pickup_date)) {
             return 'picked_up';
         }
         
-        // 6. If schedule picked up date has value -> ASSIGNED
-        if (!empty($load->scheduled_pickup_date)) {
+        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
+        if (!empty($load->driver) || !empty($load->scheduled_pickup_date)) {
             return 'assigned';
         }
         
-        // 7. Default -> NEW
+        // 6. NEW - Status padrão
         return 'new';
     }
 
@@ -283,4 +295,58 @@ class KanbanController extends Controller
             return response()->json([], 500);
         }
     }
+
+    /**
+     * Sincronizar kanban_status de todos os loads que estão em 'new'
+     * Útil para recalcular status após edições manuais
+     */
+    public function syncNewLoadsKanbanStatus()
+    {
+        try {
+            // Buscar apenas loads com status 'new'
+            $loads = Load::where('kanban_status', 'new')->get();
+            
+            $stats = [
+                'new' => 0,
+                'assigned' => 0,
+                'picked_up' => 0,
+                'delivered' => 0,
+                'billed' => 0,
+                'paid' => 0
+            ];
+            
+            $updated = 0;
+            
+            foreach ($loads as $load) {
+                $oldStatus = $load->kanban_status;
+                $newStatus = $this->determineLoadStatus($load);
+                
+                // Atualizar apenas se o status mudou
+                if ($oldStatus !== $newStatus) {
+                    $load->kanban_status = $newStatus;
+                    $load->save();
+                    $updated++;
+                }
+                
+                $stats[$newStatus]++;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronização concluída! {$updated} load(s) atualizado(s).",
+                'data' => [
+                    'total_processed' => count($loads),
+                    'updated' => $updated,
+                    'stats' => $stats
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao sincronizar status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+
