@@ -100,7 +100,9 @@ class TimeLineChargeController extends Controller
             $request->filled(['date_start', 'date_end']);
 
         if ($hasFilters) {
-            $query = Load::query();
+            // ⭐ IMPORTANTE: Usar withTrashed() para invoices poderem ver loads excluídos
+            // Mas apenas para visualização - não podem ser usados em novas invoices
+            $query = Load::withTrashed();
 
             // Carrega os relacionamentos necessários para exibir carrier e dispatcher
             $query->with(['carrier.user', 'dispatcher.user']);
@@ -275,6 +277,7 @@ class TimeLineChargeController extends Controller
             $semDeal = [];
 
             foreach ($carriers as $carrierId) {
+                // ⭐ IMPORTANTE: Não usar withTrashed() aqui - apenas loads não excluídos podem ser usados em novas invoices
                 $carrierLoadIds = \App\Models\Load::whereIn('load_id', $loadIds)
                     ->where('carrier_id', $carrierId)
                     ->pluck('load_id')
@@ -494,8 +497,9 @@ class TimeLineChargeController extends Controller
             return redirect()->back()->with('error', 'Invalid Load IDs.');
         }
 
-        // Inicia a query com os load_ids
-        $query = Load::whereIn('load_id', $loadIds);
+        // ⭐ IMPORTANTE: Usar withTrashed() para invoices poderem ver loads excluídos
+        // Inicia a query com os load_ids (incluindo excluídos)
+        $query = Load::withTrashed()->whereIn('load_id', $loadIds);
 
         // Aplica os filtros de data nos campos selecionados
         if ($dateStart && $dateEnd && count($filters)) {
@@ -776,6 +780,8 @@ class TimeLineChargeController extends Controller
 
         $amountType = $TimeLineCharge->amount_type;
         $loadIds = json_decode($TimeLineCharge->load_ids, true);
+        
+        // ⭐ IMPORTANTE: Usar withTrashed() para invoices poderem ver loads excluídos
 
         if (!in_array($amountType, ['price', 'paid_amount'])) {
             return response()->json(['error' => 'Invalid amount type.'], 400);
@@ -785,8 +791,10 @@ class TimeLineChargeController extends Controller
             return response()->json(['error' => 'Invalid Load IDs.'], 400);
         }
 
-        // Buscar os loads
-        $loads = Load::whereIn('load_id', $loadIds)
+        // ⭐ IMPORTANTE: Usar withTrashed() para invoices poderem ver loads excluídos
+        // Buscar os loads (incluindo excluídos para invoices existentes)
+        $loads = Load::withTrashed()
+            ->whereIn('load_id', $loadIds)
             ->select('load_id', 'employee_id', $amountType)
             ->get();
 

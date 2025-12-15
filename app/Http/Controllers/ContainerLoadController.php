@@ -18,6 +18,10 @@ class ContainerLoadController extends Controller
             ->whereHas('container', function ($query) {
                 $query->where('user_id', auth()->id());
             })
+            ->whereHas('load', function ($query) {
+                // ⭐ Filtrar apenas loads não excluídos (soft delete)
+                $query->whereNull('deleted_at');
+            })
             ->get();
 
         return response()->json($items);
@@ -59,6 +63,14 @@ class ContainerLoadController extends Controller
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
+        // ⭐ Validar que o load não está excluído
+        $load = Load::findOrFail($request->load_id);
+        if ($load->trashed()) {
+            return response()->json([
+                'message' => 'Não é possível associar um load excluído.',
+            ], 422);
+        }
+
         // Remove associações anteriores deste load
         ContainerLoad::where('load_id', $request->load_id)->delete();
 
@@ -88,6 +100,10 @@ class ContainerLoadController extends Controller
             ->whereHas('container', function ($query) {
                 $query->where('user_id', auth()->id());
             })
+            ->whereHas('load', function ($query) {
+                // ⭐ Filtrar apenas loads não excluídos (soft delete)
+                $query->whereNull('deleted_at');
+            })
             ->findOrFail($id);
 
         return response()->json($item);
@@ -99,6 +115,10 @@ class ContainerLoadController extends Controller
         $item = ContainerLoad::with(['container', 'load'])
             ->whereHas('container', function ($query) {
                 $query->where('user_id', auth()->id());
+            })
+            ->whereHas('load', function ($query) {
+                // ⭐ Filtrar apenas loads não excluídos (soft delete)
+                $query->whereNull('deleted_at');
             })
             ->findOrFail($id);
 

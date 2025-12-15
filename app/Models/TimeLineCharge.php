@@ -170,8 +170,11 @@ class TimeLineCharge extends Model
             return collect();
         }
 
-        // Primeiro, tenta buscar loads que ainda existem na tabela
-        $existingLoads = \App\Models\Load::whereIn('load_id', $loadIds)->get();
+        // ⭐ IMPORTANTE: Usar withTrashed() para invoices poderem ver loads excluídos
+        // Primeiro, tenta buscar loads que ainda existem na tabela (incluindo excluídos)
+        $existingLoads = \App\Models\Load::withTrashed()
+            ->whereIn('load_id', $loadIds)
+            ->get();
         $existingLoadIds = $existingLoads->pluck('load_id')->toArray();
 
         // Identifica loads que foram deletados
