@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Load;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LoadService
 {
@@ -149,6 +150,78 @@ class LoadService
         }
 
         return $query;
+    }
+
+    /**
+     * Determinar kanban_status baseado nas regras de negócio
+     * Pode receber um objeto Load ou um array de dados
+     * 
+     * Regras de negócio (em ordem de prioridade):
+     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 2. billed -> quando tem invoice_number ou invoice_date
+     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
+     * 4. picked_up -> quando tem actual_pickup_date
+     * 5. assigned -> quando tem driver OU scheduled_pickup_date
+     * 6. new -> padrão
+     * 
+     * @param \App\Models\Load|array $loadOrData Objeto Load ou array de dados
+     * @return string Status do kanban
+     */
+    public function determineKanbanStatus($loadOrData): string
+    {
+        // Normalizar para array
+        if (is_object($loadOrData)) {
+            $data = [
+                'paid_amount' => $loadOrData->paid_amount ?? null,
+                'payment_status' => $loadOrData->payment_status ?? null,
+                'invoice_number' => $loadOrData->invoice_number ?? null,
+                'invoice_date' => $loadOrData->invoice_date ?? null,
+                'actual_delivery_date' => $loadOrData->actual_delivery_date ?? null,
+                'actual_pickup_date' => $loadOrData->actual_pickup_date ?? null,
+                'driver' => $loadOrData->driver ?? null,
+                'scheduled_pickup_date' => $loadOrData->scheduled_pickup_date ?? null,
+            ];
+        } else {
+            $data = $loadOrData;
+        }
+
+        // 1. PAID - Se tem valor pago ou status indica pago
+        if (!empty($data['paid_amount']) && $data['paid_amount'] > 0) {
+            return 'paid';
+        }
+        
+        if (!empty($data['payment_status'])) {
+            $paymentStatus = strtolower(trim($data['payment_status']));
+            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
+            foreach ($paidStatuses as $status) {
+                if (strpos($paymentStatus, $status) !== false) {
+                    return 'paid';
+                }
+            }
+        }
+
+        // 2. BILLED - Se tem invoice (fatura)
+        if (!empty($data['invoice_number']) || !empty($data['invoice_date'])) {
+            return 'billed';
+        }
+
+        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
+        if (!empty($data['actual_delivery_date'])) {
+            return 'delivered';
+        }
+
+        // 4. PICKED_UP - Se tem data de coleta REAL
+        if (!empty($data['actual_pickup_date'])) {
+            return 'picked_up';
+        }
+
+        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
+        if (!empty($data['driver']) || !empty($data['scheduled_pickup_date'])) {
+            return 'assigned';
+        }
+
+        // 6. NEW - Status padrão
+        return 'new';
     }
 }
 

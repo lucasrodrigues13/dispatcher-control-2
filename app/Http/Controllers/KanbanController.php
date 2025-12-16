@@ -77,53 +77,15 @@ class KanbanController extends Controller
      * Determine load status based on field priority logic
      * Public so it can be used by Artisan command
      * 
-     * Regras de negócio (em ordem de prioridade):
-     * 1. paid -> quando tem paid_amount ou payment_status indica pago
-     * 2. billed -> quando tem invoice_number ou invoice_date
-     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
-     * 4. picked_up -> quando tem actual_pickup_date
-     * 5. assigned -> quando tem driver OU scheduled_pickup_date
-     * 6. new -> padrão
+     * ⭐ ATUALIZADO: Agora usa LoadService::determineKanbanStatus() para reutilizar lógica
+     * 
+     * @param \App\Models\Load $load
+     * @return string
      */
     public function determineLoadStatus($load)
     {
-        // 1. PAID - Se tem valor pago ou status indica pago
-        if (!empty($load->paid_amount) && $load->paid_amount > 0) {
-            return 'paid';
-        }
-        
-        if (!empty($load->payment_status)) {
-            $paymentStatus = strtolower(trim($load->payment_status));
-            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
-            foreach ($paidStatuses as $status) {
-                if (strpos($paymentStatus, $status) !== false) {
-                    return 'paid';
-                }
-            }
-        }
-        
-        // 2. BILLED - Se tem invoice (fatura)
-        if (!empty($load->invoice_number) || !empty($load->invoice_date)) {
-            return 'billed';
-        }
-        
-        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
-        if (!empty($load->actual_delivery_date)) {
-            return 'delivered';
-        }
-        
-        // 4. PICKED_UP - Se tem data de coleta REAL
-        if (!empty($load->actual_pickup_date)) {
-            return 'picked_up';
-        }
-        
-        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
-        if (!empty($load->driver) || !empty($load->scheduled_pickup_date)) {
-            return 'assigned';
-        }
-        
-        // 6. NEW - Status padrão
-        return 'new';
+        dd($load->toArray());
+        return $this->loadService->determineKanbanStatus($load);
     }
 
     /**
@@ -297,14 +259,18 @@ class KanbanController extends Controller
     }
 
     /**
-     * Sincronizar kanban_status de todos os loads que estão em 'new'
+     * Sincronizar kanban_status de todos os loads visíveis na tela
+     * Usa os mesmos filtros aplicados no Kanban para sincronizar apenas os loads exibidos
      * Útil para recalcular status após edições manuais
      */
-    public function syncNewLoadsKanbanStatus()
+    public function syncNewLoadsKanbanStatus(Request $request)
     {
         try {
-            // Buscar apenas loads com status 'new'
-            $loads = Load::where('kanban_status', 'new')->get();
+            // ⭐ IMPORTANTE: Usar os mesmos filtros do Kanban para sincronizar apenas loads visíveis
+            $query = $this->loadService->buildFilteredQuery($request);
+            
+            // Buscar todos os loads que estão sendo exibidos na tela (com filtros aplicados)
+            $loads = $query->orderByDesc('id')->get();
             
             $stats = [
                 'new' => 0,
@@ -319,7 +285,7 @@ class KanbanController extends Controller
             
             foreach ($loads as $load) {
                 $oldStatus = $load->kanban_status;
-                $newStatus = $this->determineLoadStatus($load);
+                $newStatus = $this->loadService->determineKanbanStatus($load);
                 
                 // Atualizar apenas se o status mudou
                 if ($oldStatus !== $newStatus) {
@@ -333,7 +299,7 @@ class KanbanController extends Controller
             
             return response()->json([
                 'success' => true,
-                'message' => "Sincronização concluída! {$updated} load(s) atualizado(s).",
+                'message' => "Sync completed! {$updated} load(s) updated out of " . count($loads) . " load(s) processed.",
                 'data' => [
                     'total_processed' => count($loads),
                     'updated' => $updated,
@@ -344,7 +310,7 @@ class KanbanController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao sincronizar status: ' . $e->getMessage()
+                'message' => 'Error syncing status: ' . $e->getMessage()
             ], 500);
         }
     }

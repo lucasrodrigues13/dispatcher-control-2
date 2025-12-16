@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Load;
+use App\Services\LoadService;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -17,6 +18,7 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
     private $carrierId;
     private $dispatcherId;
     private $employeeId;
+    private $loadService;
     private static $processedCount = 0;
     private static $errorCount = 0;
     private static $createdCount = 0;
@@ -27,6 +29,7 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
         $this->carrierId = $carrierId;
         $this->dispatcherId = $dispatcherId;
         $this->employeeId = $employeeId;
+        $this->loadService = app(LoadService::class);
 
         // Reset counters
         self::$processedCount = 0;
@@ -250,7 +253,8 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
 
             // ⭐ NOVO: Determinar kanban_status baseado nas regras de negócio
             // Deve ser calculado DEPOIS de montar $data para ter acesso a todos os campos
-            $data['kanban_status'] = $this->determineKanbanStatus($data);
+            // Usa LoadService para reutilizar lógica compartilhada
+            $data['kanban_status'] = $this->loadService->determineKanbanStatus($data);
 
             // ⭐ CRITICAL FIX: Only include fields that have values and exist in the fillable array AND database
             $fillableFields = (new Load)->getFillable();
@@ -363,56 +367,6 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
         }
     }
 
-    /**
-     * ⭐ NOVO: Determinar kanban_status baseado nas regras de negócio
-     * Lógica em cascata (do mais avançado para o mais básico):
-     * 1. paid -> quando tem paid_amount ou payment_status indica pago
-     * 2. billed -> quando tem invoice_number ou invoice_date
-     * 3. delivered -> quando tem actual_delivery_date
-     * 4. picked_up -> quando tem actual_pickup_date
-     * 5. assigned -> quando tem driver OU scheduled_pickup_date
-     * 6. new -> padrão (quando não se encaixa em nenhum acima)
-     */
-    private function determineKanbanStatus($data)
-    {
-        // 1. PAID - Se tem valor pago ou status de pagamento indica pago
-        if (!empty($data['paid_amount']) && $data['paid_amount'] > 0) {
-            return 'paid';
-        }
-        
-        if (!empty($data['payment_status'])) {
-            $paymentStatus = strtolower(trim($data['payment_status']));
-            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
-            foreach ($paidStatuses as $status) {
-                if (strpos($paymentStatus, $status) !== false) {
-                    return 'paid';
-                }
-            }
-        }
-
-        // 2. BILLED - Se tem invoice (fatura)
-        if (!empty($data['invoice_number']) || !empty($data['invoice_date'])) {
-            return 'billed';
-        }
-
-        // 3. DELIVERED - Se tem data de entrega real
-        if (!empty($data['actual_delivery_date'])) {
-            return 'delivered';
-        }
-
-        // 4. PICKED_UP - Se tem data de coleta real
-        if (!empty($data['actual_pickup_date'])) {
-            return 'picked_up';
-        }
-
-        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
-        if (!empty($data['driver']) || !empty($data['scheduled_pickup_date'])) {
-            return 'assigned';
-        }
-
-        // 6. NEW - Status padrão
-        return 'new';
-    }
 
     /**
      * ⭐ NOVO: Normalizar status do SuperDispatcher para valores do sistema (status_move)

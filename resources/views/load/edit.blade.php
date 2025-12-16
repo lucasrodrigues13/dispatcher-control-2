@@ -100,7 +100,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="creation_date" class="form-label">Creation Date</label>
                                     <input type="date" name="creation_date" id="creation_date" class="form-control"
-                                        value="{{ old('creation_date', $load->creation_date) }}">
+                                        value="{{ old('creation_date', $load->creation_date ? $load->creation_date->format('Y-m-d') : '') }}">
                                 </div>
 
                                 <div class="mb-3 col-md-3">
@@ -138,9 +138,11 @@
 
                             <div class="row mb-5">
                                 <div class="mb-3 col-md-3">
-                                    <label for="has_terminal" class="form-label">Has Terminal</label>
-                                    <input type="number" name="has_terminal" id="has_terminal" class="form-control"
-                                        min="0" max="1" value="{{ old('has_terminal', $load->has_terminal) }}">
+                                    <div class="form-check mt-4">
+                                        <input type="checkbox" name="has_terminal" id="has_terminal" class="form-check-input" value="1"
+                                            {{ old('has_terminal', $load->has_terminal) ? 'checked' : '' }}>
+                                        <label for="has_terminal" class="form-check-label">Has Terminal</label>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3 col-md-6">
@@ -187,7 +189,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="scheduled_pickup_date" class="form-label">Scheduled Pickup Date</label>
                                     <input type="date" name="scheduled_pickup_date" id="scheduled_pickup_date" class="form-control"
-                                        value="{{ old('scheduled_pickup_date', $load->scheduled_pickup_date) }}">
+                                        value="{{ old('scheduled_pickup_date', $load->scheduled_pickup_date ? $load->scheduled_pickup_date->format('Y-m-d') : '') }}">
                                 </div>
                             </div>
 
@@ -205,7 +207,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="actual_pickup_date" class="form-label">Actual Pickup Date</label>
                                     <input type="date" name="actual_pickup_date" id="actual_pickup_date" class="form-control"
-                                        value="{{ old('actual_pickup_date', $load->actual_pickup_date) }}">
+                                        value="{{ old('actual_pickup_date', $load->actual_pickup_date ? $load->actual_pickup_date->format('Y-m-d') : '') }}">
                                 </div>
                                 <div class="mb-3 col-md-3">
                                     <label for="buyer_number" class="form-label">Buyer Number</label>
@@ -258,7 +260,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="scheduled_delivery_date" class="form-label">Scheduled Delivery Date</label>
                                     <input type="date" name="scheduled_delivery_date" id="scheduled_delivery_date" class="form-control"
-                                        value="{{ old('scheduled_delivery_date', $load->scheduled_delivery_date) }}">
+                                        value="{{ old('scheduled_delivery_date', $load->scheduled_delivery_date ? $load->scheduled_delivery_date->format('Y-m-d') : '') }}">
                                 </div>
                             </div>
 
@@ -266,7 +268,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="actual_delivery_date" class="form-label">Actual Delivery Date</label>
                                     <input type="date" name="actual_delivery_date" id="actual_delivery_date" class="form-control"
-                                        value="{{ old('actual_delivery_date', $load->actual_delivery_date) }}">
+                                        value="{{ old('actual_delivery_date', $load->actual_delivery_date ? $load->actual_delivery_date->format('Y-m-d') : '') }}">
                                 </div>
                                 <div class="mb-3 col-md-3">
                                     <label for="delivery_phone" class="form-label">Delivery Phone</label>
@@ -359,7 +361,7 @@
                                 <div class="mb-3 col-md-3">
                                     <label for="receipt_date" class="form-label">Receipt Date</label>
                                     <input type="date" name="receipt_date" id="receipt_date" class="form-control"
-                                        value="{{ old('receipt_date', $load->receipt_date) }}">
+                                        value="{{ old('receipt_date', $load->receipt_date ? $load->receipt_date->format('Y-m-d') : '') }}">
                                 </div>
                                 <div class="mb-3 col-md-3">
                                     <label for="payment_terms" class="form-label">Payment Terms</label>
@@ -390,7 +392,7 @@
                                 <div class="mb-3 col-md-4">
                                     <label for="invoice_date" class="form-label">Invoice Date</label>
                                     <input type="date" name="invoice_date" id="invoice_date" class="form-control"
-                                        value="{{ old('invoice_date', $load->invoice_date) }}">
+                                        value="{{ old('invoice_date', $load->invoice_date ? $load->invoice_date->format('Y-m-d') : '') }}">
                                 </div>
                             </div>
 

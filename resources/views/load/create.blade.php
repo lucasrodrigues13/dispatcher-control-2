@@ -170,9 +170,11 @@
 
                             <div class="row mb-5">
                                 <div class="mb-3 col-md-3">
-                                    <label for="has_terminal" class="form-label">Has Terminal</label>
-                                    <input type="number" name="has_terminal" id="has_terminal" class="form-control"
-                                        min="0" max="1" value="{{ old('has_terminal', 0) }}">
+                                    <div class="form-check mt-4">
+                                        <input type="checkbox" name="has_terminal" id="has_terminal" class="form-check-input" value="1"
+                                            {{ old('has_terminal') ? 'checked' : '' }}>
+                                        <label for="has_terminal" class="form-check-label">Has Terminal</label>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3 col-md-6">

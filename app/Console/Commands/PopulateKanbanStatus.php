@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Load;
+use App\Services\LoadService;
 
 class PopulateKanbanStatus extends Command
 {
@@ -28,6 +29,7 @@ class PopulateKanbanStatus extends Command
     {
         $this->info('Starting to populate kanban_status for existing loads...');
         
+        $loadService = app(LoadService::class);
         $loads = Load::all();
         $bar = $this->output->createProgressBar(count($loads));
         
@@ -41,7 +43,7 @@ class PopulateKanbanStatus extends Command
         ];
         
         foreach ($loads as $load) {
-            $status = $this->determineLoadStatus($load);
+            $status = $loadService->determineKanbanStatus($load);
             $load->kanban_status = $status;
             $load->save();
             
@@ -70,57 +72,5 @@ class PopulateKanbanStatus extends Command
         return 0;
     }
     
-    /**
-     * Determine load status based on field values
-     * Priority order: paid > billed > delivered > picked_up > assigned > new
-     * 
-     * Regras de negócio:
-     * 1. paid -> quando tem paid_amount ou payment_status indica pago
-     * 2. billed -> quando tem invoice_number ou invoice_date
-     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
-     * 4. picked_up -> quando tem actual_pickup_date
-     * 5. assigned -> quando tem driver OU scheduled_pickup_date
-     * 6. new -> padrão
-     */
-    private function determineLoadStatus($load)
-    {
-        // 1. PAID - Se tem valor pago ou status indica pago
-        if (!empty($load->paid_amount) && $load->paid_amount > 0) {
-            return 'paid';
-        }
-        
-        if (!empty($load->payment_status)) {
-            $paymentStatus = strtolower(trim($load->payment_status));
-            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
-            foreach ($paidStatuses as $status) {
-                if (strpos($paymentStatus, $status) !== false) {
-                    return 'paid';
-                }
-            }
-        }
-
-        // 2. BILLED - Se tem invoice (fatura)
-        if ($load->invoice_number || $load->invoice_date) {
-            return 'billed';
-        }
-
-        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
-        if ($load->actual_delivery_date) {
-            return 'delivered';
-        }
-
-        // 4. PICKED_UP - Se tem data de coleta REAL
-        if ($load->actual_pickup_date) {
-            return 'picked_up';
-        }
-
-        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
-        if ($load->driver || $load->scheduled_pickup_date) {
-            return 'assigned';
-        }
-
-        // 6. NEW - Status padrão
-        return 'new';
-    }
 }
 
