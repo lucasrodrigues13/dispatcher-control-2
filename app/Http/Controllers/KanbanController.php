@@ -84,7 +84,6 @@ class KanbanController extends Controller
      */
     public function determineLoadStatus($load)
     {
-        dd($load->toArray());
         return $this->loadService->determineKanbanStatus($load);
     }
 
