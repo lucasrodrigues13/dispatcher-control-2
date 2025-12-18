@@ -34,7 +34,7 @@ if (deleteAllBtn) {
     });
 }
 
-// Sincronizar kanban_status dos loads em 'new'
+// Sincronizar kanban_status dos loads visíveis na tela
 const syncNewKanbanStatusBtn = document.getElementById('sync-new-kanban-status-btn');
 if (syncNewKanbanStatusBtn) {
     syncNewKanbanStatusBtn.addEventListener('click', function (e) {
@@ -46,16 +46,35 @@ if (syncNewKanbanStatusBtn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span class="d-none d-md-inline">Syncing...</span>';
         
+        // ⭐ NOVO: Coletar filtros atuais da página para sincronizar apenas loads visíveis
+        const searchInput = document.getElementById('search-input');
+        const searchValue = searchInput ? searchInput.value : '';
+        
+        // Coletar parâmetros da URL atual (filtros aplicados)
+        const urlParams = new URLSearchParams(window.location.search);
+        const filters = {};
+        
+        // Adicionar search se existir
+        if (searchValue) {
+            filters.search = searchValue;
+        }
+        
+        // Adicionar outros parâmetros da URL (load_id, carrier_id, etc.)
+        urlParams.forEach((value, key) => {
+            filters[key] = value;
+        });
+        
         fetch("{{ route('loads.sync.new.kanban.status') }}", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify(filters)
         })
         .then(response => {
-            if (!response.ok) throw new Error('Erro ao sincronizar');
+            if (!response.ok) throw new Error('Error syncing');
             return response.json();
         })
         .then(data => {
@@ -64,10 +83,10 @@ if (syncNewKanbanStatusBtn) {
                 // Usar SweetAlert se disponível, senão alert normal
                 if (typeof swal !== 'undefined') {
                     swal({
-                        title: "Sucesso!",
-                        text: data.message + "\n\nDetalhes:\n" + 
-                              "Total processados: " + data.data.total_processed + "\n" +
-                              "Atualizados: " + data.data.updated,
+                        title: "Success!",
+                        text: data.message + "\n\nDetails:\n" + 
+                              "Total processed: " + data.data.total_processed + "\n" +
+                              "Updated: " + data.data.updated,
                         icon: "success",
                         button: "OK"
                     }).then(() => {
@@ -80,16 +99,16 @@ if (syncNewKanbanStatusBtn) {
             }
         })
         .catch(error => {
-            console.error('Erro:', error);
+            console.error('Error:', error);
             if (typeof swal !== 'undefined') {
                 swal({
-                    title: "Erro!",
-                    text: "Erro ao sincronizar status dos loads.",
+                    title: "Error!",
+                    text: "Error syncing load status.",
                     icon: "error",
                     button: "OK"
                 });
             } else {
-                alert('Erro ao sincronizar status dos loads.');
+                alert('Error syncing load status.');
             }
         })
         .finally(() => {

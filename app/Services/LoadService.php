@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Load;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LoadService
 {
@@ -152,55 +153,84 @@ class LoadService
     }
 
     /**
-     * Determine load status based on field priority logic
+     * Determinar kanban_status baseado nas regras de negócio
+     * Pode receber um objeto Load ou um array de dados
      * 
      * Regras de negócio (em ordem de prioridade):
-     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 1. paid -> quando payment_status é exatamente 'paid' E paid_amount > 0
      * 2. billed -> quando tem invoice_number ou invoice_date
      * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
      * 4. picked_up -> quando tem actual_pickup_date
      * 5. assigned -> quando tem driver OU scheduled_pickup_date
      * 6. new -> padrão
      * 
-     * @param Load $load
-     * @return string
+     * @param \App\Models\Load|array $loadOrData Objeto Load ou array de dados
+     * @return string Status do kanban
      */
-    public function determineLoadStatus($load)
+    public function determineKanbanStatus($loadOrData): string
     {
+        // Normalizar para array
+        if (is_object($loadOrData)) {
+            $data = [
+                'paid_amount' => $loadOrData->paid_amount ?? null,
+                'payment_status' => $loadOrData->payment_status ?? null,
+                'invoice_number' => $loadOrData->invoice_number ?? null,
+                'invoice_date' => $loadOrData->invoice_date ?? null,
+                'actual_delivery_date' => $loadOrData->actual_delivery_date ?? null,
+                'actual_pickup_date' => $loadOrData->actual_pickup_date ?? null,
+                'driver' => $loadOrData->driver ?? null,
+                'scheduled_pickup_date' => $loadOrData->scheduled_pickup_date ?? null,
+            ];
+        } else {
+            $data = $loadOrData;
+        }
+
         // 1. PAID - Apenas quando payment_status é exatamente 'paid' E paid_amount > 0
-        $hasPaidAmount = !empty($load->paid_amount) && $load->paid_amount > 0;
+        $hasPaidAmount = !empty($data['paid_amount']) && $data['paid_amount'] > 0;
         
-        if ($hasPaidAmount && !empty($load->payment_status)) {
-            $paymentStatus = strtolower(trim($load->payment_status));
+        if ($hasPaidAmount && !empty($data['payment_status'])) {
+            $paymentStatus = strtolower(trim($data['payment_status']));
             
             // Apenas considerar se payment_status for exatamente 'paid'
             if ($paymentStatus === 'paid') {
                 return 'paid';
             }
         }
-        
+
         // 2. BILLED - Se tem invoice (fatura)
-        if (!empty($load->invoice_number) || !empty($load->invoice_date)) {
+        if (!empty($data['invoice_number']) || !empty($data['invoice_date'])) {
             return 'billed';
         }
-        
+
         // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
-        if (!empty($load->actual_delivery_date)) {
+        if (!empty($data['actual_delivery_date'])) {
             return 'delivered';
         }
-        
+
         // 4. PICKED_UP - Se tem data de coleta REAL
-        if (!empty($load->actual_pickup_date)) {
+        if (!empty($data['actual_pickup_date'])) {
             return 'picked_up';
         }
-        
+
         // 5. ASSIGNED - Se tem driver OU data de coleta agendada
-        if (!empty($load->driver) || !empty($load->scheduled_pickup_date)) {
+        if (!empty($data['driver']) || !empty($data['scheduled_pickup_date'])) {
             return 'assigned';
         }
-        
+
         // 6. NEW - Status padrão
         return 'new';
+    }
+
+    /**
+     * Determine load status based on field priority logic
+     * Alias para determineKanbanStatus para manter compatibilidade
+     * 
+     * @param Load $load
+     * @return string
+     */
+    public function determineLoadStatus($load)
+    {
+        return $this->determineKanbanStatus($load);
     }
 }
 

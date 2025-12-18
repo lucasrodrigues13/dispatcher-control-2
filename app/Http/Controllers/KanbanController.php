@@ -245,14 +245,18 @@ class KanbanController extends Controller
     }
 
     /**
-     * Sincronizar kanban_status de todos os loads que estão em 'new'
+     * Sincronizar kanban_status de todos os loads visíveis na tela
+     * Usa os mesmos filtros aplicados no Kanban para sincronizar apenas os loads exibidos
      * Útil para recalcular status após edições manuais
      */
-    public function syncNewLoadsKanbanStatus()
+    public function syncNewLoadsKanbanStatus(Request $request)
     {
         try {
-            // Buscar apenas loads com status 'new'
-            $loads = Load::where('kanban_status', 'new')->get();
+            // ⭐ IMPORTANTE: Usar os mesmos filtros do Kanban para sincronizar apenas loads visíveis
+            $query = $this->loadService->buildFilteredQuery($request);
+            
+            // Buscar todos os loads que estão sendo exibidos na tela (com filtros aplicados)
+            $loads = $query->orderByDesc('id')->get();
             
             $stats = [
                 'new' => 0,
@@ -281,7 +285,7 @@ class KanbanController extends Controller
             
             return response()->json([
                 'success' => true,
-                'message' => "Sincronização concluída! {$updated} load(s) atualizado(s).",
+                'message' => "Sync completed! {$updated} load(s) updated out of " . count($loads) . " load(s) processed.",
                 'data' => [
                     'total_processed' => count($loads),
                     'updated' => $updated,
@@ -292,7 +296,7 @@ class KanbanController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao sincronizar status: ' . $e->getMessage()
+                'message' => 'Error syncing status: ' . $e->getMessage()
             ], 500);
         }
     }

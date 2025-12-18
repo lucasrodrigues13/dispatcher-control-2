@@ -43,6 +43,7 @@ class PopulateKanbanStatus extends Command
     {
         $this->info('Starting to populate kanban_status for existing loads...');
         
+        $loadService = app(LoadService::class);
         $loads = Load::all();
         $bar = $this->output->createProgressBar(count($loads));
         
@@ -85,4 +86,3 @@ class PopulateKanbanStatus extends Command
         return 0;
     }
 }
-
