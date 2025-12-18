@@ -375,18 +375,15 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
      */
     private function determineKanbanStatus($data)
     {
-        // 1. PAID - Se tem valor pago ou status de pagamento indica pago
-        if (!empty($data['paid_amount']) && $data['paid_amount'] > 0) {
-            return 'paid';
-        }
+        // 1. PAID - Apenas quando payment_status é exatamente 'paid' E paid_amount > 0
+        $hasPaidAmount = !empty($data['paid_amount']) && $data['paid_amount'] > 0;
         
-        if (!empty($data['payment_status'])) {
+        if ($hasPaidAmount && !empty($data['payment_status'])) {
             $paymentStatus = strtolower(trim($data['payment_status']));
-            $paidStatuses = ['paid', 'pago', 'completed', 'concluído', 'concluido', 'received', 'recebido'];
-            foreach ($paidStatuses as $status) {
-                if (strpos($paymentStatus, $status) !== false) {
-                    return 'paid';
-                }
+            
+            // Apenas considerar se payment_status for exatamente 'paid'
+            if ($paymentStatus === 'paid') {
+                return 'paid';
             }
         }
 

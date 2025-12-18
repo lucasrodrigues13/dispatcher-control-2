@@ -150,5 +150,57 @@ class LoadService
 
         return $query;
     }
+
+    /**
+     * Determine load status based on field priority logic
+     * 
+     * Regras de negócio (em ordem de prioridade):
+     * 1. paid -> quando tem paid_amount ou payment_status indica pago
+     * 2. billed -> quando tem invoice_number ou invoice_date
+     * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
+     * 4. picked_up -> quando tem actual_pickup_date
+     * 5. assigned -> quando tem driver OU scheduled_pickup_date
+     * 6. new -> padrão
+     * 
+     * @param Load $load
+     * @return string
+     */
+    public function determineLoadStatus($load)
+    {
+        // 1. PAID - Apenas quando payment_status é exatamente 'paid' E paid_amount > 0
+        $hasPaidAmount = !empty($load->paid_amount) && $load->paid_amount > 0;
+        
+        if ($hasPaidAmount && !empty($load->payment_status)) {
+            $paymentStatus = strtolower(trim($load->payment_status));
+            
+            // Apenas considerar se payment_status for exatamente 'paid'
+            if ($paymentStatus === 'paid') {
+                return 'paid';
+            }
+        }
+        
+        // 2. BILLED - Se tem invoice (fatura)
+        if (!empty($load->invoice_number) || !empty($load->invoice_date)) {
+            return 'billed';
+        }
+        
+        // 3. DELIVERED - Se tem data de entrega REAL (apenas actual_delivery_date)
+        if (!empty($load->actual_delivery_date)) {
+            return 'delivered';
+        }
+        
+        // 4. PICKED_UP - Se tem data de coleta REAL
+        if (!empty($load->actual_pickup_date)) {
+            return 'picked_up';
+        }
+        
+        // 5. ASSIGNED - Se tem driver OU data de coleta agendada
+        if (!empty($load->driver) || !empty($load->scheduled_pickup_date)) {
+            return 'assigned';
+        }
+        
+        // 6. NEW - Status padrão
+        return 'new';
+    }
 }
 
