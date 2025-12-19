@@ -254,6 +254,19 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
             // ⭐ NOVO: Determinar kanban_status baseado nas regras de negócio
             // Deve ser calculado DEPOIS de montar $data para ter acesso a todos os campos
             // Usa LoadService para reutilizar lógica compartilhada
+            
+            // Debug: Log para entender o problema com payment_status
+            if (!empty($data['load_id']) && !empty($data['payment_status'])) {
+                Log::debug('Determinando kanban_status na importação', [
+                    'load_id' => $data['load_id'],
+                    'payment_status_raw' => $row['payment_status'] ?? 'N/A',
+                    'payment_status_cleaned' => $data['payment_status'],
+                    'paid_amount' => $data['paid_amount'],
+                    'invoice_date' => $data['invoice_date'],
+                    'invoice_number' => $data['invoice_number'],
+                ]);
+            }
+            
             $data['kanban_status'] = $this->loadService->determineKanbanStatus($data);
 
             // ⭐ CRITICAL FIX: Only include fields that have values and exist in the fillable array AND database
@@ -274,13 +287,72 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
             }
 
             // ⭐ VERIFICATION: load_id is mandatory
+            // Verificar ANTES de limpar - pode ser que cleanString esteja removendo o valor
             if (empty($cleanData['load_id'])) {
-                self::$errorCount++;
-                Log::warning("Linha " . self::$processedCount . " - load_id vazio, pulando. Dados da linha:", [
-                    'campos_disponiveis' => array_keys($row),
-                    'primeiros_valores' => array_slice($row, 0, 5, true)
+                // Log detalhado ANTES de tentar recuperar
+                Log::warning("Linha " . self::$processedCount . " - load_id vazio após processamento, tentando recuperar", [
+                    'data_load_id' => $data['load_id'] ?? null,
+                    'data_load_id_type' => gettype($data['load_id'] ?? null),
+                    'cleanData_load_id' => $cleanData['load_id'] ?? null,
                 ]);
-                return null;
+                
+                self::$errorCount++;
+                
+                // Tentar encontrar o load_id diretamente no array original
+                $foundLoadId = null;
+                $possibleLoadIdKeys = ['load_id', 'loadid', 'id', 'load', 'numero_carga', 'carga_id', 'load_number', 'load id'];
+                foreach ($possibleLoadIdKeys as $key) {
+                    // Tentar correspondência exata
+                    if (isset($row[$key])) {
+                        $rawValue = $row[$key];
+                        // Aceitar qualquer valor não vazio (incluindo 0 se for realmente o load_id)
+                        if ($rawValue !== null && $rawValue !== '') {
+                            $foundLoadId = $rawValue;
+                            Log::info("Load ID encontrado por correspondência exata", [
+                                'key' => $key,
+                                'raw_value' => $rawValue,
+                                'type' => gettype($rawValue)
+                            ]);
+                            break;
+                        }
+                    }
+                    // Tentar fuzzy matching
+                    foreach ($row as $rowKey => $rowValue) {
+                        $normalizedRowKey = strtolower(str_replace([' ', '-', '_'], '', $rowKey));
+                        $normalizedKey = strtolower(str_replace([' ', '-', '_'], '', $key));
+                        if ($normalizedRowKey === $normalizedKey && $rowValue !== null && $rowValue !== '') {
+                            $foundLoadId = $rowValue;
+                            Log::info("Load ID encontrado por fuzzy matching", [
+                                'row_key' => $rowKey,
+                                'raw_value' => $rowValue,
+                                'type' => gettype($rowValue)
+                            ]);
+                            break 2;
+                        }
+                    }
+                }
+                
+                // Se encontrou o load_id mas não foi processado, usar ele
+                if ($foundLoadId !== null) {
+                    // Converter para string diretamente, sem cleanString (que pode estar removendo)
+                    $cleanData['load_id'] = trim((string) $foundLoadId);
+                    Log::info("Linha " . self::$processedCount . " - Load ID recuperado e convertido para string", [
+                        'load_id_encontrado' => $foundLoadId,
+                        'load_id_tipo_original' => gettype($foundLoadId),
+                        'load_id_final' => $cleanData['load_id']
+                    ]);
+                } else {
+                    // Log detalhado para debug - mostrar TODOS os campos disponíveis
+                    Log::warning("Linha " . self::$processedCount . " - load_id NÃO encontrado, pulando importação", [
+                        'total_campos' => count($row),
+                        'campos_disponiveis' => array_keys($row),
+                        'primeiros_15_valores' => array_slice($row, 0, 15, true),
+                        'data_load_id' => $data['load_id'] ?? null,
+                        'data_load_id_type' => gettype($data['load_id'] ?? null),
+                        'sugestao' => 'Verifique se o cabeçalho da planilha contém "Load ID" ou "load_id"'
+                    ]);
+                    return null;
+                }
             }
 
             // Garantir que carrier_id e dispatcher_id estão presentes
@@ -302,29 +374,30 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 ]);
             }
 
-            // ⭐ NOVO: Verificar se já existe (incluindo deletados) e restaurar/atualizar OU criar novo
-            // Usa withTrashed() para incluir loads deletados (soft delete)
+            // Verificar se já existe load com mesmo load_id (incluindo deletados)
             $existingLoad = Load::withTrashed()->where('load_id', $cleanData['load_id'])->first();
 
             if ($existingLoad) {
-                try {
-                    // Se está deletado, restaurar primeiro (remove deleted_at)
-                    if ($existingLoad->trashed()) {
-                        $existingLoad->restore();
-                        Log::info("Load deletado restaurado: {$cleanData['load_id']}");
+                // Normalizar VINs para comparação
+                $existingVin = !empty($existingLoad->vin) ? trim((string)$existingLoad->vin) : '';
+                $newVin = !empty($cleanData['vin']) ? trim((string)$cleanData['vin']) : '';
+                
+                // Se load_id E vin forem iguais (ou ambos vazios), atualizar
+                // Se VIN for diferente, criar novo load (continua para baixo)
+                if ($existingVin === $newVin) {
+                    try {
+                        if ($existingLoad->trashed()) {
+                            $existingLoad->restore();
+                        }
+                        $existingLoad->update($cleanData);
+                        self::$updatedCount++;
+                    } catch (\Exception $e) {
+                        self::$errorCount++;
+                        Log::error("Erro ao atualizar load_id {$cleanData['load_id']}: " . $e->getMessage());
                     }
-                    
-                    // Atualizar com novos dados
-                    $existingLoad->update($cleanData);
-                    self::$updatedCount++;
-                } catch (\Exception $e) {
-                    self::$errorCount++;
-                    Log::error("Erro ao atualizar load_id {$cleanData['load_id']}:", [
-                        'erro' => $e->getMessage(),
-                        'dados' => $cleanData
-                    ]);
+                    return null;
                 }
-                return null; // Don't return model for batch insert
+                // Se VINs diferentes, continua para criar novo load abaixo
             }
 
             // Criar novo - usar create() para garantir que salve
@@ -431,12 +504,20 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
      */
     private function cleanString($value)
     {
-        if ($value === null || $value === '' || $value === 0) {
+        // Aceitar números como válidos (incluindo 0 se for realmente o valor)
+        if ($value === null || $value === '') {
             return null;
         }
 
-        // Convert to string and clean
-        $cleaned = trim((string) $value);
+        // Converter para string ANTES de qualquer processamento
+        // Isso garante que números sejam preservados corretamente
+        $cleaned = (string) $value;
+        $cleaned = trim($cleaned);
+
+        // Se após trim ficou vazio, retornar null
+        if ($cleaned === '') {
+            return null;
+        }
 
         // Remove problematic characters for SQL
         $cleaned = str_replace(['"', "'", "\n", "\r", "\t", "\0"], ['-', '-', ' ', ' ', ' ', ''], $cleaned);
@@ -448,7 +529,9 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
             $cleaned = substr($cleaned, 0, 255);
         }
 
-        return empty($cleaned) ? null : $cleaned;
+        // Retornar a string limpa (não usar empty() pois pode retornar true para "0")
+        // Se após todas as operações ficou vazio, retornar null
+        return $cleaned === '' ? null : $cleaned;
     }
 
     /**

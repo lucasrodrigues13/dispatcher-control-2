@@ -34,7 +34,7 @@ class KanbanController extends Controller
         $query = $this->loadService->buildFilteredQuery($request);
 
         // Load all loads with filters applied
-        $loads = $query->orderByDesc('id')->get();
+        $loads = $query->orderByDesc('updated_at')->get();
 
         // ⭐ Organize loads by kanban column status
         $loadsByStatus = $this->organizeLoadsByStatus($loads);

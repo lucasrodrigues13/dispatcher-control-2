@@ -157,7 +157,7 @@ class LoadService
      * Pode receber um objeto Load ou um array de dados
      * 
      * Regras de negócio (em ordem de prioridade):
-     * 1. paid -> quando payment_status é exatamente 'paid' E paid_amount > 0
+     * 1. paid -> quando payment_status é exatamente 'paid' (independente de paid_amount)
      * 2. billed -> quando tem invoice_number ou invoice_date
      * 3. delivered -> quando tem actual_delivery_date (apenas actual, não scheduled)
      * 4. picked_up -> quando tem actual_pickup_date
@@ -185,13 +185,18 @@ class LoadService
             $data = $loadOrData;
         }
 
-        // 1. PAID - Apenas quando payment_status é exatamente 'paid' E paid_amount > 0
-        $hasPaidAmount = !empty($data['paid_amount']) && $data['paid_amount'] > 0;
-        
-        if ($hasPaidAmount && !empty($data['payment_status'])) {
-            $paymentStatus = strtolower(trim($data['payment_status']));
+        // 1. PAID - Prioridade máxima: quando payment_status é 'paid'
+        // Verificar payment_status (com limpeza mais robusta)
+        // Nota: Não verifica paid_amount porque alguns registros podem ter payment_status='paid' 
+        // mesmo sem paid_amount preenchido
+        if (!empty($data['payment_status'])) {
+            // Normalizar o payment_status: remover espaços, converter para minúsculas, remover caracteres especiais
+            $paymentStatus = trim((string) $data['payment_status']);
+            $paymentStatus = strtolower($paymentStatus);
+            // Remover espaços extras e caracteres invisíveis
+            $paymentStatus = preg_replace('/\s+/', '', $paymentStatus);
             
-            // Apenas considerar se payment_status for exatamente 'paid'
+            // Considerar se payment_status for exatamente 'paid' (após normalização)
             if ($paymentStatus === 'paid') {
                 return 'paid';
             }
@@ -213,7 +218,7 @@ class LoadService
         }
 
         // 5. ASSIGNED - Se tem driver OU data de coleta agendada
-        if (!empty($data['driver']) || !empty($data['scheduled_pickup_date'])) {
+        if (!empty($data['driver'])) {
             return 'assigned';
         }
 

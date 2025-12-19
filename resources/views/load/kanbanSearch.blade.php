@@ -147,9 +147,6 @@
         </div>
     </div>
     
-    <div class="mt-4 p-2 mb-2">
-      More Loads...
-    </div>
     <div class="pagination-container">
       <ul class="pagination justify-content-start">
         {{-- Botão Anterior --}}

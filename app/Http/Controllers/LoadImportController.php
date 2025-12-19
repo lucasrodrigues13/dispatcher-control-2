@@ -566,7 +566,7 @@ class LoadImportController extends Controller
         $query = $this->loadService->buildFilteredQuery($request);
 
         // Paginate results
-        $loads = $query->orderByDesc('id')->paginate(50);
+        $loads = $query->orderByDesc('updated_at')->paginate(50);
 
         return view('load.index', compact('loads', 'dispatchers', 'carriers', 'employees'));
     }
