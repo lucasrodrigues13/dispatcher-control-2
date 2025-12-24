@@ -262,13 +262,9 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::post('/loads/sync-new-kanban-status', [KanbanController::class, 'syncNewLoadsKanbanStatus'])
         ->name('loads.sync.new.kanban.status');
 
-    // Confirm Assigned Loads - Send to N8N
+    // Confirm Assigned Loads - Send to N8N and process response
     Route::post('/loads/confirm-assigned', [KanbanController::class, 'confirmAssignedLoads'])
         ->name('loads.confirm-assigned');
-
-    // Receive updates from N8N webhook
-    Route::post('/webhook/n8n/loads-updates', [KanbanController::class, 'receiveN8NUpdates'])
-        ->name('webhook.n8n.loads-updates');
 
 
     // Kanban Container

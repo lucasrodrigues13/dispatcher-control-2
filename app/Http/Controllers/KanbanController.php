@@ -404,7 +404,7 @@ class KanbanController extends Controller
             ];
 
             // Get N8N webhook URL from config (default to placeholder)
-            $webhookUrl = config('services.n8n.webhook_url', 'https://your-n8n-instance.com/webhook/confirm-loads');
+            $webhookUrl = config('services.n8n.webhook_url');
             
             // Send to N8N webhook
             $client = new Client();
@@ -419,15 +419,19 @@ class KanbanController extends Controller
 
             $statusCode = $response->getStatusCode();
             $responseBody = json_decode($response->getBody()->getContents(), true);
-
+            
+            // Process N8N response and update loads
+            $updateResult = $this->updateLoadsFromN8NResponse($responseBody, $loadIds);
+            
             return response()->json([
                 'success' => true,
-                'message' => "Successfully sent {$loads->count()} load(s) to N8N webhook",
+                'message' => "Successfully processed {$loads->count()} load(s) from N8N",
                 'data' => [
                     'loads_sent' => $loads->count(),
                     'load_ids' => $loadIds,
                     'n8n_response' => $responseBody,
                     'status_code' => $statusCode,
+                    'update_result' => $updateResult,
                 ]
             ]);
 
@@ -455,109 +459,133 @@ class KanbanController extends Controller
     }
 
     /**
-     * Receive updates from N8N webhook
-     * This endpoint receives processed load data from N8N after AI confirmation
+     * Update loads from N8N response
+     * This private method processes the response from N8N and updates all loads
+     * 
+     * @param array $responseBody The response body from N8N webhook
+     * @param array $loadIds Original load IDs that were sent
+     * @return array Update result with statistics
      */
-    public function receiveN8NUpdates(Request $request)
+    private function updateLoadsFromN8NResponse($responseBody, $loadIds)
     {
-        try {
-            $request->validate([
-                'loads' => 'required|array',
-                'loads.*.id' => 'required|integer|exists:loads,id',
+        $updatedLoads = [];
+        $errors = [];
+
+        // Check if response contains loads array
+        if (!isset($responseBody['loads']) || !is_array($responseBody['loads'])) {
+            Log::warning('N8N response does not contain loads array', [
+                'response_body' => $responseBody
             ]);
+            return [
+                'updated_loads' => [],
+                'errors' => ['Invalid response format: missing loads array'],
+                'total_received' => 0,
+                'total_updated' => 0,
+            ];
+        }
 
-            $updatedLoads = [];
-            $errors = [];
+        foreach ($responseBody['loads'] as $loadData) {
+            try {
+                // Validate that load ID exists
+                if (!isset($loadData['id'])) {
+                    $errors[] = [
+                        'load_data' => $loadData,
+                        'error' => 'Missing load ID in response',
+                    ];
+                    continue;
+                }
 
-            foreach ($request->input('loads') as $loadData) {
-                try {
-                    $load = Load::findOrFail($loadData['id']);
+                $load = Load::find($loadData['id']);
+                
+                if (!$load) {
+                    $errors[] = [
+                        'load_id' => $loadData['id'],
+                        'error' => 'Load not found',
+                    ];
+                    continue;
+                }
 
-                    // Update fields that can be received from N8N
-                    $updatableFields = [
+                // Prepare update data - update all fields that are present in response
+                // Exclude fields that shouldn't be updated (id, relationships, etc.)
+                $excludedFields = ['id', 'carrier', 'dispatcher_info', 'kanban_status'];
+                $updateData = [];
+
+                foreach ($loadData as $field => $value) {
+                    // Skip excluded fields
+                    if (in_array($field, $excludedFields)) {
+                        continue;
+                    }
+
+                    // Handle null values
+                    if ($value === null) {
+                        $updateData[$field] = null;
+                        continue;
+                    }
+
+                    // Handle date fields
+                    if (in_array($field, [
+                        'creation_date',
                         'scheduled_pickup_date',
                         'actual_pickup_date',
                         'scheduled_delivery_date',
                         'actual_delivery_date',
-                        'pickup_notes',
-                        'delivery_notes',
-                        'pickup_phone',
-                        'pickup_mobile',
-                        'delivery_phone',
-                        'delivery_mobile',
-                        'pickup_name',
-                        'pickup_address',
-                        'pickup_city',
-                        'pickup_state',
-                        'pickup_zip',
-                        'delivery_name',
-                        'delivery_address',
-                        'delivery_city',
-                        'delivery_state',
-                        'delivery_zip',
-                    ];
-
-                    $updateData = [];
-                    foreach ($updatableFields as $field) {
-                        if (isset($loadData[$field])) {
-                            // Handle date fields
-                            if (in_array($field, ['scheduled_pickup_date', 'actual_pickup_date', 'scheduled_delivery_date', 'actual_delivery_date'])) {
-                                $updateData[$field] = $loadData[$field] ? \Carbon\Carbon::parse($loadData[$field]) : null;
-                            } else {
-                                $updateData[$field] = $loadData[$field];
-                            }
+                        'receipt_date',
+                        'invoice_date'
+                    ])) {
+                        try {
+                            $updateData[$field] = $value ? \Carbon\Carbon::parse($value) : null;
+                        } catch (\Exception $e) {
+                            Log::warning("Invalid date format for field {$field}", [
+                                'load_id' => $load->id,
+                                'value' => $value,
+                                'error' => $e->getMessage()
+                            ]);
+                            // Skip invalid dates
+                            continue;
                         }
+                    } else {
+                        // For other fields, assign as-is
+                        $updateData[$field] = $value;
                     }
+                }
 
-                    // Handle status updates (ready_to_pickup, ready_to_delivery)
-                    // These will be implemented later based on your strategy
-                    if (isset($loadData['ready_to_pickup'])) {
-                        // TODO: Implement ready_to_pickup status logic
-                    }
-
-                    if (isset($loadData['ready_to_delivery'])) {
-                        // TODO: Implement ready_to_delivery status logic
-                    }
-
-                    if (!empty($updateData)) {
-                        $load->update($updateData);
-                        $updatedLoads[] = [
-                            'id' => $load->id,
-                            'load_id' => $load->load_id,
-                            'updated_fields' => array_keys($updateData),
-                        ];
-                    }
-
-                } catch (\Exception $e) {
+                // Update the load if there's data to update
+                if (!empty($updateData)) {
+                    $load->update($updateData);
+                    
+                    $updatedLoads[] = [
+                        'id' => $load->id,
+                        'load_id' => $load->load_id,
+                        'updated_fields' => array_keys($updateData),
+                        'updated_at' => $load->updated_at->toIso8601String(),
+                    ];
+                } else {
                     $errors[] = [
-                        'load_id' => $loadData['id'] ?? 'unknown',
-                        'error' => $e->getMessage(),
+                        'load_id' => $load->id,
+                        'error' => 'No valid fields to update',
                     ];
                 }
+
+            } catch (\Exception $e) {
+                Log::error('Error updating load from N8N response', [
+                    'load_data' => $loadData,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                $errors[] = [
+                    'load_id' => $loadData['id'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                ];
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => "Updated " . count($updatedLoads) . " load(s)",
-                'data' => [
-                    'updated_loads' => $updatedLoads,
-                    'errors' => $errors,
-                    'total_received' => count($request->input('loads')),
-                    'total_updated' => count($updatedLoads),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Receive N8N Updates Error: ' . $e->getMessage(), [
-                'request_data' => $request->all(),
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error processing updates: ' . $e->getMessage()
-            ], 500);
         }
+
+        return [
+            'updated_loads' => $updatedLoads,
+            'errors' => $errors,
+            'total_received' => count($responseBody['loads']),
+            'total_updated' => count($updatedLoads),
+        ];
     }
 }
 
