@@ -9,6 +9,9 @@ use App\Models\Employee;
 use App\Models\Load;
 use App\Services\LoadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 
 class KanbanController extends Controller
 {
@@ -297,6 +300,262 @@ class KanbanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error syncing status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Confirm assigned loads - Send selected loads to N8N webhook
+     */
+    public function confirmAssignedLoads(Request $request)
+    {
+        try {
+            $request->validate([
+                'load_ids' => 'required|array',
+                'load_ids.*' => 'required|integer|exists:loads,id',
+            ]);
+
+            $loadIds = $request->input('load_ids');
+            
+            // Load all selected loads with all relationships
+            $loads = Load::with([
+                'carrier.user',
+                'dispatcher.user',
+                'employee.user'
+            ])
+            ->whereIn('id', $loadIds)
+            ->where('kanban_status', 'assigned')
+            ->get();
+
+            if ($loads->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No assigned loads found with the provided IDs'
+                ], 404);
+            }
+
+            // Prepare data for N8N webhook
+            $payload = [
+                'loads' => $loads->map(function ($load) {
+                    return [
+                        'id' => $load->id,
+                        'load_id' => $load->load_id,
+                        'internal_load_id' => $load->internal_load_id,
+                        'creation_date' => $load->creation_date?->format('Y-m-d'),
+                        'dispatcher' => $load->dispatcher,
+                        'trip' => $load->trip,
+                        'year_make_model' => $load->year_make_model,
+                        'vin' => $load->vin,
+                        'lot_number' => $load->lot_number,
+                        'has_terminal' => $load->has_terminal,
+                        'dispatched_to_carrier' => $load->dispatched_to_carrier,
+                        'pickup_name' => $load->pickup_name,
+                        'pickup_address' => $load->pickup_address,
+                        'pickup_city' => $load->pickup_city,
+                        'pickup_state' => $load->pickup_state,
+                        'pickup_zip' => $load->pickup_zip,
+                        'scheduled_pickup_date' => $load->scheduled_pickup_date?->format('Y-m-d'),
+                        'pickup_phone' => $load->pickup_phone,
+                        'pickup_mobile' => $load->pickup_mobile,
+                        'actual_pickup_date' => $load->actual_pickup_date?->format('Y-m-d'),
+                        'buyer_number' => $load->buyer_number,
+                        'pickup_notes' => $load->pickup_notes,
+                        'delivery_name' => $load->delivery_name,
+                        'delivery_address' => $load->delivery_address,
+                        'delivery_city' => $load->delivery_city,
+                        'delivery_state' => $load->delivery_state,
+                        'delivery_zip' => $load->delivery_zip,
+                        'scheduled_delivery_date' => $load->scheduled_delivery_date?->format('Y-m-d'),
+                        'actual_delivery_date' => $load->actual_delivery_date?->format('Y-m-d'),
+                        'delivery_phone' => $load->delivery_phone,
+                        'delivery_mobile' => $load->delivery_mobile,
+                        'delivery_notes' => $load->delivery_notes,
+                        'shipper_name' => $load->shipper_name,
+                        'shipper_phone' => $load->shipper_phone,
+                        'price' => $load->price,
+                        'expenses' => $load->expenses,
+                        'broker_fee' => $load->broker_fee,
+                        'driver_pay' => $load->driver_pay,
+                        'payment_method' => $load->payment_method,
+                        'paid_amount' => $load->paid_amount,
+                        'paid_method' => $load->paid_method,
+                        'reference_number' => $load->reference_number,
+                        'receipt_date' => $load->receipt_date?->format('Y-m-d'),
+                        'payment_terms' => $load->payment_terms,
+                        'payment_notes' => $load->payment_notes,
+                        'payment_status' => $load->payment_status,
+                        'invoice_number' => $load->invoice_number,
+                        'invoice_notes' => $load->invoice_notes,
+                        'invoice_date' => $load->invoice_date?->format('Y-m-d'),
+                        'driver' => $load->driver,
+                        'kanban_status' => $load->kanban_status,
+                        'carrier' => $load->carrier ? [
+                            'id' => $load->carrier->id,
+                            'company_name' => $load->carrier->company_name,
+                            'email' => $load->carrier->user->email ?? null,
+                        ] : null,
+                        'dispatcher_info' => $load->dispatcher ? [
+                            'name' => $load->dispatcher,
+                        ] : null,
+                    ];
+                })->toArray(),
+                'timestamp' => now()->toIso8601String(),
+                'source' => 'dispatcher-control',
+            ];
+
+            // Get N8N webhook URL from config (default to placeholder)
+            $webhookUrl = config('services.n8n.webhook_url', 'https://your-n8n-instance.com/webhook/confirm-loads');
+            
+            // Send to N8N webhook
+            $client = new Client();
+            $response = $client->post($webhookUrl, [
+                'json' => $payload,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ],
+                'timeout' => 30,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $responseBody = json_decode($response->getBody()->getContents(), true);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully sent {$loads->count()} load(s) to N8N webhook",
+                'data' => [
+                    'loads_sent' => $loads->count(),
+                    'load_ids' => $loadIds,
+                    'n8n_response' => $responseBody,
+                    'status_code' => $statusCode,
+                ]
+            ]);
+
+        } catch (RequestException $e) {
+            Log::error('N8N Webhook Error: ' . $e->getMessage(), [
+                'load_ids' => $request->input('load_ids'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error sending data to N8N webhook: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Confirm Assigned Loads Error: ' . $e->getMessage(), [
+                'load_ids' => $request->input('load_ids'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Receive updates from N8N webhook
+     * This endpoint receives processed load data from N8N after AI confirmation
+     */
+    public function receiveN8NUpdates(Request $request)
+    {
+        try {
+            $request->validate([
+                'loads' => 'required|array',
+                'loads.*.id' => 'required|integer|exists:loads,id',
+            ]);
+
+            $updatedLoads = [];
+            $errors = [];
+
+            foreach ($request->input('loads') as $loadData) {
+                try {
+                    $load = Load::findOrFail($loadData['id']);
+
+                    // Update fields that can be received from N8N
+                    $updatableFields = [
+                        'scheduled_pickup_date',
+                        'actual_pickup_date',
+                        'scheduled_delivery_date',
+                        'actual_delivery_date',
+                        'pickup_notes',
+                        'delivery_notes',
+                        'pickup_phone',
+                        'pickup_mobile',
+                        'delivery_phone',
+                        'delivery_mobile',
+                        'pickup_name',
+                        'pickup_address',
+                        'pickup_city',
+                        'pickup_state',
+                        'pickup_zip',
+                        'delivery_name',
+                        'delivery_address',
+                        'delivery_city',
+                        'delivery_state',
+                        'delivery_zip',
+                    ];
+
+                    $updateData = [];
+                    foreach ($updatableFields as $field) {
+                        if (isset($loadData[$field])) {
+                            // Handle date fields
+                            if (in_array($field, ['scheduled_pickup_date', 'actual_pickup_date', 'scheduled_delivery_date', 'actual_delivery_date'])) {
+                                $updateData[$field] = $loadData[$field] ? \Carbon\Carbon::parse($loadData[$field]) : null;
+                            } else {
+                                $updateData[$field] = $loadData[$field];
+                            }
+                        }
+                    }
+
+                    // Handle status updates (ready_to_pickup, ready_to_delivery)
+                    // These will be implemented later based on your strategy
+                    if (isset($loadData['ready_to_pickup'])) {
+                        // TODO: Implement ready_to_pickup status logic
+                    }
+
+                    if (isset($loadData['ready_to_delivery'])) {
+                        // TODO: Implement ready_to_delivery status logic
+                    }
+
+                    if (!empty($updateData)) {
+                        $load->update($updateData);
+                        $updatedLoads[] = [
+                            'id' => $load->id,
+                            'load_id' => $load->load_id,
+                            'updated_fields' => array_keys($updateData),
+                        ];
+                    }
+
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'load_id' => $loadData['id'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Updated " . count($updatedLoads) . " load(s)",
+                'data' => [
+                    'updated_loads' => $updatedLoads,
+                    'errors' => $errors,
+                    'total_received' => count($request->input('loads')),
+                    'total_updated' => count($updatedLoads),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Receive N8N Updates Error: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing updates: ' . $e->getMessage()
             ], 500);
         }
     }
