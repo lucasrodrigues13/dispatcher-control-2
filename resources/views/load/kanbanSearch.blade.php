@@ -658,7 +658,7 @@ document.getElementById('delete-all-loads').addEventListener('click', function (
     const ids = Array.from(document.querySelectorAll('.load-checkbox:checked')).map(cb => cb.value);
 
     if (ids.length === 0) {
-      alert('Selecione pelo menos um registro.');
+      alert('Please select at least one record.');
       return;
     }
 

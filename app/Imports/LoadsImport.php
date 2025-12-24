@@ -393,7 +393,7 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                         self::$updatedCount++;
                     } catch (\Exception $e) {
                         self::$errorCount++;
-                        Log::error("Erro ao atualizar load_id {$cleanData['load_id']}: " . $e->getMessage());
+                        Log::error("Error updating load_id {$cleanData['load_id']}: " . $e->getMessage());
                     }
                     return null;
                 }

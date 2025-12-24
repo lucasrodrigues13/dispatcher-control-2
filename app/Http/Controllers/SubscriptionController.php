@@ -397,7 +397,7 @@ class SubscriptionController extends Controller
                     );
                 } catch (\Exception $e) {
                     // Log erro mas não falha o processo (subscription já atualizada no banco)
-                    Log::warning('Erro ao atualizar subscription no Stripe', [
+                    Log::warning('Error updating subscription in Stripe', [
                         'error' => $e->getMessage(),
                         'subscription_id' => $currentSubscription->stripe_subscription_id,
                     ]);

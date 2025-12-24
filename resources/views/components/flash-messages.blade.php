@@ -24,10 +24,10 @@
     </x-flash-message>
 @endif
 
-{{-- Exibir erros de validação do Laravel --}}
+{{-- Display Laravel validation errors --}}
 @if($errors->any())
     <x-flash-message type="error">
-        <div class="fw-bold mb-2">Por favor, corrija os seguintes erros:</div>
+        <div class="fw-bold mb-2">Please correct the following errors:</div>
         <ul class="mb-0 ps-3">
             @foreach($errors->all() as $error)
                 <li>{{ $error }}</li>

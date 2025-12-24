@@ -387,8 +387,8 @@ class ReportFilters {
                     this.reportCharts.updateForecastChart(forecastData);
                     this.reportCharts.updatePaymentsChart(paymentsData);
                 } catch (chartError) {
-                    console.error('Erro ao atualizar gráficos:', chartError);
-                    throw new Error('Erro ao renderizar gráficos');
+                    console.error('Error updating charts:', chartError);
+                    throw new Error('Error rendering charts');
                 }
             });
 
@@ -396,16 +396,16 @@ class ReportFilters {
         } catch (error) {
             console.error('Error refreshing data:', error);
             
-            let errorMessage = 'Erro ao carregar dados';
+            let errorMessage = 'Error loading data';
             
             if (error.message.includes('Timeout')) {
-                errorMessage = 'Timeout: Servidor demorou para responder';
+                errorMessage = 'Timeout: Server took too long to respond';
             } else if (error.message.includes('Network')) {
-                errorMessage = 'Erro de conexão. Verifique sua internet';
+                errorMessage = 'Connection error. Please check your internet';
             } else if (error.message.includes('inválidos')) {
                 errorMessage = error.message;
             } else if (error.message.includes('renderizar')) {
-                errorMessage = 'Erro ao exibir gráficos';
+                errorMessage = 'Error displaying charts';
             } else if (error.status === 404) {
                 errorMessage = 'Endpoint não encontrado';
             } else if (error.status === 500) {
@@ -492,9 +492,9 @@ class ReportFilters {
         }, 2000);
     }
 
-    showError(message = 'Erro ao carregar dados') {
+    showError(message = 'Error loading data') {
         this.refreshButton.disabled = false;
-        this.refreshButton.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i> Erro ao atualizar';
+        this.refreshButton.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500"></i> Error updating';
         this.refreshButton.classList.remove('loading');
         this.refreshButton.classList.add('error');
         

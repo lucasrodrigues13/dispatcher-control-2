@@ -50,16 +50,16 @@ class CarrierController extends Controller
         if ($authUser->isAdmin()) {
             if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                    ->with('error', 'Please select a specific tenant from the dropdown above before creating a new user.');
             }
             
-            // Obter o tenant selecionado para validação
+            // Get selected tenant for validation
             $viewingTenantId = $adminTenantService->getViewingTenantId();
             $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
             
             if (!$viewingTenant) {
                 return redirect()->back()
-                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+                    ->with('error', 'Selected tenant not found. Please select a valid tenant.');
             }
             
             // Usar o tenant selecionado para validação
@@ -395,7 +395,7 @@ class CarrierController extends Controller
 
             DB::commit();
 
-            return redirect()->route('carriers.index')->with('success', 'Carrier e usuário atualizados com sucesso.');
+            return redirect()->route('carriers.index')->with('success', 'Carrier and user updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();

@@ -127,7 +127,7 @@
                   <div class="col-lg-8 col-xl-5 offset-lg-4">
                     <div class="mb-4">
                       <button type="submit" class="btn btn-alt-primary">
-                        <i class="fa fa-check-circle opacity-50 me-1"></i> Atualizar Perfil
+                        <i class="fa fa-check-circle opacity-50 me-1"></i> Update Profile
                       </button>
                     </div>
                   </div>

@@ -14,12 +14,12 @@ use Illuminate\Support\Facades\Log;
 class ViewController extends Controller
 {
     /**
-     * Exibe a página principal de relatórios
+     * Display the main reports page
      */
     public function index(Request $request)
     {
         try {
-            // Carregar dados para os filtros com eager loading para otimização
+            // Load data for filters with eager loading for optimization
             $customers = Customer::select('id', 'company_name')
                 ->orderBy('company_name', 'asc')
                 ->get();
@@ -28,7 +28,7 @@ class ViewController extends Controller
                 ->orderBy('company_name', 'asc')
                 ->get();
 
-            // Carregar funcionários (Employee não tem user_id direto, apenas dispatcher_id)
+            // Load employees (Employee doesn't have direct user_id, only dispatcher_id)
             $employees = Employee::with(['dispatcher.user:id,name'])
                 ->select('id', 'dispatcher_id', 'position', 'name')
                 ->get()
@@ -42,7 +42,7 @@ class ViewController extends Controller
                 })
                 ->sortBy('name');
 
-            // Carregar motoristas (opcional, caso precise no futuro)
+            // Load drivers (optional, in case needed in the future)
             $drivers = Driver::with(['user:id,name'])
                 ->select('id', 'user_id', 'carrier_id')
                 ->get()

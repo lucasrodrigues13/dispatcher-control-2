@@ -217,16 +217,16 @@ class DispatcherController extends Controller
         if ($authUser->isAdmin()) {
             if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                    ->with('error', 'Please select a specific tenant from the dropdown above before creating a new user.');
             }
             
-            // Obter o tenant selecionado
+            // Get selected tenant
             $viewingTenantId = $adminTenantService->getViewingTenantId();
             $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
             
             if (!$viewingTenant) {
                 return redirect()->back()
-                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+                    ->with('error', 'Selected tenant not found. Please select a valid tenant.');
             }
             
             // ⭐ CORRIGIDO: Sempre usar o tenant selecionado no topo da tela

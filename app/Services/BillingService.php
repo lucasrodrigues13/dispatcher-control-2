@@ -553,7 +553,7 @@ class BillingService
         if ($loadsUsed >= $maxLoads) {
             return [
                 'allowed' => false,
-                'message' => "Você atingiu o limite de {$maxLoads} cargas/mês. Upgrade para Premium para cargas ilimitadas.",
+                'message' => "You have reached the limit of {$maxLoads} loads/month. Upgrade to Premium for unlimited loads.",
                 'suggest_upgrade' => true,
                 'loads_used' => $loadsUsed,
                 'max_loads' => $maxLoads,
@@ -815,7 +815,7 @@ class BillingService
                 $typeName = ucfirst($userType);
                 return [
                     'allowed' => false,
-                    'message' => "Limite de {$typeName}s atingido ({$currentCount}/{$maxCount}). Upgrade para adicionar mais.",
+                    'message' => "{$typeName}s limit reached ({$currentCount}/{$maxCount}). Upgrade to add more.",
                     'suggest_upgrade' => true,
                     'current_count' => $currentCount,
                     'max_count' => $maxCount,

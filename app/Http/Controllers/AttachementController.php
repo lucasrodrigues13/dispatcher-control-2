@@ -146,7 +146,7 @@ class AttachementController extends Controller
 
         $attachment->save();
 
-        return redirect()->route('attachments.index')->with('success', 'Arquivos atualizados com sucesso!');
+        return redirect()->route('attachments.index')->with('success', 'Files updated successfully!');
     }
 
     public function destroy(string $id)

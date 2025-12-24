@@ -762,12 +762,12 @@ class TimeLineChargeController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Status atualizado com sucesso.',
+                'message' => 'Status updated successfully.',
                 'status' => $request->status_payment
             ]);
         }
 
-        return response()->json(['message' => 'Nada para atualizar.'], 400);
+        return response()->json(['message' => 'Nothing to update.'], 400);
     }
 
     public function getLoadsFromInvoice($id)

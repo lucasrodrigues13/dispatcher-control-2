@@ -61,16 +61,16 @@ class DriverController extends Controller
         if ($authUser->isAdmin()) {
             if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                    ->with('error', 'Please select a specific tenant from the dropdown above before creating a new user.');
             }
             
-            // Obter o tenant selecionado para validação
+            // Get selected tenant for validation
             $viewingTenantId = $adminTenantService->getViewingTenantId();
             $viewingTenant = $viewingTenantId ? User::find($viewingTenantId) : null;
             
             if (!$viewingTenant) {
                 return redirect()->back()
-                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+                    ->with('error', 'Selected tenant not found. Please select a valid tenant.');
             }
             
             // Usar o tenant selecionado para validação
@@ -407,19 +407,19 @@ class DriverController extends Controller
             DB::commit();
 
             return redirect()->route('drivers.index')
-                             ->with('success', 'Driver atualizado com sucesso.');
+                             ->with('success', 'Driver updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erro ao atualizar driver', [
+            Log::error('Error updating driver', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'driver_id' => $id
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Erro ao atualizar driver: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Error updating driver: ' . $e->getMessage()])
                 ->withInput();
         }
     }

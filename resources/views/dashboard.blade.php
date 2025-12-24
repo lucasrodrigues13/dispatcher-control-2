@@ -23,9 +23,9 @@
                         <div class="d-flex align-items-center">
                             <i class="fas fa-shield-alt me-2"></i>
                             <div>
-                                <strong>Admin Mode:</strong> Visualizando todos os tenants
+                                <strong>Admin Mode:</strong> Viewing all tenants
                                 <br>
-                                <small class="text-muted">Selecione um tenant específico no dropdown acima para visualizar dados filtrados</small>
+                                <small class="text-muted">Select a specific tenant from the dropdown above to view filtered data</small>
                             </div>
                         </div>
                     </div>

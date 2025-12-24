@@ -324,14 +324,14 @@ class BrokerController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            Log::error('Erro ao atualizar broker', [
+            Log::error('Error updating broker', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'broker_id' => $id
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Erro ao atualizar broker: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Error updating broker: ' . $e->getMessage()])
                 ->withInput();
         }
     }

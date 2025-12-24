@@ -53,7 +53,7 @@ class EmployeeController extends Controller
         if ($authUser->isAdmin()) {
             if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                    ->with('error', 'Please select a specific tenant from the dropdown above before creating a new user.');
             }
             
             // Obter o tenant selecionado para validação
@@ -62,7 +62,7 @@ class EmployeeController extends Controller
             
             if (!$viewingTenant) {
                 return redirect()->back()
-                    ->with('error', 'Tenant selecionado não encontrado. Por favor, selecione um tenant válido.');
+                    ->with('error', 'Selected tenant not found. Please select a valid tenant.');
             }
             
             // Usar o tenant selecionado para validação
@@ -141,7 +141,7 @@ class EmployeeController extends Controller
         if ($authUser->isAdmin()) {
             if ($adminTenantService->isViewingAll()) {
                 return redirect()->back()
-                    ->with('error', 'Por favor, selecione um tenant específico no dropdown acima antes de criar um novo usuário.');
+                    ->with('error', 'Please select a specific tenant from the dropdown above before creating a new user.');
             }
             
             $viewingTenantId = $adminTenantService->getViewingTenantId();

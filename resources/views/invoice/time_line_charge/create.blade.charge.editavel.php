@@ -418,9 +418,9 @@ $(document).ready(function () {
         if (xhr.status === 422) {
           let errors = xhr.responseJSON.errors;
           let messages = Object.values(errors).map(msgArray => msgArray.join(', ')).join('\n');
-          alert("Erros de validação:\n" + messages);
+          alert("Validation errors:\n" + messages);
         } else {
-          alert("Erro ao salvar. Tente novamente.");
+          alert("Error saving. Please try again.");
         }
       }
     });

@@ -817,7 +817,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const ids = Array.from(document.querySelectorAll('.load-checkbox:checked')).map(cb => cb.value);
 
       if (ids.length === 0) {
-        alert('Selecione pelo menos um registro.');
+        alert('Please select at least one record.');
         return;
       }
 
@@ -891,8 +891,8 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         })
         .catch(error => {
-          console.error('Erro ao carregar os funcionários:', error);
-          employeeSelect.innerHTML = '<option value="" selected>Erro ao carregar</option>';
+          console.error('Error loading employees:', error);
+          employeeSelect.innerHTML = '<option value="" selected>Error loading</option>';
         });
     });
   });

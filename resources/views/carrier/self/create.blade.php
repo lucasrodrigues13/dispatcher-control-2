@@ -224,13 +224,13 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-warning">
-        <h5 class="modal-title" id="upgradeModalLabel">Limite do Plano Excedido</h5>
+        <h5 class="modal-title" id="upgradeModalLabel">Plan Limit Exceeded</h5>
       </div>
       <div class="modal-body">
-        <p>{{ $usageCheck['message'] ?? 'Você atingiu o limite do seu plano. Atualize para adicionar mais carriers.' }}</p>
+        <p>{{ $usageCheck['message'] ?? 'You have reached your plan limit. Upgrade to add more carriers.' }}</p>
       </div>
       <div class="modal-footer">
-        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">Atualizar Plano</a>
+        <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">Upgrade Plan</a>
       </div>
     </div>
   </div>

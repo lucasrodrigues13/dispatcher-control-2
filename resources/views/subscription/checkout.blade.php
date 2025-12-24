@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ⭐ NOVO: Verificar se a chave do Stripe está configurada
     if (!stripeKey || stripeKey.trim() === '') {
         document.getElementById('loading-state').classList.add('d-none');
-        showError('Stripe não está configurado. Por favor, entre em contato com o suporte.');
+        showError('Stripe is not configured. Please contact support.');
         return;
     }
 
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error mounting card element:', error);
             document.getElementById('loading-state').classList.add('d-none');
-            showError('Erro ao carregar o formulário de pagamento: ' + error.message);
+            showError('Error loading payment form: ' + error.message);
         }
     }
 
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Confirm payment
             if (!stripe || !cardElement) {
-                throw new Error('Stripe não foi inicializado corretamente. Por favor, recarregue a página.');
+                throw new Error('Stripe was not initialized correctly. Please reload the page.');
             }
             
             const {error, paymentIntent} = await stripe.confirmCardPayment(paymentIntentClientSecret, {

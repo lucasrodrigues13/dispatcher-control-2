@@ -49,22 +49,22 @@ class LoadImportController extends Controller
             $file = $request->file('arquivo');
 
             if (!$file || !$file->isValid()) {
-                throw new \Exception('Arquivo inválido');
+                throw new \Exception('Invalid file');
             }
 
-            // Cria diretório na pasta public se não existir
+            // Create directory in public folder if it doesn't exist
             $uploadDir = public_path('uploads');
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
 
-            // Gera nome único para o arquivo
+            // Generate unique filename
             $fileName = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
             $destination = $uploadDir . '/' . $fileName;
 
-            // Move o arquivo para public/uploads
+            // Move file to public/uploads
             if (!move_uploaded_file($file->getPathname(), $destination)) {
-                throw new \Exception('Falha ao mover arquivo para public/uploads');
+                throw new \Exception('Failed to move file to public/uploads');
             }
 
             Log::info('Arquivo salvo em: ' . $destination);
@@ -743,7 +743,7 @@ class LoadImportController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Erro ao atualizar snapshots das invoices: ' . $e->getMessage());
+            Log::error('Error updating invoice snapshots: ' . $e->getMessage());
         }
     }
 
@@ -761,10 +761,10 @@ class LoadImportController extends Controller
             $file = $request->file('arquivo');
 
             if (!$file || !$file->isValid()) {
-                throw new \Exception('Arquivo inválido');
+                throw new \Exception('Invalid file');
             }
 
-            // Salvar temporariamente
+            // Save temporarily
             $uploadDir = public_path('uploads');
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
@@ -774,14 +774,14 @@ class LoadImportController extends Controller
             $destination = $uploadDir . '/' . $fileName;
 
             if (!move_uploaded_file($file->getPathname(), $destination)) {
-                throw new \Exception('Falha ao mover arquivo');
+                throw new \Exception('Failed to move file');
             }
 
-            // Analisar arquivo
+            // Analyze file
             $data = Excel::toArray([], $destination);
 
             if (empty($data) || empty($data[0])) {
-                throw new \Exception('Arquivo vazio ou sem dados');
+                throw new \Exception('Empty file or no data');
             }
 
             $headers = $data[0][0]; // Primeira linha (cabeçalhos)
@@ -954,21 +954,21 @@ class LoadImportController extends Controller
             $destination = $uploadDir . '/' . $fileName;
 
             if (!move_uploaded_file($file->getPathname(), $destination)) {
-                throw new \Exception('Falha ao mover arquivo');
+                throw new \Exception('Failed to move file');
             }
 
-            // Usar a classe LoadsImport para processar algumas linhas
+            // Use LoadsImport class to process some rows
             $import = new \App\Imports\LoadsImport(
                 $request->input('carrier_id'),
                 $request->input('dispatcher_id'),
                 $request->input('employee_id')
             );
 
-            // Ler dados da planilha
+            // Read spreadsheet data
             $data = Excel::toArray($import, $destination);
 
             if (empty($data) || empty($data[0])) {
-                throw new \Exception('Arquivo vazio ou sem dados');
+                throw new \Exception('Empty file or no data');
             }
 
             $headers = $data[0][0]; // Cabeçalhos

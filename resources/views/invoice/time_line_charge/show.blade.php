@@ -434,7 +434,7 @@
             </div>
         </div>
 
-        <!-- ⭐ MELHORADO: Aviso para loads históricos -->
+        <!-- ⭐ IMPROVED: Warning for historical loads -->
         @if(isset($historicalLoads) && $historicalLoads->count() > 0)
             <div class="alert alert-warning no-print mb-3">
                 <i class="fas fa-exclamation-triangle me-2"></i>
@@ -865,7 +865,7 @@
     </div>
 </div>
 
-<!-- Modal de Aviso para PDF com muitas colunas -->
+<!-- PDF Warning Modal for many columns -->
 <div class="modal fade" id="pdfWarningModal" tabindex="-1" aria-labelledby="pdfWarningModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

@@ -152,14 +152,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
             })
             .then(response => {
-                if (!response.ok) throw new Error('Erro ao atualizar o status.');
+                if (!response.ok) throw new Error('Error updating status.');
                 return response.json();
             })
             .then(data => {
                 updateSelectColor(this, newStatus);
             })
             .catch(error => {
-                alert('Erro ao atualizar o status: ' + error.message);
+                alert('Error updating status: ' + error.message);
             });
         });
     });

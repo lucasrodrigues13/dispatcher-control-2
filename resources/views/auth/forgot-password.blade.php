@@ -98,7 +98,7 @@
 
             <div class="col-md-8 col-lg-6">
 
-                {{-- Alertas de validação --}}
+                {{-- Validation alerts --}}
                 @if ($errors->any())
                     <div class="alert alert-danger mt-3">
                         <ul class="mb-0">

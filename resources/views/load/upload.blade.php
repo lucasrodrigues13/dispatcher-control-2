@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt_BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Importar Planilha de Loads</title>
+    <title>Import Loads Spreadsheet</title>
     <link 
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
       rel="stylesheet" 
@@ -12,7 +12,7 @@
 </head>
 <body class="bg-light">
     <div class="container py-5">
-        <h1 class="mb-4">Importar Planilha de Loads</h1>
+        <h1 class="mb-4">Import Loads Spreadsheet</h1>
 
         @if ($errors->any())
             <div class="alert alert-danger">
@@ -33,12 +33,12 @@
         <form action="{{ route('loads.import') }}" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="mb-3">
-                <label for="arquivo" class="form-label">Selecione o arquivo Excel (*.xlsx ou *.xls):</label>
+                <label for="arquivo" class="form-label">Select Excel file (*.xlsx or *.xls):</label>
                 <input class="form-control" type="file" id="arquivo" name="arquivo" required>
             </div>
-            <button class="btn btn-primary" type="submit">Importar Planilha</button>
-            <a href="{{ route('loads.index') }}" class="btn btn-secondary ms-2">Ver registros</a>
-            <a href="{{ route('loads.create') }}" class="btn btn-success ms-2">Cadastro manual</a>
+            <button class="btn btn-primary" type="submit">Import Spreadsheet</button>
+            <a href="{{ route('loads.index') }}" class="btn btn-secondary ms-2">View Records</a>
+            <a href="{{ route('loads.create') }}" class="btn btn-success ms-2">Manual Entry</a>
         </form>
     </div>
 </body>

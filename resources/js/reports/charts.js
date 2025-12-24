@@ -299,8 +299,8 @@ class ReportCharts {
                     break;
             }
         } catch (error) {
-            console.error(`Erro ao atualizar gráfico ${reportType}:`, error);
-            this.showError(`Erro ao atualizar gráfico de ${reportType}`);
+            console.error(`Error updating ${reportType} chart:`, error);
+            this.showError(`Error updating ${reportType} chart`);
         }
     }
 
