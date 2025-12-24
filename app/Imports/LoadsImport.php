@@ -374,30 +374,34 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 ]);
             }
 
-            // Verificar se já existe load com mesmo load_id (incluindo deletados)
-            $existingLoad = Load::withTrashed()->where('load_id', $cleanData['load_id'])->first();
+            // Normalizar VIN para busca
+            $normalizedVin = !empty($cleanData['vin']) ? trim((string)$cleanData['vin']) : '';
+            
+            // Buscar load com mesmo load_id E vin (incluindo deletados)
+            $query = Load::withTrashed()->where('load_id', $cleanData['load_id']);
+            if ($normalizedVin !== '') {
+                $query->where('vin', $normalizedVin);
+            } else {
+                // Se VIN vazio, buscar apenas loads com VIN vazio também
+                $query->where(function($q) {
+                    $q->whereNull('vin')->orWhere('vin', '');
+                });
+            }
+            $existingLoad = $query->first();
 
             if ($existingLoad) {
-                // Normalizar VINs para comparação
-                $existingVin = !empty($existingLoad->vin) ? trim((string)$existingLoad->vin) : '';
-                $newVin = !empty($cleanData['vin']) ? trim((string)$cleanData['vin']) : '';
-                
-                // Se load_id E vin forem iguais (ou ambos vazios), atualizar
-                // Se VIN for diferente, criar novo load (continua para baixo)
-                if ($existingVin === $newVin) {
-                    try {
-                        if ($existingLoad->trashed()) {
-                            $existingLoad->restore();
-                        }
-                        $existingLoad->update($cleanData);
-                        self::$updatedCount++;
-                    } catch (\Exception $e) {
-                        self::$errorCount++;
-                        Log::error("Error updating load_id {$cleanData['load_id']}: " . $e->getMessage());
+                // Load com mesmo load_id E vin encontrado - atualizar
+                try {
+                    if ($existingLoad->trashed()) {
+                        $existingLoad->restore();
                     }
-                    return null;
+                    $existingLoad->update($cleanData);
+                    self::$updatedCount++;
+                } catch (\Exception $e) {
+                    self::$errorCount++;
+                    Log::error("Error updating load_id {$cleanData['load_id']}: " . $e->getMessage());
                 }
-                // Se VINs diferentes, continua para criar novo load abaixo
+                return null;
             }
 
             // Criar novo - usar create() para garantir que salve
