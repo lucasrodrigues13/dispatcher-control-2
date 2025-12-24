@@ -3,6 +3,9 @@
 <div class="load-card" data-load-id="{{ $load->id }}" draggable="true">
   <div class="card-header-mini">
     <div class="load-id-badge">
+      @if(isset($showCheckbox) && $showCheckbox)
+        <input type="checkbox" class="load-checkbox" value="{{ $load->id }}" data-load-id="{{ $load->id }}">
+      @endif
       <i class="fas fa-hashtag"></i>
       <span>{{ $load->load_id ?? $load->internal_load_id ?? 'N/A' }}</span>
     </div>

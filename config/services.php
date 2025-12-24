@@ -35,4 +35,8 @@ return [
         'secret' => env('STRIPE_SECRET'),
     ],
 
+    'n8n' => [
+        'webhook_url' => env('N8N_WEBHOOK_URL', 'https://managern8neditor328.institutohiraki.com.br/webhook-test/e1536449-382e-4ce3-a705-39fa835a706a'),
+    ],
+
 ];

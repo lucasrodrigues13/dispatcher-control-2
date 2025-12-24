@@ -30,11 +30,23 @@
           ASSIGNED
           <span class="badge bg-info ms-2">{{ count($loadsByStatus['assigned'] ?? []) }}</span>
         </h5>
+        <div class="assigned-actions">
+          <label class="select-all-checkbox-label" title="Select All">
+            <input type="checkbox" id="select-all-assigned" class="select-all-checkbox">
+            <span class="select-all-text">All</span>
+          </label>
+        </div>
       </div>
       <div class="column-body" id="column-assigned">
         @foreach($loadsByStatus['assigned'] ?? [] as $load)
-          @include('load.partials.kanban-card', ['load' => $load])
+          @include('load.partials.kanban-card', ['load' => $load, 'showCheckbox' => true])
         @endforeach
+      </div>
+      <div class="column-footer" id="assigned-column-footer">
+        <button type="button" id="confirm-assigned-loads-btn" class="btn btn-primary btn-sm w-100" disabled>
+          <i class="fas fa-check-circle me-2"></i>
+          Confirm Assigned Loads
+        </button>
       </div>
     </div>
 
@@ -198,6 +210,61 @@
     overflow-x: hidden;
     min-height: 100px; /* Minimum height for easier dropping */
     transition: background-color 0.2s ease;
+}
+
+/* Column Footer */
+.column-footer {
+    padding: 12px;
+    border-top: 2px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Assigned Column Actions */
+.assigned-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.select-all-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #6c757d;
+    user-select: none;
+}
+
+.select-all-checkbox-label:hover {
+    color: #007bff;
+}
+
+.select-all-checkbox {
+    cursor: pointer;
+}
+
+.select-all-text {
+    font-weight: 500;
+}
+
+/* Load Checkbox */
+.load-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.load-card.selected {
+    border-color: #007bff;
+    background: #f0f7ff;
+}
+
+#confirm-assigned-loads-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Custom Scrollbar */

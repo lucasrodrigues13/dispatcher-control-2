@@ -4,6 +4,164 @@
 <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
 
 <script>
+// ============================================
+// Confirm Assigned Loads Functionality
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-assigned');
+    const confirmBtn = document.getElementById('confirm-assigned-loads-btn');
+    const assignedColumn = document.getElementById('column-assigned');
+
+    // Handle individual checkbox changes
+    if (assignedColumn) {
+        assignedColumn.addEventListener('change', function(e) {
+            if (e.target.classList.contains('load-checkbox')) {
+                updateConfirmButtonState();
+                updateSelectAllState();
+            }
+        });
+    }
+
+    // Handle select all checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = assignedColumn?.querySelectorAll('.load-checkbox') || [];
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+                const card = checkbox.closest('.load-card');
+                if (card) {
+                    card.classList.toggle('selected', this.checked);
+                }
+            });
+            updateConfirmButtonState();
+        });
+    }
+
+    // Update confirm button state based on selected loads
+    function updateConfirmButtonState() {
+        if (!confirmBtn || !assignedColumn) return;
+        
+        const checkedBoxes = assignedColumn.querySelectorAll('.load-checkbox:checked');
+        confirmBtn.disabled = checkedBoxes.length === 0;
+    }
+
+    // Update select all checkbox state
+    function updateSelectAllState() {
+        if (!selectAllCheckbox || !assignedColumn) return;
+        
+        const checkboxes = assignedColumn.querySelectorAll('.load-checkbox');
+        const checkedBoxes = assignedColumn.querySelectorAll('.load-checkbox:checked');
+        
+        if (checkboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length === checkboxes.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+
+    // Handle confirm button click
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const checkedBoxes = assignedColumn?.querySelectorAll('.load-checkbox:checked') || [];
+            
+            if (checkedBoxes.length === 0) {
+                alert('Please select at least one load to confirm.');
+                return;
+            }
+
+            const loadIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+            // Show confirmation dialog
+            if (!confirm(`Are you sure you want to confirm ${loadIds.length} load(s)? This will send them to N8N for processing.`)) {
+                return;
+            }
+
+            // Disable button and show loading state
+            const originalHTML = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending...';
+
+            // Send to backend
+            fetch("{{ route('loads.confirm-assigned') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    load_ids: loadIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: data.message,
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert(data.message);
+                    }
+
+                    // Uncheck all checkboxes
+                    checkedBoxes.forEach(cb => {
+                        cb.checked = false;
+                        const card = cb.closest('.load-card');
+                        if (card) {
+                            card.classList.remove('selected');
+                        }
+                    });
+                    
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = false;
+                        selectAllCheckbox.indeterminate = false;
+                    }
+
+                    updateConfirmButtonState();
+                } else {
+                    throw new Error(data.message || 'Error confirming loads');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to confirm loads. Please try again.'
+                    });
+                } else {
+                    alert('Error: ' + (error.message || 'Failed to confirm loads. Please try again.'));
+                }
+            })
+            .finally(() => {
+                // Restore button state
+                this.disabled = false;
+                this.innerHTML = originalHTML;
+                updateConfirmButtonState();
+            });
+        });
+    }
+
+    // Initialize button state
+    updateConfirmButtonState();
+    updateSelectAllState();
+});
 // Deletar todos os loads
 const deleteAllBtn = document.getElementById('delete-all-loads');
 if (deleteAllBtn) {
