@@ -100,7 +100,7 @@ jobs:
             echo ""
             
             # 9. Otimizar aplicação
-            echo "[9/11] Otimizando aplicação..."
+            echo "[9/12] Otimizando aplicação..."
             php artisan optimize
             echo ""
             
@@ -126,48 +126,47 @@ jobs:
                 echo "  → PHP path: $PHP_PATH"
                 
                 # Criar arquivo de serviço systemd
-                cat > $SERVICE_FILE << 'EOF'
-[Unit]
-Description=Laravel Queue Worker
-After=network.target mysql.service
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/dispatcher-control
-Restart=always
-RestartSec=10
-ExecStart=/usr/bin/php /var/www/dispatcher-control/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --timeout=300
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
+                sudo bash -c "printf '%s\n' \
+                  '[Unit]' \
+                  'Description=Laravel Queue Worker' \
+                  'After=network.target mysql.service' \
+                  '' \
+                  '[Service]' \
+                  'Type=simple' \
+                  'User=www-data' \
+                  'Group=www-data' \
+                  'WorkingDirectory=/var/www/dispatcher-control' \
+                  'Restart=always' \
+                  'RestartSec=10' \
+                  'ExecStart=/usr/bin/php /var/www/dispatcher-control/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --timeout=300' \
+                  'StandardOutput=journal' \
+                  'StandardError=journal' \
+                  '' \
+                  '[Install]' \
+                  'WantedBy=multi-user.target' > $SERVICE_FILE"
                 
                 # Ajustar caminho do PHP no arquivo de serviço
-                sed -i "s|ExecStart=/usr/bin/php|ExecStart=$PHP_PATH|g" $SERVICE_FILE
+                sudo sed -i "s|ExecStart=/usr/bin/php|ExecStart=$PHP_PATH|g" $SERVICE_FILE
                 
                 # Recarregar systemd apenas se criou o arquivo
-                systemctl daemon-reload
+                sudo systemctl daemon-reload
                 echo "  → ✅ Arquivo de serviço criado e systemd recarregado"
             fi
             
             # Habilitar serviço (inicia automaticamente no boot) - sempre executar
-            systemctl enable laravel-queue-worker 2>/dev/null || echo "  → Serviço já habilitado"
+            sudo systemctl enable laravel-queue-worker 2>/dev/null || echo "  → Serviço já habilitado"
             
             # Iniciar ou reiniciar serviço
-            if systemctl is-active --quiet laravel-queue-worker 2>/dev/null; then
+            if sudo systemctl is-active --quiet laravel-queue-worker 2>/dev/null; then
                 echo "  → Queue worker já está rodando, reiniciando..."
-                systemctl restart laravel-queue-worker
+                sudo systemctl restart laravel-queue-worker
             else
                 echo "  → Iniciando queue worker..."
-                systemctl start laravel-queue-worker
+                sudo systemctl start laravel-queue-worker
             fi
             
             # Verificar status
-            if systemctl is-active --quiet laravel-queue-worker; then
+            if sudo systemctl is-active --quiet laravel-queue-worker; then
                 echo "  → ✅ Queue worker está ativo"
             else
                 echo "  → ⚠️  Queue worker não está ativo, verifique logs: journalctl -u laravel-queue-worker"
