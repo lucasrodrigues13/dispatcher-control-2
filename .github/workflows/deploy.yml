@@ -100,14 +100,37 @@ jobs:
             echo ""
             
             # 9. Otimizar aplicação
-            echo "[9/9] Otimizando aplicação..."
+            echo "[9/11] Otimizando aplicação..."
             php artisan optimize
             echo ""
             
             # 10. Verificar e corrigir permissões
-            echo "[10/10] Verificando permissões..."
+            echo "[10/11] Verificando permissões..."
             chown -R www-data:www-data storage bootstrap/cache
             chmod -R 775 storage bootstrap/cache
+            echo ""
+            
+            # 11. Verificar e reiniciar queue worker (se estiver rodando como serviço)
+            echo "[11/11] Verificando queue worker..."
+            if systemctl is-active --quiet queue-worker 2>/dev/null || systemctl is-active --quiet laravel-worker 2>/dev/null; then
+                echo "  → Queue worker rodando como serviço, reiniciando..."
+                systemctl restart queue-worker 2>/dev/null || systemctl restart laravel-worker 2>/dev/null || echo "  → Serviço não encontrado, verifique manualmente"
+            else
+                echo "  → Queue worker não está rodando como serviço"
+                echo "  → Para iniciar manualmente: php artisan queue:work --tries=3 --daemon"
+                echo "  → Ou configure como serviço systemd (veja documentação)"
+            fi
+            echo ""
+            
+            # Verificar jobs falhados
+            FAILED_JOBS=$(php artisan queue:failed | grep -c "failed" || echo "0")
+            if [ "$FAILED_JOBS" -gt 0 ]; then
+                echo "⚠️  ATENÇÃO: $FAILED_JOBS job(s) falhado(s) encontrado(s)"
+                echo "  → Execute: php artisan queue:failed para ver detalhes"
+                echo "  → Execute: php artisan queue:retry all para tentar novamente"
+            else
+                echo "✅ Nenhum job falhado encontrado"
+            fi
             echo ""
             
             echo "=========================================="
@@ -126,9 +149,38 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             cd /var/www/dispatcher-control
+            echo "=========================================="
+            echo "VERIFICAÇÃO PÓS-DEPLOY"
+            echo "=========================================="
+            echo ""
             echo "Verificando status da aplicação..."
             php artisan about | head -10 || echo "Comando 'about' não disponível"
             echo ""
             echo "Verificando se o Apache está rodando..."
             systemctl is-active apache2 && echo "✅ Apache está ativo" || echo "❌ Apache não está ativo"
+            echo ""
+            echo "Verificando queue worker..."
+            if systemctl is-active --quiet laravel-queue-worker 2>/dev/null; then
+              echo "✅ Queue worker está ativo (systemd)"
+              systemctl status laravel-queue-worker --no-pager | head -5
+            elif pgrep -f "queue:work" > /dev/null; then
+              echo "✅ Queue worker está rodando (processo)"
+            else
+              echo "⚠️  Queue worker NÃO está rodando"
+              echo "   Execute: php artisan queue:work --tries=3 --daemon"
+              echo "   Ou configure como serviço systemd (veja docs/QUEUE_MONITORING_TROUBLESHOOTING.md)"
+            fi
+            echo ""
+            echo "Verificando jobs falhados..."
+            FAILED_COUNT=$(php artisan queue:failed 2>/dev/null | grep -c "failed" || echo "0")
+            if [ "$FAILED_COUNT" -gt 0 ]; then
+              echo "⚠️  $FAILED_COUNT job(s) falhado(s) encontrado(s)"
+              echo "   Execute: php artisan queue:failed para ver detalhes"
+            else
+              echo "✅ Nenhum job falhado"
+            fi
+            echo ""
+            echo "Verificando migrations..."
+            MIGRATIONS_STATUS=$(php artisan migrate:status 2>/dev/null | tail -1)
+            echo "Status: $MIGRATIONS_STATUS"
 

@@ -3,14 +3,63 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
 
+{{-- Load SweetAlert2 --}}
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 // ============================================
 // Confirm Assigned Loads Functionality
 // ============================================
+// Define functions first (hoisting)
+function updateConfirmButtonState() {
+    // Re-query elements in case they weren't available at initialization
+    const btn = document.getElementById('confirm-assigned-loads-btn');
+    const column = document.getElementById('column-assigned');
+    
+    if (!btn || !column) {
+        return;
+    }
+    
+    const checkedBoxes = column.querySelectorAll('.load-checkbox:checked');
+    const hasChecked = checkedBoxes.length > 0;
+    btn.disabled = !hasChecked;
+}
+
+function updateSelectAllState() {
+    const selectAllCheckbox = document.getElementById('select-all-assigned');
+    const assignedColumn = document.getElementById('column-assigned');
+    
+    if (!selectAllCheckbox || !assignedColumn) return;
+    
+    const checkboxes = assignedColumn.querySelectorAll('.load-checkbox');
+    const checkedBoxes = assignedColumn.querySelectorAll('.load-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedBoxes.length === checkboxes.length) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedBoxes.length > 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('select-all-assigned');
     const confirmBtn = document.getElementById('confirm-assigned-loads-btn');
     const assignedColumn = document.getElementById('column-assigned');
+
+    // Initialize button state on page load (with delay to ensure DOM is ready)
+    setTimeout(function() {
+        updateConfirmButtonState();
+        updateSelectAllState();
+    }, 100);
 
     // Handle individual checkbox changes
     if (assignedColumn) {
@@ -18,6 +67,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target.classList.contains('load-checkbox')) {
                 updateConfirmButtonState();
                 updateSelectAllState();
+            }
+        });
+        
+        // Also listen for click events (in case change doesn't fire)
+        assignedColumn.addEventListener('click', function(e) {
+            const checkbox = e.target.closest('.load-checkbox') || (e.target.classList.contains('load-checkbox') ? e.target : null);
+            if (checkbox) {
+                // Use setTimeout to ensure the checkbox state is updated
+                setTimeout(function() {
+                    updateConfirmButtonState();
+                    updateSelectAllState();
+                }, 10);
             }
         });
     }
@@ -37,35 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Update confirm button state based on selected loads
-    function updateConfirmButtonState() {
-        if (!confirmBtn || !assignedColumn) return;
-        
-        const checkedBoxes = assignedColumn.querySelectorAll('.load-checkbox:checked');
-        confirmBtn.disabled = checkedBoxes.length === 0;
-    }
-
-    // Update select all checkbox state
-    function updateSelectAllState() {
-        if (!selectAllCheckbox || !assignedColumn) return;
-        
-        const checkboxes = assignedColumn.querySelectorAll('.load-checkbox');
-        const checkedBoxes = assignedColumn.querySelectorAll('.load-checkbox:checked');
-        
-        if (checkboxes.length === 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        } else if (checkedBoxes.length === checkboxes.length) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else if (checkedBoxes.length > 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-    }
 
     // Handle confirm button click
     if (confirmBtn) {
@@ -73,88 +105,129 @@ document.addEventListener('DOMContentLoaded', function() {
             const checkedBoxes = assignedColumn?.querySelectorAll('.load-checkbox:checked') || [];
             
             if (checkedBoxes.length === 0) {
-                alert('Please select at least one load to confirm.');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Loads Selected',
+                        text: 'Please select at least one load to confirm pickup.',
+                        confirmButtonText: 'OK'
+                    });
+                } else {
+                    console.warn('Please select at least one load to confirm.');
+                }
                 return;
             }
 
             const loadIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+            const loadCount = loadIds.length;
 
-            // Show confirmation dialog
-            if (!confirm(`Are you sure you want to confirm ${loadIds.length} load(s)? This will send them to N8N for processing.`)) {
-                return;
+            // Show confirmation dialog using SweetAlert (always use SweetAlert, no fallback)
+            showConfirmationDialog(loadIds, loadCount, this);
+        });
+    }
+
+    // Function to show confirmation dialog using SweetAlert
+    function showConfirmationDialog(loadIds, loadCount, buttonElement) {
+        Swal.fire({
+            icon: 'question',
+            title: 'Confirm Pickup',
+            html: `Are you sure you want to confirm pickup for <strong>${loadCount}</strong> load(s)?<br><br>This will enqueue them for N8N processing.`,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, confirm',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                enqueuePickupLoads(loadIds, buttonElement);
             }
+        });
+    }
 
-            // Disable button and show loading state
-            const originalHTML = this.innerHTML;
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending...';
+    // Function to enqueue loads for pickup confirmation
+    function enqueuePickupLoads(loadIds, buttonElement) {
+        // Disable button and show loading state
+        const originalHTML = buttonElement.innerHTML;
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Enqueueing...';
 
-            // Send to backend
-            fetch("{{ route('loads.confirm-assigned') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    load_ids: loadIds
-                })
+        // Send to backend
+        fetch("{{ route('loads.confirm-pickup') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                load_ids: loadIds
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show success message
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: data.message,
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert(data.message);
-                    }
-
-                    // Uncheck all checkboxes
-                    checkedBoxes.forEach(cb => {
-                        cb.checked = false;
-                        const card = cb.closest('.load-card');
-                        if (card) {
-                            card.classList.remove('selected');
-                        }
-                    });
-                    
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = false;
-                        selectAllCheckbox.indeterminate = false;
-                    }
-
-                    updateConfirmButtonState();
-                } else {
-                    throw new Error(data.message || 'Error confirming loads');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Show success message using SweetAlert
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: error.message || 'Failed to confirm loads. Please try again.'
+                        icon: 'success',
+                        title: 'Success!',
+                        html: `<strong>${data.data.loads_enqueued || loadIds.length}</strong> load(s) enqueued for pickup confirmation.<br><br>The jobs will be processed asynchronously.`,
+                        timer: 4000,
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK'
                     });
                 } else {
-                    alert('Error: ' + (error.message || 'Failed to confirm loads. Please try again.'));
+                    console.log('Success:', data.message);
                 }
-            })
-            .finally(() => {
-                // Restore button state
-                this.disabled = false;
-                this.innerHTML = originalHTML;
+
+                // Uncheck all checkboxes
+                const checkedBoxes = assignedColumn?.querySelectorAll('.load-checkbox:checked') || [];
+                checkedBoxes.forEach(cb => {
+                    cb.checked = false;
+                    const card = cb.closest('.load-card');
+                    if (card) {
+                        card.classList.remove('selected');
+                    }
+                });
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+
                 updateConfirmButtonState();
-            });
+            } else {
+                throw new Error(data.message || 'Error confirming loads');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Show error message using SweetAlert
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    html: error.message || 'Failed to enqueue loads. Please try again.',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                console.error('Error:', error.message || 'Failed to enqueue loads. Please try again.');
+            }
+        })
+        .finally(() => {
+            // Restore button state
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = originalHTML;
+            updateConfirmButtonState();
         });
     }
 

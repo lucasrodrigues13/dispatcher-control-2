@@ -45,7 +45,7 @@
       <div class="column-footer" id="assigned-column-footer">
         <button type="button" id="confirm-assigned-loads-btn" class="btn btn-primary btn-sm w-100" disabled>
           <i class="fas fa-check-circle me-2"></i>
-          Confirm Assigned Loads
+          Confirm Pickup Loads
         </button>
       </div>
     </div>

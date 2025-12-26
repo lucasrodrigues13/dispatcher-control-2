@@ -103,6 +103,19 @@
         <i class="fas fa-check-circle"></i> Paid
       </span>
       @endif
+
+      {{-- Pickup Status Badge --}}
+      @if(isset($load->pickup_status))
+      <span class="mini-badge pickup-status-badge pickup-status-{{ strtolower($load->pickup_status) }}">
+        @if($load->pickup_status === 'READY')
+          <i class="fas fa-check-circle"></i> Ready
+        @elseif($load->pickup_status === 'NOT_READY')
+          <i class="fas fa-clock"></i> Not Ready
+        @else
+          <i class="fas fa-hourglass-half"></i> Pending
+        @endif
+      </span>
+      @endif
     </div>
   </div>
 </div>
@@ -290,6 +303,25 @@
 .paid-badge {
     background: #e8f5e9;
     color: #2e7d32;
+}
+
+.pickup-status-badge {
+    font-weight: 600;
+}
+
+.pickup-status-ready {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.pickup-status-not_ready {
+    background: #ffccbc;
+    color: #e64a19;
+}
+
+.pickup-status-pending {
+    background: #fff9c4;
+    color: #f57f17;
 }
 
 /* Dragging State */

@@ -262,9 +262,27 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::post('/loads/sync-new-kanban-status', [KanbanController::class, 'syncNewLoadsKanbanStatus'])
         ->name('loads.sync.new.kanban.status');
 
-    // Confirm Assigned Loads - Send to N8N and process response
-    Route::post('/loads/confirm-assigned', [KanbanController::class, 'confirmAssignedLoads'])
-        ->name('loads.confirm-assigned');
+    // Confirm Pickup Loads - Enqueue for N8N processing
+    Route::post('/loads/confirm-pickup', [KanbanController::class, 'confirmPickupLoads'])
+        ->name('loads.confirm-pickup');
+
+    // Webhook to receive pickup confirmation updates from N8N
+    Route::post('/webhook/n8n/pickup-confirmation', [KanbanController::class, 'receivePickupConfirmation'])
+        ->name('webhook.n8n.pickup-confirmation');
+    
+    // Pickup Confirmations
+    Route::get('/pickup-confirmations', [\App\Http\Controllers\PickupConfirmationController::class, 'index'])
+        ->name('pickup-confirmations.index');
+    Route::get('/pickup-confirmations/data', [\App\Http\Controllers\PickupConfirmationController::class, 'getConfirmations'])
+        ->name('pickup-confirmations.data');
+    Route::get('/pickup-confirmations/jobs', [\App\Http\Controllers\PickupConfirmationController::class, 'getEnqueuedJobs'])
+        ->name('pickup-confirmations.jobs');
+    Route::get('/pickup-confirmations/{id}/download-transcription', [\App\Http\Controllers\PickupConfirmationController::class, 'downloadTranscription'])
+        ->name('pickup-confirmations.download-transcription');
+    Route::get('/pickup-confirmations/{id}/download-audio', [\App\Http\Controllers\PickupConfirmationController::class, 'downloadAudio'])
+        ->name('pickup-confirmations.download-audio');
+    Route::post('/pickup-confirmations/retry/{uuid}', [\App\Http\Controllers\PickupConfirmationController::class, 'retryFailedJob'])
+        ->name('pickup-confirmations.retry');
 
 
     // Kanban Container

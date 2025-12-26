@@ -97,6 +97,10 @@ class Load extends Model
         'driver',
         'status_move',
         'kanban_status',
+        
+        // Pickup status
+        'pickup_status',
+        'pickup_last_confirmed_at',
     ];
 
     /**
@@ -116,6 +120,7 @@ class Load extends Model
         'driver_pay' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'has_terminal' => 'boolean',
+        'pickup_last_confirmed_at' => 'datetime',
     ];
 
     /**
@@ -124,6 +129,7 @@ class Load extends Model
     protected $attributes = [
         'status_move' => 'no_moved',
         'kanban_status' => 'new',
+        'pickup_status' => 'PENDING',
     ];
 
     /**
@@ -148,5 +154,21 @@ class Load extends Model
     public function dispatcher()
     {
         return $this->belongsTo(Dispatcher::class);
+    }
+
+    /**
+     * Relacionamento com Pickup Confirmations
+     */
+    public function pickupConfirmations()
+    {
+        return $this->hasMany(LoadPickupConfirmation::class);
+    }
+
+    /**
+     * Última confirmação de coleta
+     */
+    public function latestPickupConfirmation()
+    {
+        return $this->hasOne(LoadPickupConfirmation::class)->latestOfMany();
     }
 }

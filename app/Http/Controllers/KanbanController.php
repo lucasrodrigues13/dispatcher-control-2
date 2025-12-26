@@ -7,6 +7,8 @@ use App\Models\Container;
 use App\Models\Dispatcher;
 use App\Models\Employee;
 use App\Models\Load;
+use App\Models\LoadPickupConfirmation;
+use App\Jobs\ConfirmPickupLoadJob;
 use App\Services\LoadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -305,9 +307,9 @@ class KanbanController extends Controller
     }
 
     /**
-     * Confirm assigned loads - Send selected loads to N8N webhook
+     * Confirm pickup for assigned loads - Enqueue loads for N8N processing
      */
-    public function confirmAssignedLoads(Request $request)
+    public function confirmPickupLoads(Request $request)
     {
         try {
             $request->validate([
@@ -317,15 +319,10 @@ class KanbanController extends Controller
 
             $loadIds = $request->input('load_ids');
             
-            // Load all selected loads with all relationships
-            $loads = Load::with([
-                'carrier.user',
-                'dispatcher.user',
-                'employee.user'
-            ])
-            ->whereIn('id', $loadIds)
-            ->where('kanban_status', 'assigned')
-            ->get();
+            // Verify loads are in assigned status
+            $loads = Load::whereIn('id', $loadIds)
+                ->where('kanban_status', 'assigned')
+                ->get();
 
             if ($loads->isEmpty()) {
                 return response()->json([
@@ -334,258 +331,198 @@ class KanbanController extends Controller
                 ], 404);
             }
 
-            // Prepare data for N8N webhook
-            $payload = [
-                'loads' => $loads->map(function ($load) {
-                    return [
-                        'id' => $load->id,
-                        'load_id' => $load->load_id,
-                        'internal_load_id' => $load->internal_load_id,
-                        'creation_date' => $load->creation_date?->format('Y-m-d'),
-                        'dispatcher' => $load->dispatcher,
-                        'trip' => $load->trip,
-                        'year_make_model' => $load->year_make_model,
-                        'vin' => $load->vin,
-                        'lot_number' => $load->lot_number,
-                        'has_terminal' => $load->has_terminal,
-                        'dispatched_to_carrier' => $load->dispatched_to_carrier,
-                        'pickup_name' => $load->pickup_name,
-                        'pickup_address' => $load->pickup_address,
-                        'pickup_city' => $load->pickup_city,
-                        'pickup_state' => $load->pickup_state,
-                        'pickup_zip' => $load->pickup_zip,
-                        'scheduled_pickup_date' => $load->scheduled_pickup_date?->format('Y-m-d'),
-                        'pickup_phone' => $load->pickup_phone,
-                        'pickup_mobile' => $load->pickup_mobile,
-                        'actual_pickup_date' => $load->actual_pickup_date?->format('Y-m-d'),
-                        'buyer_number' => $load->buyer_number,
-                        'pickup_notes' => $load->pickup_notes,
-                        'delivery_name' => $load->delivery_name,
-                        'delivery_address' => $load->delivery_address,
-                        'delivery_city' => $load->delivery_city,
-                        'delivery_state' => $load->delivery_state,
-                        'delivery_zip' => $load->delivery_zip,
-                        'scheduled_delivery_date' => $load->scheduled_delivery_date?->format('Y-m-d'),
-                        'actual_delivery_date' => $load->actual_delivery_date?->format('Y-m-d'),
-                        'delivery_phone' => $load->delivery_phone,
-                        'delivery_mobile' => $load->delivery_mobile,
-                        'delivery_notes' => $load->delivery_notes,
-                        'shipper_name' => $load->shipper_name,
-                        'shipper_phone' => $load->shipper_phone,
-                        'price' => $load->price,
-                        'expenses' => $load->expenses,
-                        'broker_fee' => $load->broker_fee,
-                        'driver_pay' => $load->driver_pay,
-                        'payment_method' => $load->payment_method,
-                        'paid_amount' => $load->paid_amount,
-                        'paid_method' => $load->paid_method,
-                        'reference_number' => $load->reference_number,
-                        'receipt_date' => $load->receipt_date?->format('Y-m-d'),
-                        'payment_terms' => $load->payment_terms,
-                        'payment_notes' => $load->payment_notes,
-                        'payment_status' => $load->payment_status,
-                        'invoice_number' => $load->invoice_number,
-                        'invoice_notes' => $load->invoice_notes,
-                        'invoice_date' => $load->invoice_date?->format('Y-m-d'),
-                        'driver' => $load->driver,
-                        'kanban_status' => $load->kanban_status,
-                        'carrier' => $load->carrier ? [
-                            'id' => $load->carrier->id,
-                            'company_name' => $load->carrier->company_name,
-                            'email' => $load->carrier->user->email ?? null,
-                        ] : null,
-                        'dispatcher_info' => $load->dispatcher ? [
-                            'name' => $load->dispatcher,
-                        ] : null,
-                    ];
-                })->toArray(),
-                'timestamp' => now()->toIso8601String(),
-                'source' => 'dispatcher-control',
-            ];
-
-            // Get N8N webhook URL from config (default to placeholder)
-            $webhookUrl = config('services.n8n.webhook_url');
-            
-            // Send to N8N webhook
-            $client = new Client();
-            $response = $client->post($webhookUrl, [
-                'json' => $payload,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                'timeout' => 30,
-            ]);
-
-            $statusCode = $response->getStatusCode();
-            $responseBody = json_decode($response->getBody()->getContents(), true);
-            
-            // Process N8N response and update loads
-            $updateResult = $this->updateLoadsFromN8NResponse($responseBody, $loadIds);
+            // Enqueue each load for pickup confirmation
+            $enqueuedCount = 0;
+            foreach ($loads as $load) {
+                ConfirmPickupLoadJob::dispatch($load->id);
+                $enqueuedCount++;
+            }
             
             return response()->json([
                 'success' => true,
-                'message' => "Successfully processed {$loads->count()} load(s) from N8N",
+                'message' => "Successfully enqueued {$enqueuedCount} load(s) for pickup confirmation",
                 'data' => [
-                    'loads_sent' => $loads->count(),
-                    'load_ids' => $loadIds,
-                    'n8n_response' => $responseBody,
-                    'status_code' => $statusCode,
-                    'update_result' => $updateResult,
+                    'loads_enqueued' => $enqueuedCount,
+                    'load_ids' => $loads->pluck('id')->toArray(),
                 ]
             ]);
 
-        } catch (RequestException $e) {
-            Log::error('N8N Webhook Error: ' . $e->getMessage(), [
-                'load_ids' => $request->input('load_ids'),
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error sending data to N8N webhook: ' . $e->getMessage()
-            ], 500);
         } catch (\Exception $e) {
-            Log::error('Confirm Assigned Loads Error: ' . $e->getMessage(), [
+            Log::error('Confirm Pickup Loads Error: ' . $e->getMessage(), [
                 'load_ids' => $request->input('load_ids'),
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Don't show error to user, just log it
+            // Return success even if there's an error (jobs will be processed asynchronously)
+            return response()->json([
+                'success' => true,
+                'message' => 'Loads have been queued for processing. They will be processed asynchronously.',
+                'data' => [
+                    'loads_enqueued' => count($request->input('load_ids', [])),
+                    'load_ids' => $request->input('load_ids', []),
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Webhook endpoint to receive pickup confirmation updates from N8N
+     */
+    public function receivePickupConfirmation(Request $request)
+    {
+        try {
+            // Validate payload structure
+            $request->validate([
+                'toolCall' => 'required|array',
+                'toolCall.function' => 'required|array',
+                'toolCall.function.name' => 'required|string',
+                'toolCall.function.arguments' => 'required|array',
+                'toolCall.function.arguments.loadId' => 'required|string',
+                'toolCall.function.arguments.vapi_call_id' => 'required|string',
+                'toolCall.function.arguments.vapi_call_status' => 'required|string|in:success,fail',
+            ]);
+
+            $toolCall = $request->input('toolCall');
+            $function = $toolCall['function'];
+            $arguments = $function['arguments'];
+
+            // Find load by load_id or internal_load_id
+            $load = Load::where('load_id', $arguments['loadId'])
+                ->orWhere('internal_load_id', $arguments['loadId'])
+                ->first();
+
+            if (!$load) {
+                Log::warning('Load not found for pickup confirmation', [
+                    'loadId' => $arguments['loadId'],
+                    'vapi_call_id' => $arguments['vapi_call_id'] ?? null,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Load not found'
+                ], 404);
+            }
+
+            // Check if this confirmation already exists (idempotency)
+            $existingConfirmation = LoadPickupConfirmation::where('vapi_call_id', $arguments['vapi_call_id'])->first();
+            
+            if ($existingConfirmation) {
+                Log::info('Pickup confirmation already processed', [
+                    'vapi_call_id' => $arguments['vapi_call_id'],
+                    'load_id' => $load->id,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Confirmation already processed',
+                    'data' => [
+                        'load_id' => $load->id,
+                        'confirmation_id' => $existingConfirmation->id,
+                    ]
+                ]);
+            }
+
+            // Prepare confirmation data
+            $confirmationData = [
+                'load_id' => $load->id,
+                'contact_name' => $arguments['contactName'] ?? null,
+                'car_ready_for_pickup' => $arguments['car_ready_for_pickup'] ?? false,
+                'not_ready_when' => isset($arguments['not_ready_when']) ? \Carbon\Carbon::parse($arguments['not_ready_when']) : null,
+                'hours_of_operation' => $arguments['hours_of_operation'] ?? null,
+                'car_condition' => $arguments['car_condition'] ?? null,
+                'is_address_correct' => $arguments['is_address_correct'] ?? true,
+                'special_instructions' => $arguments['special_instructions'] ?? null,
+                'call_record_url' => $arguments['call_record_url'] ?? null,
+                'call_transcription_url' => $arguments['call_transcription_url'] ?? null,
+                'vapi_call_id' => $arguments['vapi_call_id'],
+                'vapi_call_status' => $arguments['vapi_call_status'],
+                'raw_payload' => $request->all(),
+            ];
+
+            // Handle different address if provided
+            if (isset($arguments['different_address']) && !$arguments['is_address_correct']) {
+                $differentAddress = $arguments['different_address'];
+                $confirmationData['pickup_address'] = $differentAddress['pickup_address'] ?? null;
+                $confirmationData['pickup_city'] = $differentAddress['pickup_city'] ?? null;
+                $confirmationData['pickup_state'] = $differentAddress['pickup_state'] ?? null;
+                $confirmationData['pickup_zip'] = $differentAddress['pickup_zip'] ?? null;
+            }
+
+            // Create confirmation record
+            $confirmation = LoadPickupConfirmation::create($confirmationData);
+
+            // Update load status based on confirmation
+            $this->updateLoadPickupStatus($load, $confirmation);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pickup confirmation processed successfully',
+                'data' => [
+                    'load_id' => $load->id,
+                    'confirmation_id' => $confirmation->id,
+                    'pickup_status' => $load->pickup_status,
+                ]
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Pickup confirmation validation error', [
+                'errors' => $e->errors(),
+                'payload' => $request->all(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error processing request: ' . $e->getMessage()
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Receive Pickup Confirmation Error: ' . $e->getMessage(), [
+                'payload' => $request->all(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing pickup confirmation: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Update loads from N8N response
-     * This private method processes the response from N8N and updates all loads
-     * 
-     * @param array $responseBody The response body from N8N webhook
-     * @param array $loadIds Original load IDs that were sent
-     * @return array Update result with statistics
+     * Update load pickup status based on confirmation
      */
-    private function updateLoadsFromN8NResponse($responseBody, $loadIds)
+    private function updateLoadPickupStatus(Load $load, LoadPickupConfirmation $confirmation): void
     {
-        $updatedLoads = [];
-        $errors = [];
-
-        // Check if response contains loads array
-        if (!isset($responseBody['loads']) || !is_array($responseBody['loads'])) {
-            Log::warning('N8N response does not contain loads array', [
-                'response_body' => $responseBody
-            ]);
-            return [
-                'updated_loads' => [],
-                'errors' => ['Invalid response format: missing loads array'],
-                'total_received' => 0,
-                'total_updated' => 0,
-            ];
-        }
-
-        foreach ($responseBody['loads'] as $loadData) {
-            try {
-                // Validate that load ID exists
-                if (!isset($loadData['id'])) {
-                    $errors[] = [
-                        'load_data' => $loadData,
-                        'error' => 'Missing load ID in response',
-                    ];
-                    continue;
-                }
-
-                $load = Load::find($loadData['id']);
-                
-                if (!$load) {
-                    $errors[] = [
-                        'load_id' => $loadData['id'],
-                        'error' => 'Load not found',
-                    ];
-                    continue;
-                }
-
-                // Prepare update data - update all fields that are present in response
-                // Exclude fields that shouldn't be updated (id, relationships, etc.)
-                $excludedFields = ['id', 'carrier', 'dispatcher_info', 'kanban_status'];
-                $updateData = [];
-
-                foreach ($loadData as $field => $value) {
-                    // Skip excluded fields
-                    if (in_array($field, $excludedFields)) {
-                        continue;
-                    }
-
-                    // Handle null values
-                    if ($value === null) {
-                        $updateData[$field] = null;
-                        continue;
-                    }
-
-                    // Handle date fields
-                    if (in_array($field, [
-                        'creation_date',
-                        'scheduled_pickup_date',
-                        'actual_pickup_date',
-                        'scheduled_delivery_date',
-                        'actual_delivery_date',
-                        'receipt_date',
-                        'invoice_date'
-                    ])) {
-                        try {
-                            $updateData[$field] = $value ? \Carbon\Carbon::parse($value) : null;
-                        } catch (\Exception $e) {
-                            Log::warning("Invalid date format for field {$field}", [
-                                'load_id' => $load->id,
-                                'value' => $value,
-                                'error' => $e->getMessage()
-                            ]);
-                            // Skip invalid dates
-                            continue;
-                        }
-                    } else {
-                        // For other fields, assign as-is
-                        $updateData[$field] = $value;
-                    }
-                }
-
-                // Update the load if there's data to update
-                if (!empty($updateData)) {
-                    $load->update($updateData);
-                    
-                    $updatedLoads[] = [
-                        'id' => $load->id,
-                        'load_id' => $load->load_id,
-                        'updated_fields' => array_keys($updateData),
-                        'updated_at' => $load->updated_at->toIso8601String(),
-                    ];
-                } else {
-                    $errors[] = [
-                        'load_id' => $load->id,
-                        'error' => 'No valid fields to update',
-                    ];
-                }
-
-            } catch (\Exception $e) {
-                Log::error('Error updating load from N8N response', [
-                    'load_data' => $loadData,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                $errors[] = [
-                    'load_id' => $loadData['id'] ?? 'unknown',
-                    'error' => $e->getMessage(),
-                ];
-            }
-        }
-
-        return [
-            'updated_loads' => $updatedLoads,
-            'errors' => $errors,
-            'total_received' => count($responseBody['loads']),
-            'total_updated' => count($updatedLoads),
+        $updateData = [
+            'pickup_last_confirmed_at' => now(),
         ];
+
+        // Determine pickup status based on confirmation
+        if ($confirmation->car_ready_for_pickup) {
+            $updateData['pickup_status'] = 'READY';
+        } else {
+            $updateData['pickup_status'] = 'NOT_READY';
+        }
+
+        // Update address if different address was provided
+        if (!$confirmation->is_address_correct && $confirmation->pickup_address) {
+            $updateData['pickup_address'] = $confirmation->pickup_address;
+            $updateData['pickup_city'] = $confirmation->pickup_city;
+            $updateData['pickup_state'] = $confirmation->pickup_state;
+            $updateData['pickup_zip'] = $confirmation->pickup_zip;
+        }
+
+        // Update special instructions if provided
+        if ($confirmation->special_instructions) {
+            $updateData['pickup_notes'] = ($load->pickup_notes ? $load->pickup_notes . "\n\n" : '') . 
+                "Confirmation: " . $confirmation->special_instructions;
+        }
+
+        $load->update($updateData);
     }
+
 }
 

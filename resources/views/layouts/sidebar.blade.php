@@ -109,6 +109,15 @@
         </li>
         @endcan
 
+        {{-- Pickup Confirmations --}}
+        @can('pode_visualizar_loads')
+        <li class="nav-item {{ request()->is('pickup-confirmations*') ? 'active' : '' }}">
+          <a href="{{ route('pickup-confirmations.index') }}">
+            <i class="fas fa-phone"></i><p>Pickup Confirmations</p>
+          </a>
+        </li>
+        @endcan
+
         {{-- Invoices --}}
         @php
             $isInvoicesActive = request()->is('invoices*') || request()->is('charges_setups*');
