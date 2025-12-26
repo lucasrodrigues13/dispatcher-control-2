@@ -36,7 +36,14 @@ return [
     ],
 
     'n8n' => [
-        'webhook_url' => env('N8N_WEBHOOK_URL', 'https://managern8neditor328.institutohiraki.com.br/webhook-test/e1536449-382e-4ce3-a705-39fa835a706a'),
+        'webhook_url' => env('N8N_WEBHOOK_URL', 
+            // Default baseado no ambiente
+            // Se APP_ENV for 'local' ou 'development', usa URL de teste
+            // Caso contrário, usa URL de produção
+            (in_array(env('APP_ENV', 'production'), ['local', 'development']))
+                ? 'https://managern8neditor328.institutohiraki.com.br/webhook-test/e1536449-382e-4ce3-a705-39fa835a706a'
+                : 'https://n8nwebhooks328.institutohiraki.com.br/webhook/e1536449-382e-4ce3-a705-39fa835a706a'
+        ),
     ],
 
 ];

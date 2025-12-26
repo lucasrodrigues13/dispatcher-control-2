@@ -36,28 +36,28 @@ jobs:
             cd /var/www/dispatcher-control
             
             # 1. Fazer pull das mudanças
-            echo "[1/9] Fazendo git pull..."
+            echo "[1/12] Fazendo git pull..."
             git pull origin main
             echo ""
             
             # 2. Verificar e instalar dependências
-            echo "[2/9] Verificando dependências..."
+            echo "[2/12] Verificando dependências..."
             composer install --no-dev --optimize-autoloader --no-interaction --quiet
             echo ""
             
             # 3. Verificar migrations pendentes antes de executar
-            echo "[3/9] Verificando migrations pendentes..."
+            echo "[3/12] Verificando migrations pendentes..."
             MIGRATIONS_PENDING=$(php artisan migrate:status | grep -c "Pending" || echo "0")
             echo "  → Migrations pendentes: $MIGRATIONS_PENDING"
             echo ""
             
             # 3.1. Executar migrations
-            echo "[4/9] Executando migrations..."
+            echo "[4/12] Executando migrations..."
             php artisan migrate --force
             echo ""
             
             # 3.2. Verificar se precisa rodar seeds (apenas se houver mudanças)
-            echo "[5/9] Verificando se precisa executar seeds..."
+            echo "[5/12] Verificando se precisa executar seeds..."
             SEED_NEEDED=false
             
             # Verificar se há arquivos de migration ou seeder modificados no último commit
@@ -81,7 +81,7 @@ jobs:
             echo ""
             
             # 6. Limpar TODOS os caches
-            echo "[6/9] Limpando caches..."
+            echo "[6/12] Limpando caches..."
             php artisan config:clear
             php artisan cache:clear
             php artisan route:clear
@@ -90,12 +90,12 @@ jobs:
             echo ""
             
             # 7. Recriar cache de rotas
-            echo "[7/9] Recriando cache de rotas..."
+            echo "[7/12] Recriando cache de rotas..."
             php artisan route:cache
             echo ""
             
             # 8. Recriar cache de configuração
-            echo "[8/9] Recriando cache de configuração..."
+            echo "[8/12] Recriando cache de configuração..."
             php artisan config:cache
             echo ""
             
@@ -105,20 +105,72 @@ jobs:
             echo ""
             
             # 10. Verificar e corrigir permissões
-            echo "[10/11] Verificando permissões..."
+            echo "[10/12] Verificando permissões..."
             chown -R www-data:www-data storage bootstrap/cache
             chmod -R 775 storage bootstrap/cache
             echo ""
             
-            # 11. Verificar e reiniciar queue worker (se estiver rodando como serviço)
-            echo "[11/11] Verificando queue worker..."
-            if systemctl is-active --quiet queue-worker 2>/dev/null || systemctl is-active --quiet laravel-worker 2>/dev/null; then
-                echo "  → Queue worker rodando como serviço, reiniciando..."
-                systemctl restart queue-worker 2>/dev/null || systemctl restart laravel-worker 2>/dev/null || echo "  → Serviço não encontrado, verifique manualmente"
+            # 11. Configurar e iniciar queue worker como serviço systemd
+            echo "[11/12] Configurando queue worker..."
+            
+            SERVICE_FILE="/etc/systemd/system/laravel-queue-worker.service"
+            
+            # Verificar se o arquivo de serviço já existe
+            if [ -f "$SERVICE_FILE" ]; then
+                echo "  → Arquivo de serviço já existe, pulando criação"
             else
-                echo "  → Queue worker não está rodando como serviço"
-                echo "  → Para iniciar manualmente: php artisan queue:work --tries=3 --daemon"
-                echo "  → Ou configure como serviço systemd (veja documentação)"
+                echo "  → Criando arquivo de serviço: $SERVICE_FILE"
+                
+                # Verificar caminho do PHP
+                PHP_PATH=$(which php || echo "/usr/bin/php")
+                echo "  → PHP path: $PHP_PATH"
+                
+                # Criar arquivo de serviço systemd
+                cat > $SERVICE_FILE << 'EOF'
+[Unit]
+Description=Laravel Queue Worker
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dispatcher-control
+Restart=always
+RestartSec=10
+ExecStart=/usr/bin/php /var/www/dispatcher-control/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --timeout=300
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+                
+                # Ajustar caminho do PHP no arquivo de serviço
+                sed -i "s|ExecStart=/usr/bin/php|ExecStart=$PHP_PATH|g" $SERVICE_FILE
+                
+                # Recarregar systemd apenas se criou o arquivo
+                systemctl daemon-reload
+                echo "  → ✅ Arquivo de serviço criado e systemd recarregado"
+            fi
+            
+            # Habilitar serviço (inicia automaticamente no boot) - sempre executar
+            systemctl enable laravel-queue-worker 2>/dev/null || echo "  → Serviço já habilitado"
+            
+            # Iniciar ou reiniciar serviço
+            if systemctl is-active --quiet laravel-queue-worker 2>/dev/null; then
+                echo "  → Queue worker já está rodando, reiniciando..."
+                systemctl restart laravel-queue-worker
+            else
+                echo "  → Iniciando queue worker..."
+                systemctl start laravel-queue-worker
+            fi
+            
+            # Verificar status
+            if systemctl is-active --quiet laravel-queue-worker; then
+                echo "  → ✅ Queue worker está ativo"
+            else
+                echo "  → ⚠️  Queue worker não está ativo, verifique logs: journalctl -u laravel-queue-worker"
             fi
             echo ""
             
