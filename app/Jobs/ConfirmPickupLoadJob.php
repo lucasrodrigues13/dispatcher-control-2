@@ -54,28 +54,16 @@ class ConfirmPickupLoadJob implements ShouldQueue
                 return;
             }
 
-            // TODO: N8N integration will be implemented later
-            // For now, just log that the job was processed successfully
-            // The job will be marked as completed in the jobs table
-            Log::info("ConfirmPickupLoadJob: Load ID {$this->loadId} processed successfully (enqueued for pickup confirmation)", [
-                'load_id' => $load->id,
-                'load_identifier' => $load->load_id ?? $load->internal_load_id,
-                'status' => 'enqueued',
-            ]);
-
-            // Job completed successfully
-            // N8N integration will be added later when webhook is ready
-            return;
-
-            /* N8N Integration - To be implemented later
             // Preparar payload para N8N
             $payload = $this->preparePayloadForN8N($load);
 
             // Enviar para N8N
             $this->sendToN8N($payload);
 
-            Log::info("Successfully sent load {$this->loadId} to N8N for pickup confirmation");
-            */
+            Log::info("Successfully sent load {$this->loadId} to N8N for pickup confirmation", [
+                'load_id' => $load->id,
+                'load_identifier' => $load->load_id ?? $load->internal_load_id,
+            ]);
 
         } catch (\Exception $e) {
             // Log error but don't fail the job (silent failure)
