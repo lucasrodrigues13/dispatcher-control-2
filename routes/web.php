@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CommissionController;
+use App\Http\Controllers\PickupConfirmationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProfileController;
@@ -271,17 +272,17 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
         ->name('webhook.n8n.pickup-confirmation');
     
     // Pickup Confirmations
-    Route::get('/pickup-confirmations', [\App\Http\Controllers\PickupConfirmationController::class, 'index'])
+    Route::get('/pickup-confirmations', [PickupConfirmationController::class, 'index'])
         ->name('pickup-confirmations.index');
-    Route::get('/pickup-confirmations/data', [\App\Http\Controllers\PickupConfirmationController::class, 'getConfirmations'])
+    Route::get('/pickup-confirmations/data', [PickupConfirmationController::class, 'getConfirmations'])
         ->name('pickup-confirmations.data');
-    Route::get('/pickup-confirmations/jobs', [\App\Http\Controllers\PickupConfirmationController::class, 'getEnqueuedJobs'])
+    Route::get('/pickup-confirmations/jobs', [PickupConfirmationController::class, 'getEnqueuedJobs'])
         ->name('pickup-confirmations.jobs');
-    Route::get('/pickup-confirmations/{id}/download-transcription', [\App\Http\Controllers\PickupConfirmationController::class, 'downloadTranscription'])
+    Route::get('/pickup-confirmations/{id}/download-transcription', [PickupConfirmationController::class, 'downloadTranscription'])
         ->name('pickup-confirmations.download-transcription');
-    Route::get('/pickup-confirmations/{id}/download-audio', [\App\Http\Controllers\PickupConfirmationController::class, 'downloadAudio'])
+    Route::get('/pickup-confirmations/{id}/download-audio', [PickupConfirmationController::class, 'downloadAudio'])
         ->name('pickup-confirmations.download-audio');
-    Route::post('/pickup-confirmations/retry/{uuid}', [\App\Http\Controllers\PickupConfirmationController::class, 'retryFailedJob'])
+    Route::post('/pickup-confirmations/retry/{uuid}', [PickupConfirmationController::class, 'retryFailedJob'])
         ->name('pickup-confirmations.retry');
 
 
