@@ -144,6 +144,10 @@ Route::post('/drivers', [DriverController::class, 'store'])->name('drivers.store
 Route::post('/brokers', [BrokerController::class, 'store'])->name('brokers.store');
 Route::middleware(['auth', 'can.access.agreements'])->post('/deals', [DealController::class, 'store'])->name('deals.store');
 
+// Webhook público para receber confirmações do N8N (sem autenticação)
+Route::post('/webhook/n8n/pickup-confirmation', [KanbanController::class, 'receivePickupConfirmation'])
+    ->name('webhook.n8n.pickup-confirmation');
+
 // Rotas protegidas por assinatura
 Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::get('/dispatchers', [DispatcherController::class, 'index'])->name('dispatchers.index');
@@ -266,10 +270,6 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     // Confirm Pickup Loads - Enqueue for N8N processing
     Route::post('/loads/confirm-pickup', [KanbanController::class, 'confirmPickupLoads'])
         ->name('loads.confirm-pickup');
-
-    // Webhook to receive pickup confirmation updates from N8N
-    Route::post('/webhook/n8n/pickup-confirmation', [KanbanController::class, 'receivePickupConfirmation'])
-        ->name('webhook.n8n.pickup-confirmation');
     
     // Pickup Confirmations
     Route::get('/pickup-confirmations', [PickupConfirmationController::class, 'index'])
