@@ -7,6 +7,7 @@ use App\Models\LoadPickupConfirmation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
 
 class PickupConfirmationController extends Controller
 {
@@ -276,7 +277,7 @@ class PickupConfirmationController extends Controller
             }
 
             // Retry the job
-            \Artisan::call('queue:retry', ['id' => $uuid]);
+            Artisan::call('queue:retry', ['uuid' => $uuid]);
 
             return response()->json([
                 'success' => true,

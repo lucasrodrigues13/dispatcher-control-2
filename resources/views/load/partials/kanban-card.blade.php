@@ -4,7 +4,7 @@
   <div class="card-header-mini">
     <div class="load-id-badge">
       @if(isset($showCheckbox) && $showCheckbox)
-        <input type="checkbox" class="load-checkbox" value="{{ $load->id }}" data-load-id="{{ $load->id }}">
+      <input type="checkbox" class="load-checkbox" value="{{ $load->id }}" data-load-id="{{ $load->id }}">
       @endif
       <i class="fas fa-hashtag"></i>
       <span>{{ $load->load_id ?? $load->internal_load_id ?? 'N/A' }}</span>
@@ -68,12 +68,26 @@
     {{-- Dates --}}
     <div class="card-dates">
       @if($load->scheduled_pickup_date)
-      <div class="date-badge pickup-date">
-        <i class="fas fa-calendar-alt me-1"></i>
-        <small>Pickup: {{ \Carbon\Carbon::parse($load->scheduled_pickup_date)->format('m/d/Y') }}</small>
+      <div class="pickup-date-row">
+        <div class="date-badge pickup-date">
+          <i class="fas fa-calendar-alt me-1"></i>
+          <small>Pickup: {{ \Carbon\Carbon::parse($load->scheduled_pickup_date)->format('m/d/Y') }}</small>
+        </div>
+        {{-- Pickup Status Badge --}}
+        @if(isset($load->pickup_status))
+        <span class="mini-badge pickup-status-badge pickup-status-{{ strtolower($load->pickup_status) }}">
+          @if($load->pickup_status === 'READY')
+          <i class="fas fa-check-circle"></i> Ready to Pickup
+          @elseif($load->pickup_status === 'NOT_READY')
+          <i class="fas fa-clock"></i> Not Ready to Pickup
+          @else
+          <i class="fas fa-hourglass-half"></i> Pending
+          @endif
+        </span>
+        @endif
       </div>
       @endif
-      
+
       @if($load->scheduled_delivery_date)
       <div class="date-badge delivery-date">
         <i class="fas fa-calendar-check me-1"></i>
@@ -97,23 +111,10 @@
         <i class="fas fa-building"></i> Terminal
       </span>
       @endif
-      
+
       @if($load->payment_status === 'paid')
       <span class="mini-badge paid-badge">
         <i class="fas fa-check-circle"></i> Paid
-      </span>
-      @endif
-
-      {{-- Pickup Status Badge --}}
-      @if(isset($load->pickup_status))
-      <span class="mini-badge pickup-status-badge pickup-status-{{ strtolower($load->pickup_status) }}">
-        @if($load->pickup_status === 'READY')
-          <i class="fas fa-check-circle"></i> Ready
-        @elseif($load->pickup_status === 'NOT_READY')
-          <i class="fas fa-clock"></i> Not Ready
-        @else
-          <i class="fas fa-hourglass-half"></i> Pending
-        @endif
       </span>
       @endif
     </div>
@@ -121,8 +122,8 @@
 </div>
 
 <style>
-/* Load Card */
-.load-card {
+  /* Load Card */
+  .load-card {
     background: #ffffff;
     border: 1px solid #e9ecef;
     border-radius: 8px;
@@ -130,49 +131,49 @@
     margin-bottom: 12px;
     cursor: grab;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
 
-.load-card:hover {
+  .load-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border-color: #007bff;
-}
+  }
 
-.load-card:active {
+  .load-card:active {
     cursor: grabbing;
-}
+  }
 
-/* Card Header Mini */
-.card-header-mini {
+  /* Card Header Mini */
+  .card-header-mini {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
     padding-bottom: 8px;
     border-bottom: 1px solid #f0f0f0;
-}
+  }
 
-.load-id-badge {
+  .load-id-badge {
     display: flex;
     align-items: center;
     gap: 4px;
     font-weight: 700;
     font-size: 13px;
     color: #495057;
-}
+  }
 
-.load-id-badge i {
+  .load-id-badge i {
     font-size: 11px;
     color: #6c757d;
-}
+  }
 
-.card-actions {
+  .card-actions {
     display: flex;
     gap: 4px;
-}
+  }
 
-.btn-icon {
+  .btn-icon {
     background: none;
     border: none;
     padding: 4px 6px;
@@ -180,78 +181,86 @@
     color: #6c757d;
     border-radius: 4px;
     transition: all 0.2s;
-}
+  }
 
-.btn-icon:hover {
+  .btn-icon:hover {
     background: #f8f9fa;
     color: #007bff;
-}
+  }
 
-/* Card Content */
-.card-content {
+  /* Card Content */
+  .card-content {
     display: flex;
     flex-direction: column;
     gap: 8px;
-}
+  }
 
-.card-field {
+  .card-field {
     display: flex;
     align-items: center;
     font-size: 12px;
     line-height: 1.4;
-}
+  }
 
-.vehicle-info {
+  .vehicle-info {
     font-size: 14px;
     color: #212529;
     margin-bottom: 4px;
-}
+  }
 
-.vin-field {
+  .vin-field {
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
-}
+  }
 
-.vin-text {
+  .vin-text {
     font-family: 'Courier New', monospace;
     font-size: 11px;
     background: #f8f9fa;
     padding: 2px 6px;
     border-radius: 3px;
-}
+  }
 
-.location-field {
+  .location-field {
     align-items: flex-start;
-}
+  }
 
-.location-info {
+  .location-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
-}
+  }
 
-.location-info small {
+  .location-info small {
     font-size: 10px;
-}
+  }
 
-.location-info span {
+  .location-info span {
     font-size: 12px;
     font-weight: 500;
-}
+  }
 
-.carrier-field, .driver-field {
+  .carrier-field,
+  .driver-field {
     color: #6c757d;
-}
+  }
 
-.card-dates {
+  .card-dates {
     display: flex;
     flex-direction: column;
     gap: 4px;
     margin-top: 4px;
-}
+  }
 
-.date-badge {
+  .pickup-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .date-badge {
     display: inline-flex;
     align-items: center;
     padding: 3px 8px;
@@ -259,33 +268,33 @@
     border-radius: 4px;
     font-size: 11px;
     color: #1976d2;
-}
+  }
 
-.delivery-date {
+  .delivery-date {
     background: #fff3e0;
     color: #f57c00;
-}
+  }
 
-.price-field {
+  .price-field {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid #f0f0f0;
-}
+  }
 
-.price-text {
+  .price-text {
     font-size: 16px;
     color: #28a745;
-}
+  }
 
-/* Card Badges */
-.card-badges {
+  /* Card Badges */
+  .card-badges {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 8px;
-}
+  }
 
-.mini-badge {
+  .mini-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -293,41 +302,40 @@
     border-radius: 12px;
     font-size: 10px;
     font-weight: 600;
-}
+  }
 
-.terminal-badge {
+  .terminal-badge {
     background: #e8f5e9;
     color: #2e7d32;
-}
+  }
 
-.paid-badge {
+  .paid-badge {
     background: #e8f5e9;
     color: #2e7d32;
-}
+  }
 
-.pickup-status-badge {
+  .pickup-status-badge {
     font-weight: 600;
-}
+  }
 
-.pickup-status-ready {
+  .pickup-status-ready {
     background: #c8e6c9;
     color: #2e7d32;
-}
+  }
 
-.pickup-status-not_ready {
+  .pickup-status-not_ready {
     background: #ffccbc;
     color: #e64a19;
-}
+  }
 
-.pickup-status-pending {
+  .pickup-status-pending {
     background: #fff9c4;
     color: #f57f17;
-}
+  }
 
-/* Dragging State */
-.load-card.dragging {
+  /* Dragging State */
+  .load-card.dragging {
     opacity: 0.5;
     transform: rotate(5deg);
-}
+  }
 </style>
-
