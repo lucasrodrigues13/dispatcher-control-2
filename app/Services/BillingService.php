@@ -1098,4 +1098,15 @@ class BillingService
         // Implementar conforme necessário
         return true;
     }
+
+    /**
+     * Verifica se o usuário tem o serviço de AI Voice ativo no plano
+     */
+    public function hasAiVoiceService(User $user): bool
+    {
+        $mainUser = $this->getMainUser($user);
+        $subscription = $mainUser->subscription()->with('plan')->first();
+
+        return $subscription && $subscription->plan && $subscription->plan->ai_voice_service;
+    }
 }

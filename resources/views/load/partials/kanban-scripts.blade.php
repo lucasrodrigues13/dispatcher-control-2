@@ -55,11 +55,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmBtn = document.getElementById('confirm-assigned-loads-btn');
     const assignedColumn = document.getElementById('column-assigned');
 
-    // Initialize button state on page load (with delay to ensure DOM is ready)
-    setTimeout(function() {
-        updateConfirmButtonState();
-        updateSelectAllState();
-    }, 100);
+    // Only initialize if AI Voice Service is enabled (elements exist)
+    if (selectAllCheckbox && confirmBtn && assignedColumn) {
+        // Initialize button state on page load (with delay to ensure DOM is ready)
+        setTimeout(function() {
+            updateConfirmButtonState();
+            updateSelectAllState();
+        }, 100);
 
     // Handle individual checkbox changes
     if (assignedColumn) {
@@ -230,10 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateConfirmButtonState();
         });
     }
-
-    // Initialize button state
-    updateConfirmButtonState();
-    updateSelectAllState();
+    }
 });
 // Deletar todos os loads
 const deleteAllBtn = document.getElementById('delete-all-loads');

@@ -21,6 +21,7 @@ class Plan extends Model
         'max_brokers',      // ✅ Adicionado via migration
         'user_id',          // ✅ Adicionado via migration (planos customizados)
         'is_custom',        // ✅ Adicionado via migration
+        'ai_voice_service', // ✅ Adicionado via migration
         'is_trial',
         'trial_days',
         'active',
@@ -30,6 +31,7 @@ class Plan extends Model
         'price' => 'decimal:2',
         'is_trial' => 'boolean',
         'is_custom' => 'boolean',
+        'ai_voice_service' => 'boolean',
         'active' => 'boolean',
     ];
 

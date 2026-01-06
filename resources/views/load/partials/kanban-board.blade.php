@@ -30,24 +30,28 @@
           ASSIGNED
           <span class="badge bg-info ms-2">{{ count($loadsByStatus['assigned'] ?? []) }}</span>
         </h5>
+        @if($hasAiVoiceService ?? false)
         <div class="assigned-actions">
           <label class="select-all-checkbox-label" title="Select All">
             <input type="checkbox" id="select-all-assigned" class="select-all-checkbox">
             <span class="select-all-text">All</span>
           </label>
         </div>
+        @endif
       </div>
       <div class="column-body" id="column-assigned">
         @foreach($loadsByStatus['assigned'] ?? [] as $load)
-          @include('load.partials.kanban-card', ['load' => $load, 'showCheckbox' => true])
+          @include('load.partials.kanban-card', ['load' => $load, 'showCheckbox' => $hasAiVoiceService ?? false])
         @endforeach
       </div>
+      @if($hasAiVoiceService ?? false)
       <div class="column-footer" id="assigned-column-footer">
         <button type="button" id="confirm-assigned-loads-btn" class="btn btn-primary btn-sm w-100" disabled>
           <i class="fas fa-check-circle me-2"></i>
           Confirm Pickup Loads
         </button>
       </div>
+      @endif
     </div>
 
     {{-- Column: PICKED UP --}}

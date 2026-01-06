@@ -26,6 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
         'photo',
         'logo',
+        'ai_voice_credits',
     ];
 
     protected $hidden = [
@@ -40,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_subowner' => 'boolean',
         'is_admin' => 'boolean',
         'is_active' => 'boolean',
+        'ai_voice_credits' => \App\Casts\MoneyCast::class,
     ];
 
     public function roles()

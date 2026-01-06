@@ -46,7 +46,17 @@ class KanbanController extends Controller
 
         $containers = Container::with(['containerLoads.loadItem'])->get();
 
-        return view('load.kanbanMode', compact('loads', 'dispatchers', 'carriers', 'containers', 'employees', 'loadsByStatus'));
+        // Check if user has AI Voice Service enabled
+        $user = auth()->user();
+        $billingService = app(\App\Services\BillingService::class);
+        $mainUser = $billingService->getMainUser($user);
+        $hasAiVoiceService = false;
+        
+        if ($mainUser->subscription && $mainUser->subscription->plan) {
+            $hasAiVoiceService = (bool) ($mainUser->subscription->plan->ai_voice_service ?? false);
+        }
+
+        return view('load.kanbanMode', compact('loads', 'dispatchers', 'carriers', 'containers', 'employees', 'loadsByStatus', 'hasAiVoiceService'));
     }
 
     /**

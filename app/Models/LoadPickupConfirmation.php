@@ -26,6 +26,8 @@ class LoadPickupConfirmation extends Model
         'call_transcription_url',
         'vapi_call_id',
         'vapi_call_status',
+        'call_duration',
+        'call_cost',
         'raw_payload',
     ];
 
@@ -33,6 +35,8 @@ class LoadPickupConfirmation extends Model
         'car_ready_for_pickup' => 'boolean',
         'is_address_correct' => 'boolean',
         'not_ready_when' => 'datetime',
+        'call_duration' => 'integer',
+        'call_cost' => \App\Casts\MoneyCast::class,
         'raw_payload' => 'array',
     ];
 

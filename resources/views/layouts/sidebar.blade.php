@@ -118,6 +118,19 @@
         </li>
         @endcan
 
+        {{-- Voice Calls (only for users with AI Voice Service) --}}
+        @php
+            $billingService = app(\App\Services\BillingService::class);
+            $hasAiVoiceService = $billingService->hasAiVoiceService(auth()->user());
+        @endphp
+        @if($hasAiVoiceService)
+        <li class="nav-item {{ request()->is('voice-calls*') ? 'active' : '' }}">
+          <a href="{{ route('voice-calls.index') }}">
+            <i class="fas fa-phone-alt"></i><p>Voice Calls</p>
+          </a>
+        </li>
+        @endif
+
         {{-- Invoices --}}
         @php
             $isInvoicesActive = request()->is('invoices*') || request()->is('charges_setups*');
@@ -247,6 +260,13 @@
           </div>
         </li>
         @endcan
+
+        {{-- Subscription / My Subscription --}}
+        <li class="nav-item {{ request()->is('subscription*') && !request()->is('admin/subscriptions*') ? 'active' : '' }}">
+          <a href="{{ route('subscription.index') }}">
+            <i class="fas fa-crown"></i><p>My Plan</p>
+          </a>
+        </li>
 
         {{-- Logout --}}
         <li class="nav-item">

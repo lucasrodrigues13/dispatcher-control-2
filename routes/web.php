@@ -285,6 +285,12 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
     Route::post('/pickup-confirmations/retry/{uuid}', [PickupConfirmationController::class, 'retryFailedJob'])
         ->name('pickup-confirmations.retry');
 
+    // Voice Calls Management
+    Route::get('/voice-calls', [App\Http\Controllers\VoiceCallsController::class, 'index'])
+        ->name('voice-calls.index');
+    Route::get('/voice-calls/data', [App\Http\Controllers\VoiceCallsController::class, 'getCalls'])
+        ->name('voice-calls.data');
+
 
     // Kanban Container
     Route::get('/mode/container/list', [ContainerController::class, 'index'])->name('container.index');

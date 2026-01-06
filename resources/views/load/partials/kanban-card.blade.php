@@ -89,9 +89,11 @@
       @endif
 
       @if($load->scheduled_delivery_date)
-      <div class="date-badge delivery-date">
-        <i class="fas fa-calendar-check me-1"></i>
-        <small>Delivery: {{ \Carbon\Carbon::parse($load->scheduled_delivery_date)->format('m/d/Y') }}</small>
+      <div class="delivery-date-row">
+        <div class="date-badge delivery-date">
+          <i class="fas fa-calendar-check me-1"></i>
+          <small>Delivery: {{ \Carbon\Carbon::parse($load->scheduled_delivery_date)->format('m/d/Y') }}</small>
+        </div>
       </div>
       @endif
     </div>
@@ -260,19 +262,29 @@
     flex-wrap: wrap;
   }
 
+  .delivery-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   .date-badge {
     display: inline-flex;
     align-items: center;
     padding: 3px 8px;
     background: #e3f2fd;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 8px;
     color: #1976d2;
+    min-width: 140px;
+    justify-content: flex-start;
   }
 
   .delivery-date {
     background: #fff3e0;
     color: #f57c00;
+    max-width: 140px;
   }
 
   .price-field {

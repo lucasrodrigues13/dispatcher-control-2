@@ -131,39 +131,42 @@
                     @if($subscription->status === 'active')
                         <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary">
                             <i class="fas fa-cog me-2"></i>
-                            Alterar Plano
+                            Change Plan
                         </a>
                         
+                        @php
+                            $expiresDate = $subscription->expires_at ? $subscription->expires_at->format('M d, Y') : 'the expiration date';
+                            $confirmMessage = "Are you sure you want to cancel your subscription? You can continue using until {$expiresDate}.";
+                        @endphp
                         <form action="{{ route('subscription.cancel') }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Tem certeza que deseja cancelar sua assinatura? Você poderá continuar usando até ' + 
-                              '{{ $subscription->expires_at ? $subscription->expires_at->format('d/m/Y') : 'a data de vencimento' }}.')">
+                              onsubmit="return confirm('{{ addslashes($confirmMessage) }}')">
                             @csrf
                             <button type="submit" class="btn btn-outline-danger">
                                 <i class="fas fa-times me-2"></i>
-                                Cancelar Assinatura
+                                Cancel Subscription
                             </button>
                         </form>
                     @elseif($subscription->status === 'cancelled')
                         <div class="alert alert-warning mb-3">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>Assinatura Cancelada</strong><br>
-                            Você pode continuar usando o sistema até 
-                            {{ $subscription->expires_at ? $subscription->expires_at->format('d/m/Y') : 'a data de vencimento' }}.
+                            <strong>Subscription Cancelled</strong><br>
+                            You can continue using the system until 
+                            {{ $subscription->expires_at ? $subscription->expires_at->format('M d, Y') : 'the expiration date' }}.
                         </div>
                         <a href="{{ route('subscription.build-plan') }}" class="btn btn-success">
                             <i class="fas fa-redo me-2"></i>
-                            Reativar Assinatura
+                            Reactivate Subscription
                         </a>
                     @endif
 
                     <a href="{{ route('billing.index') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-receipt me-2"></i>
-                        Ver Faturas
+                        View Invoices
                     </a>
                 @else
                     <a href="{{ route('subscription.build-plan') }}" class="btn btn-primary btn-lg">
                         <i class="fas fa-bolt me-2"></i>
-                        Montar Plano Personalizado
+                        Build Custom Plan
                     </a>
                 @endif
             </div>

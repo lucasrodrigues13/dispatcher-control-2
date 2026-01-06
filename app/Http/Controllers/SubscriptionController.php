@@ -82,6 +82,7 @@ class SubscriptionController extends Controller
                     'max_brokers' => $pendingPlanData['brokers'],
                     'max_loads_per_month' => null,
                     'is_custom' => true,
+                    'ai_voice_service' => $pendingPlanData['ai_voice_service'] ?? false,
                     'active' => false,
                 ]);
             }
@@ -348,6 +349,7 @@ class SubscriptionController extends Controller
                         'max_brokers' => $pendingPlanData['brokers'],
                         'max_loads_per_month' => null,
                         'is_custom' => true,
+                        'ai_voice_service' => $pendingPlanData['ai_voice_service'] ?? false,
                         'active' => true,
                     ]);
                     
@@ -363,6 +365,7 @@ class SubscriptionController extends Controller
                         'max_employees' => $pendingPlanData['employees'],
                         'max_drivers' => $pendingPlanData['drivers'],
                         'max_brokers' => $pendingPlanData['brokers'],
+                        'ai_voice_service' => $pendingPlanData['ai_voice_service'] ?? false,
                         'active' => true,
                     ]);
                 }
@@ -481,6 +484,7 @@ class SubscriptionController extends Controller
                         'max_brokers' => $pendingPlanData['brokers'],
                         'max_loads_per_month' => null,
                         'is_custom' => true,
+                        'ai_voice_service' => $pendingPlanData['ai_voice_service'] ?? false,
                         'active' => true, // Ativar após pagamento confirmado
                     ]);
                     
@@ -497,6 +501,7 @@ class SubscriptionController extends Controller
                         'max_employees' => $pendingPlanData['employees'],
                         'max_drivers' => $pendingPlanData['drivers'],
                         'max_brokers' => $pendingPlanData['brokers'],
+                        'ai_voice_service' => $pendingPlanData['ai_voice_service'] ?? false,
                         'active' => true, // Ativar após pagamento confirmado
                     ]);
                 }
@@ -505,8 +510,27 @@ class SubscriptionController extends Controller
                 session()->forget('pending_plan');
             }
 
-            // ⭐ NOVO: Verificar se é upgrade proporcional
+            // ⭐ NOVO: Verificar se é ativação do serviço de IA pela primeira vez
             $currentSubscription = $mainUser->subscription;
+            $currentPlan = $currentSubscription ? $currentSubscription->plan : null;
+            $hadAiVoiceServiceBefore = $currentPlan && ($currentPlan->ai_voice_service ?? false);
+            $hasAiVoiceServiceNow = $plan->ai_voice_service ?? false;
+            
+            // Se não tinha antes e agora tem, dar 10 USD de créditos
+            if (!$hadAiVoiceServiceBefore && $hasAiVoiceServiceNow) {
+                $currentCredits = $mainUser->ai_voice_credits ?? 0.00;
+                $mainUser->update([
+                    'ai_voice_credits' => $currentCredits + 10.00
+                ]);
+                
+                Log::info('AI Voice Service activated - Credits added', [
+                    'user_id' => $mainUser->id,
+                    'credits_added' => 10.00,
+                    'new_balance' => $currentCredits + 10.00
+                ]);
+            }
+
+            // ⭐ NOVO: Verificar se é upgrade proporcional
             $isUpgrade = false;
             $preserveExpiresAt = false;
             $isFromFreemium = false;
@@ -782,7 +806,10 @@ class SubscriptionController extends Controller
             ];
         }
 
-        return view('subscription.build-plan', compact('currentPlan', 'currentCounts'));
+        // ⭐ NOVO: Obter valor atual do ai_voice_service do plano
+        $currentAiVoiceService = $currentPlan ? ($currentPlan->ai_voice_service ?? false) : false;
+
+        return view('subscription.build-plan', compact('currentPlan', 'currentCounts', 'currentAiVoiceService'));
     }
 
     /**
@@ -796,6 +823,7 @@ class SubscriptionController extends Controller
             'employees' => 'integer|min:0',
             'drivers' => 'integer|min:0',
             'brokers' => 'integer|min:0',
+            'ai_voice_service' => 'boolean',
         ]);
 
         $carriers = (int) ($request->input('carriers', 0));
@@ -803,27 +831,35 @@ class SubscriptionController extends Controller
         $employees = (int) ($request->input('employees', 0));
         $drivers = (int) ($request->input('drivers', 0));
         $brokers = (int) ($request->input('brokers', 0));
+        $aiVoiceService = (bool) $request->input('ai_voice_service', false);
 
         $totalUsers = $carriers + $dispatchers + $employees + $drivers + $brokers;
 
-        // Mínimo 2 usuários
+        // Minimum 2 users
         if ($totalUsers < 2) {
             return response()->json([
                 'success' => false,
-                'error' => 'Mínimo de 2 usuários obrigatório',
+                'error' => 'Minimum 2 users required',
                 'total_users' => $totalUsers,
                 'price' => 0,
             ]);
         }
 
-        // $10 por usuário
+        // $10 per user
         $pricePerUser = 10.00;
-        $totalPrice = $totalUsers * $pricePerUser;
+        $basePrice = $totalUsers * $pricePerUser;
+        
+        // Add AI Voice Service cost if enabled ($20/month)
+        $aiServicePrice = $aiVoiceService ? 20.00 : 0.00;
+        $totalPrice = $basePrice + $aiServicePrice;
 
         return response()->json([
             'success' => true,
             'total_users' => $totalUsers,
             'price_per_user' => $pricePerUser,
+            'base_price' => $basePrice,
+            'ai_voice_service_enabled' => $aiVoiceService,
+            'ai_voice_service_price' => $aiServicePrice,
             'total_price' => $totalPrice,
             'formatted_price' => '$' . number_format($totalPrice, 2, '.', ','),
         ]);
@@ -841,6 +877,7 @@ class SubscriptionController extends Controller
             'employees' => 'required|integer|min:0',
             'drivers' => 'required|integer|min:0',
             'brokers' => 'required|integer|min:0',
+            'ai_voice_service' => 'nullable|boolean',
         ]);
 
         $user = auth()->user();
@@ -854,19 +891,22 @@ class SubscriptionController extends Controller
         $employees = (int) $request->input('employees');
         $drivers = (int) $request->input('drivers');
         $brokers = (int) $request->input('brokers');
+        $aiVoiceService = (bool) $request->input('ai_voice_service', false);
 
         $totalUsers = $carriers + $dispatchers + $employees + $drivers + $brokers;
 
-        // Validar mínimo de 2 usuários
+        // Validate minimum 2 users
         if ($totalUsers < 2) {
             return redirect()->back()
-                ->withErrors(['error' => 'Mínimo de 2 usuários obrigatório ($20/mês)'])
+                ->withErrors(['error' => 'Minimum 2 users required ($20/month)'])
                 ->withInput();
         }
 
-        // Calcular preço
+        // Calculate price
         $pricePerUser = 10.00;
-        $totalPrice = $totalUsers * $pricePerUser;
+        $basePrice = $totalUsers * $pricePerUser;
+        $aiServicePrice = $aiVoiceService ? 20.00 : 0.00;
+        $totalPrice = $basePrice + $aiServicePrice;
 
         try {
             // ⭐ CORRIGIDO: Armazenar dados do plano na sessão (NÃO criar plano ainda)
@@ -878,7 +918,10 @@ class SubscriptionController extends Controller
                     'employees' => $employees,
                     'drivers' => $drivers,
                     'brokers' => $brokers,
+                    'ai_voice_service' => $aiVoiceService,
                     'total_users' => $totalUsers,
+                    'base_price' => $basePrice,
+                    'ai_voice_service_price' => $aiServicePrice,
                     'total_price' => $totalPrice,
                     'main_user_id' => $mainUser->id,
                 ]
@@ -907,6 +950,7 @@ class SubscriptionController extends Controller
                     'max_brokers' => $brokers,
                     'max_loads_per_month' => null,
                     'is_custom' => true,
+                    'ai_voice_service' => $aiVoiceService,
                     'active' => false, // Não ativar até pagamento confirmado
                 ]);
             }

@@ -4,7 +4,7 @@
 @section('title', 'Billing History')
 
 @section('conteudo')
-<div class="container">
+<div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-receipt"></i> Billing History</h2>
         <a href="{{ route('subscription.index') }}" class="btn btn-outline-primary">
@@ -43,7 +43,7 @@
                         @if($subscription->isOnTrial())
                             <p class="text-muted">Trial ends: {{ $subscription->trial_ends_at->format('M d, Y') }}</p>
                         @else
-                            <p>{{ $subscription->getNextBillingDate()->format('M d, Y') }}</p>
+                            <p>{{ $subscription->expires_at ? $subscription->expires_at->format('M d, Y') : 'N/A' }}</p>
                             <small class="text-muted">${{ number_format($subscription->amount, 2) }} will be charged</small>
                         @endif
                     </div>
