@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Load;
+use App\Models\LoadPickupConfirmationAttempt;
 use App\Services\LoadService;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -42,14 +43,34 @@ class ConfirmPickupLoadJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $attempt = null;
         try {
-            $load = Load::findOrFail($this->loadId);
+            // Buscar load sem TenantScope para garantir que encontra mesmo que seja de outro tenant
+            $load = Load::withoutGlobalScope(\App\Models\Scopes\TenantScope::class)
+                ->findOrFail($this->loadId);
+
+            // Buscar tentativa pendente para este load
+            $attempt = LoadPickupConfirmationAttempt::getPendingAttempt($this->loadId);
+            
+            if ($attempt) {
+                // Atualizar status para processing
+                $attempt->update(['status' => 'processing']);
+            }
 
             // Verificar se o load ainda está em status assigned
             if ($load->kanban_status !== 'assigned') {
                 Log::info("Load {$this->loadId} is not in assigned status, skipping confirmation", [
                     'current_status' => $load->kanban_status
                 ]);
+                
+                // Marcar tentativa como failed se existir
+                if ($attempt) {
+                    $attempt->update([
+                        'status' => 'failed',
+                        'error_message' => "Load is not in assigned status. Current status: {$load->kanban_status}"
+                    ]);
+                }
+                
                 // Job completed successfully (no error, just skip)
                 return;
             }
@@ -63,14 +84,27 @@ class ConfirmPickupLoadJob implements ShouldQueue
             Log::info("Successfully sent load {$this->loadId} to N8N for pickup confirmation", [
                 'load_id' => $load->id,
                 'load_identifier' => $load->load_id ?? $load->internal_load_id,
+                'attempt_id' => $attempt?->id,
             ]);
 
+            // Atualizar tentativa: manter como processing até receber confirmação do webhook
+            // O webhook atualizará para 'completed' quando a confirmação for recebida
+            // Não atualizamos aqui para completed porque ainda não recebemos a confirmação
+
         } catch (\Exception $e) {
-            // Log error but don't fail the job (silent failure)
-            // This allows jobs to be processed without showing errors to users
-            Log::warning("ConfirmPickupLoadJob: Error processing load {$this->loadId} (silent failure)", [
+            // Log error and update attempt status
+            Log::warning("ConfirmPickupLoadJob: Error processing load {$this->loadId}", [
                 'error' => $e->getMessage(),
+                'attempt_id' => $attempt?->id,
             ]);
+            
+            // Atualizar tentativa como failed
+            if ($attempt) {
+                $attempt->update([
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage()
+                ]);
+            }
             
             // Job completes without error (silent failure)
             // This prevents jobs from going to failed_jobs table
@@ -190,9 +224,18 @@ class ConfirmPickupLoadJob implements ShouldQueue
             'attempts' => $this->attempts(),
         ]);
 
+        // Atualizar tentativa como failed permanentemente
+        $attempt = LoadPickupConfirmationAttempt::getPendingAttempt($this->loadId);
+        if ($attempt) {
+            $attempt->update([
+                'status' => 'failed',
+                'error_message' => 'Job failed permanently after ' . $this->attempts() . ' attempts: ' . $exception->getMessage()
+            ]);
+        }
+        
         // Aqui você pode adicionar lógica para notificar o usuário
         // ou marcar o load como necessitando intervenção manual
-        $load = Load::find($this->loadId);
+        $load = Load::withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->find($this->loadId);
         if ($load) {
             // Opcional: marcar o load com algum status especial para intervenção
             // $load->update(['pickup_status' => 'REQUIRES_MANUAL_INTERVENTION']);

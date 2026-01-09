@@ -16,6 +16,7 @@ use App\Services\BillingService;
 use App\Services\LoadService;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\PhoneHelper;
 
 class LoadImportController extends Controller
 {
@@ -283,8 +284,8 @@ class LoadImportController extends Controller
             'pickup_state'            => $request->input('pickup_state'),
             'pickup_zip'              => $request->input('pickup_zip'),
             'scheduled_pickup_date'   => $request->input('scheduled_pickup_date'),
-            'pickup_phone'            => $request->input('pickup_phone'),
-            'pickup_mobile'           => $request->input('pickup_mobile'),
+            'pickup_phone'            => PhoneHelper::formatPhoneForDatabase($request->input('pickup_phone'), $request->input('pickup_phone_country_code', '+1')),
+            'pickup_mobile'           => PhoneHelper::formatPhoneForDatabase($request->input('pickup_mobile'), $request->input('pickup_mobile_country_code', '+1')),
             'actual_pickup_date'      => $request->input('actual_pickup_date'),
             'buyer_number'            => $request->input('buyer_number'),
             'pickup_notes'            => $request->input('pickup_notes'),
@@ -295,11 +296,11 @@ class LoadImportController extends Controller
             'delivery_zip'            => $request->input('delivery_zip'),
             'scheduled_delivery_date' => $request->input('scheduled_delivery_date'),
             'actual_delivery_date'    => $request->input('actual_delivery_date'),
-            'delivery_phone'          => $request->input('delivery_phone'),
-            'delivery_mobile'         => $request->input('delivery_mobile'),
+            'delivery_phone'          => PhoneHelper::formatPhoneForDatabase($request->input('delivery_phone'), $request->input('delivery_phone_country_code', '+1')),
+            'delivery_mobile'         => PhoneHelper::formatPhoneForDatabase($request->input('delivery_mobile'), $request->input('delivery_mobile_country_code', '+1')),
             'delivery_notes'          => $request->input('delivery_notes'),
             'shipper_name'            => $request->input('shipper_name'),
-            'shipper_phone'           => $request->input('shipper_phone'),
+            'shipper_phone'           => PhoneHelper::formatPhoneForDatabase($request->input('shipper_phone'), $request->input('shipper_phone_country_code', '+1')),
             'price'                   => $request->input('price'),
             'expenses'                => $request->input('expenses'),
             'broker_fee'              => $request->input('broker_fee'),
@@ -483,8 +484,8 @@ class LoadImportController extends Controller
             'pickup_state'            => $request->input('pickup_state'),
             'pickup_zip'              => $request->input('pickup_zip'),
             'scheduled_pickup_date'   => $request->input('scheduled_pickup_date'),
-            'pickup_phone'            => $request->input('pickup_phone'),
-            'pickup_mobile'           => $request->input('pickup_mobile'),
+            'pickup_phone'            => PhoneHelper::formatPhoneForDatabase($request->input('pickup_phone'), $request->input('pickup_phone_country_code', '+1')),
+            'pickup_mobile'           => PhoneHelper::formatPhoneForDatabase($request->input('pickup_mobile'), $request->input('pickup_mobile_country_code', '+1')),
             'actual_pickup_date'      => $request->input('actual_pickup_date'),
             'buyer_number'            => $request->input('buyer_number'),
             'pickup_notes'            => $request->input('pickup_notes'),
@@ -495,11 +496,11 @@ class LoadImportController extends Controller
             'delivery_zip'            => $request->input('delivery_zip'),
             'scheduled_delivery_date' => $request->input('scheduled_delivery_date'),
             'actual_delivery_date'    => $request->input('actual_delivery_date'),
-            'delivery_phone'          => $request->input('delivery_phone'),
-            'delivery_mobile'         => $request->input('delivery_mobile'),
+            'delivery_phone'          => PhoneHelper::formatPhoneForDatabase($request->input('delivery_phone'), $request->input('delivery_phone_country_code', '+1')),
+            'delivery_mobile'         => PhoneHelper::formatPhoneForDatabase($request->input('delivery_mobile'), $request->input('delivery_mobile_country_code', '+1')),
             'delivery_notes'          => $request->input('delivery_notes'),
             'shipper_name'            => $request->input('shipper_name'),
-            'shipper_phone'           => $request->input('shipper_phone'),
+            'shipper_phone'           => PhoneHelper::formatPhoneForDatabase($request->input('shipper_phone'), $request->input('shipper_phone_country_code', '+1')),
             'price'                   => $request->input('price'),
             'expenses'                => $request->input('expenses'),
             'broker_fee'              => $request->input('broker_fee'),

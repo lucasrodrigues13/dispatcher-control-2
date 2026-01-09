@@ -19,6 +19,7 @@ use App\Services\BillingService;
 use Illuminate\Auth\Events\Registered;
 use App\Mail\NewCarrierCredentialsMail;
 use App\Http\Controllers\Traits\ToggleUserStatus;
+use App\Helpers\PhoneHelper;
 
 class DispatcherController extends Controller
 {
@@ -101,7 +102,16 @@ class DispatcherController extends Controller
             'state' => 'nullable|string|max:100',
             'zip_code' => 'nullable|string|max:10',
             'country' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'notes' => 'nullable|string',
         ], [
             'email.unique' => 'This email already exists...',
@@ -137,6 +147,9 @@ class DispatcherController extends Controller
         //     'updated_at'      => now(),
         // ]);
 
+        // Formata telefone antes de salvar
+        $phoneCountryCode = $request->input('phone_country_code', '+1');
+        
         $dispatcher = Dispatcher::create([
             'user_id'      => $user->id,
             'owner_id'     => $isOwner ? $user->id : null, // Owner aponta para si mesmo
@@ -151,7 +164,7 @@ class DispatcherController extends Controller
             'zip_code'     => $request->input('zip_code'),
             'country'      => $request->input('country'),
             'notes'        => $request->input('notes'),
-            'phone'        => $request->input('phone'),
+            'phone'        => PhoneHelper::formatPhoneForDatabase($request->input('phone'), $phoneCountryCode),
             'departament'  => $request->input('departament'),
         ]);
 
@@ -252,7 +265,16 @@ class DispatcherController extends Controller
             'state' => 'nullable|string|max:100',
             'zip_code' => 'nullable|string|max:10',
             'country' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'notes' => 'nullable|string',
         ];
 
@@ -344,6 +366,9 @@ class DispatcherController extends Controller
                 'is_subowner' => false,
         ]);
 
+        // Formata telefone antes de salvar
+        $phoneCountryCode = $request->input('phone_country_code', '+1');
+        
         // Cria o dispatcher (não-owner dentro do tenant)
         $dispatcher = Dispatcher::create([
             'user_id'      => $user->id,
@@ -359,7 +384,7 @@ class DispatcherController extends Controller
             'zip_code'     => $request->input('zip_code'),
             'country'      => $request->input('country'),
             'notes'        => $request->input('notes'),
-            'phone'        => $request->input('phone'),
+            'phone'        => PhoneHelper::formatPhoneForDatabase($request->input('phone'), $phoneCountryCode),
             'departament'  => $request->input('departament'),
         ]);
 
@@ -425,6 +450,9 @@ class DispatcherController extends Controller
         }
         $user->save();
 
+        // Formata telefone antes de salvar
+        $phoneCountryCode = $request->input('phone_country_code', '+1');
+        
         // Atualiza os dados do dispatcher
         $dispatcher->update([
             'type'         => $request->input('type'),
@@ -437,7 +465,7 @@ class DispatcherController extends Controller
             'zip_code'     => $request->input('zip_code'),
             'country'      => $request->input('country'),
             'notes'        => $request->input('notes'),
-            'phone'        => $request->input('phone'),
+            'phone'        => PhoneHelper::formatPhoneForDatabase($request->input('phone'), $phoneCountryCode),
             'departament'  => $request->input('departament'),
         ]);
 

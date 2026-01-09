@@ -1,9 +1,12 @@
 {{-- resources/views/load/partials/kanban-main-script.blade.php --}}
 
+<script id="loads-data" type="application/json">{!! json_encode($loads) !!}</script>
+<script id="containers-data" type="application/json">{!! json_encode($containers) !!}</script>
+
 <script>
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-const loads = @json($loads);
-const containersFromServer = @json($containers);
+const loads = JSON.parse(document.getElementById('loads-data').textContent);
+const containersFromServer = JSON.parse(document.getElementById('containers-data').textContent);
 
 // Convert loads to array (loads is already a collection, not paginated)
 let loadsArray = Array.isArray(loads) ? loads : (loads && loads.data ? Object.values(loads.data) : []);

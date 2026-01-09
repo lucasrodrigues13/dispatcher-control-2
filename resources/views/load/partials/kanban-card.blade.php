@@ -1,10 +1,20 @@
 {{-- resources/views/load/partials/kanban-card.blade.php --}}
 
-<div class="load-card" data-load-id="{{ $load->id }}" draggable="true">
+@php
+  $hasPendingAttempt = $load->pendingPickupConfirmationAttempt !== null;
+  $attemptStatus = $hasPendingAttempt ? $load->pendingPickupConfirmationAttempt->status : null;
+@endphp
+
+<div class="load-card {{ $hasPendingAttempt ? 'awaiting-confirmation' : '' }}" data-load-id="{{ $load->id }}" draggable="true">
   <div class="card-header-mini">
     <div class="load-id-badge">
       @if(isset($showCheckbox) && $showCheckbox)
-      <input type="checkbox" class="load-checkbox" value="{{ $load->id }}" data-load-id="{{ $load->id }}">
+      <input type="checkbox" 
+             class="load-checkbox" 
+             value="{{ $load->id }}" 
+             data-load-id="{{ $load->id }}"
+             {{ $hasPendingAttempt ? 'disabled' : '' }}
+             title="{{ $hasPendingAttempt ? 'This load is awaiting pickup confirmation call' : '' }}">
       @endif
       <i class="fas fa-hashtag"></i>
       <span>{{ $load->load_id ?? $load->internal_load_id ?? 'N/A' }}</span>
@@ -85,6 +95,20 @@
           @endif
         </span>
         @endif
+        
+        {{-- Awaiting Confirmation Badge --}}
+        @if($hasPendingAttempt)
+        <span class="mini-badge awaiting-confirmation-badge" title="Awaiting pickup confirmation call">
+          <i class="fas fa-phone"></i> 
+          @if($attemptStatus === 'pending')
+            Awaiting Call
+          @elseif($attemptStatus === 'processing')
+            Call in Progress
+          @else
+            Awaiting Confirmation
+          @endif
+        </span>
+        @endif
       </div>
       @endif
 
@@ -123,7 +147,7 @@
   </div>
 </div>
 
-<style>
+<style type="text/css">
   /* Load Card */
   .load-card {
     background: #ffffff;
@@ -287,6 +311,7 @@
     max-width: 140px;
   }
 
+  /* @ts-ignore - CSS block */
   .price-field {
     margin-top: 8px;
     padding-top: 8px;
@@ -343,6 +368,24 @@
   .pickup-status-pending {
     background: #fff9c4;
     color: #f57f17;
+  }
+
+  /* Awaiting Confirmation Badge */
+  .awaiting-confirmation-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #90caf9;
+  }
+
+  /* Load Card - Awaiting Confirmation */
+  .load-card.awaiting-confirmation {
+    border-left: 4px solid #2196f3;
+    background: #f5f9ff;
+  }
+
+  .load-card.awaiting-confirmation .load-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   /* Dragging State */

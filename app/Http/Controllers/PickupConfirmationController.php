@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Load;
 use App\Models\LoadPickupConfirmation;
+use App\Models\LoadPickupConfirmationAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +61,7 @@ class PickupConfirmationController extends Controller
     }
 
     /**
-     * Get enqueued jobs and failed jobs
+     * Get enqueued requests (pickup confirmation attempts)
      */
     public function getEnqueuedJobs(Request $request)
     {
@@ -68,97 +69,97 @@ class PickupConfirmationController extends Controller
             $perPage = $request->get('per_page', 15);
             $search = $request->get('search', '');
 
-            // Get pending jobs
-            $pendingJobsQuery = DB::table('jobs')
-                ->where('queue', 'default')
+            // Buscar tentativas de confirmação de pickup
+            // Carregar apenas o creator, os loads serão buscados separadamente para evitar TenantScope
+            $query = LoadPickupConfirmationAttempt::with('creator')
                 ->orderBy('created_at', 'desc');
 
+            // Aplicar filtro de busca
             if ($search) {
-                $pendingJobsQuery->where('payload', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    // Buscar pelos loads que correspondem ao termo (sem TenantScope para encontrar todos)
+                    $loadIds = Load::withoutGlobalScope(\App\Models\Scopes\TenantScope::class)
+                        ->where('load_id', 'like', "%{$search}%")
+                        ->orWhere('internal_load_id', 'like', "%{$search}%")
+                        ->pluck('id')
+                        ->toArray();
+                    
+                    $q->whereIn('load_id', $loadIds)
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('job_uuid', 'like', "%{$search}%")
+                    ->orWhere('error_message', 'like', "%{$search}%");
+                });
             }
 
-            $pendingJobs = $pendingJobsQuery->get()->map(function($job) {
-                $payload = json_decode($job->payload, true);
-                $loadId = $this->extractLoadIdFromPayload($payload);
-                
-                return [
-                    'id' => $job->id,
-                    'load_id' => $loadId,
-                    'status' => 'pending',
-                    'attempts' => $job->attempts ?? 0,
-                    'created_at' => $job->created_at,
-                    'available_at' => $job->available_at,
-                    'payload' => $payload,
-                ];
-            });
-
-            // Get failed jobs
-            $failedJobsQuery = DB::table('failed_jobs')
-                ->orderBy('failed_at', 'desc');
-
-            if ($search) {
-                $failedJobsQuery->where('payload', 'like', "%{$search}%");
-            }
-
-            $failedJobs = $failedJobsQuery->get()->map(function($job) {
-                $payload = json_decode($job->payload, true);
-                $loadId = $this->extractLoadIdFromPayload($payload);
-                
-                return [
-                    'id' => $job->id,
-                    'uuid' => $job->uuid,
-                    'load_id' => $loadId,
-                    'status' => 'failed',
-                    'attempts' => $job->attempts ?? 0,
-                    'failed_at' => $job->failed_at,
-                    'exception' => $job->exception,
-                    'error_message' => $this->extractErrorMessage($job->exception),
-                ];
-            });
-
-            // Get processed jobs (jobs that were completed)
-            // We'll check load_pickup_confirmations to see which loads were processed
-            $processedLoadIds = LoadPickupConfirmation::pluck('load_id')->toArray();
+            // Paginar resultados
+            $attempts = $query->paginate($perPage);
             
-            // Combine all jobs
-            $allJobs = collect()
-                ->merge($pendingJobs->map(fn($j) => array_merge($j, ['status' => 'pending'])))
-                ->merge($failedJobs->map(fn($j) => array_merge($j, ['status' => 'failed'])))
-                ->map(function($job) use ($processedLoadIds) {
-                    if (isset($job['load_id']) && in_array($job['load_id'], $processedLoadIds)) {
-                        $job['status'] = 'processed';
-                    }
-                    return $job;
-                });
-
-            // Apply search filter if needed
-            if ($search) {
-                $allJobs = $allJobs->filter(function($job) use ($search) {
-                    return stripos($job['load_id'] ?? '', $search) !== false ||
-                           stripos($job['status'] ?? '', $search) !== false;
-                });
+            // Buscar loads diretamente usando os IDs das tentativas, sem TenantScope
+            $loadIds = collect($attempts->items())->pluck('load_id')->filter()->unique()->toArray();
+            $loads = [];
+            if (!empty($loadIds)) {
+                $loads = Load::withoutGlobalScope(\App\Models\Scopes\TenantScope::class)
+                    ->whereIn('id', $loadIds)
+                    ->get()
+                    ->keyBy('id');
             }
 
-            // Paginate manually
-            $currentPage = $request->get('page', 1);
-            $items = $allJobs->slice(($currentPage - 1) * $perPage, $perPage)->values();
-            $total = $allJobs->count();
+            // Formatar dados para exibição
+            $formattedAttempts = collect($attempts->items())->map(function($attempt) use ($loads) {
+                $load = $loads[$attempt->load_id] ?? null;
+                
+                // Obter load_id manual (campo string criado pelo usuário no SuperDispatcher)
+                // Prioridade: loads.load_id > loads.internal_load_id
+                $userLoadId = 'N/A';
+                $yearMakeModel = 'N/A';
+                
+                if ($load) {
+                    $userLoadId = $load->load_id ?? $load->internal_load_id ?? 'N/A';
+                    $yearMakeModel = $load->year_make_model ?? 'N/A';
+                }
+                
+                return [
+                    'id' => $attempt->id,
+                    'load_relation_id' => $attempt->load_id, // ID da FK (loads.id)
+                    'user_load_id' => $userLoadId, // Campo manual load_id do usuário
+                    'year_make_model' => $yearMakeModel,
+                    'status' => $attempt->status,
+                    'job_uuid' => $attempt->job_uuid,
+                    'confirmation_id' => $attempt->confirmation_id,
+                    'created_by' => $attempt->created_by,
+                    'created_by_name' => $attempt->creator ? ($attempt->creator->name ?? 'N/A') : 'N/A',
+                    'error_message' => $attempt->error_message,
+                    'created_at' => $attempt->created_at,
+                    'updated_at' => $attempt->updated_at,
+                    'load' => $load ? [
+                        'id' => $load->id,
+                        'load_id' => $load->load_id,
+                        'internal_load_id' => $load->internal_load_id,
+                        'year_make_model' => $load->year_make_model,
+                        'pickup_name' => $load->pickup_name,
+                        'pickup_city' => $load->pickup_city,
+                        'pickup_state' => $load->pickup_state,
+                    ] : null,
+                ];
+            });
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'data' => $items,
-                    'current_page' => $currentPage,
-                    'per_page' => $perPage,
-                    'total' => $total,
-                    'last_page' => ceil($total / $perPage),
+                    'data' => $formattedAttempts->values()->all(),
+                    'current_page' => $attempts->currentPage(),
+                    'per_page' => $attempts->perPage(),
+                    'total' => $attempts->total(),
+                    'last_page' => $attempts->lastPage(),
+                    'from' => $attempts->firstItem(),
+                    'to' => $attempts->lastItem(),
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching enqueued jobs: ' . $e->getMessage());
+            Log::error('Error fetching enqueued requests: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching jobs: ' . $e->getMessage()
+                'message' => 'Error fetching requests: ' . $e->getMessage()
             ], 500);
         }
     }

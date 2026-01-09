@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
 use App\Http\Controllers\Traits\ToggleUserStatus;
+use App\Helpers\PhoneHelper;
 
 class BrokerController extends Controller
 {
@@ -191,16 +192,20 @@ class BrokerController extends Controller
                 'is_subowner' => false,
             ]);
 
+            // Formata telefones antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            $accountingPhoneCountryCode = $request->input('accounting_phone_number_country_code', '+1');
+            
             // Criar o broker vinculado ao usuário criado
             $broker = Broker::create([
                 'user_id' => $user->id, // Broker vinculado ao seu próprio user
                 'license_number' => $request->license_number ?? null,
                 'company_name' => $request->company_name ?? null,
-                'phone' => $request->phone ?? null,
+                'phone' => PhoneHelper::formatPhoneForDatabase($request->phone ?? null, $phoneCountryCode),
                 'address' => $request->address ?? null,
                 'notes' => $request->notes ?? null,
                 'accounting_email' => $request->accounting_email ?? null,
-                'accounting_phone_number' => $request->accounting_phone_number ?? null,
+                'accounting_phone_number' => PhoneHelper::formatPhoneForDatabase($request->accounting_phone_number ?? null, $accountingPhoneCountryCode),
                 'fee_percent' => $request->fee_percent ?? null,
                 'payment_terms' => $request->payment_terms ?? null,
                 'payment_method' => $request->payment_method ?? null,
@@ -303,15 +308,19 @@ class BrokerController extends Controller
                 'password' => !empty($validated['password']) ? Hash::make($validated['password']) : $user->password,
             ]);
 
+            // Formata telefones antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            $accountingPhoneCountryCode = $request->input('accounting_phone_number_country_code', '+1');
+            
             // Atualiza o broker
             $broker->update([
                 'license_number' => $validated['license_number'] ?? null,
                 'company_name' => $validated['company_name'] ?? null,
-                'phone' => $validated['phone'] ?? null,
+                'phone' => PhoneHelper::formatPhoneForDatabase($validated['phone'] ?? null, $phoneCountryCode),
                 'address' => $validated['address'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'accounting_email' => $validated['accounting_email'] ?? null,
-                'accounting_phone_number' => $validated['accounting_phone_number'] ?? null,
+                'accounting_phone_number' => PhoneHelper::formatPhoneForDatabase($validated['accounting_phone_number'] ?? null, $accountingPhoneCountryCode),
                 'fee_percent' => $validated['fee_percent'] ?? null,
                 'payment_terms' => $validated['payment_terms'] ?? null,
                 'payment_method' => $validated['payment_method'] ?? null,

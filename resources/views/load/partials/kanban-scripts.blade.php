@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updateConfirmButtonState();
             updateSelectAllState();
         }, 100);
+    }
 
     // Handle individual checkbox changes
     if (assignedColumn) {
@@ -190,6 +191,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Success:', data.message);
                 }
 
+                // Update cards to show awaiting confirmation status
+                const successfullyEnqueuedIds = data.data && data.data.load_ids ? data.data.load_ids : loadIds;
+                if (successfullyEnqueuedIds && successfullyEnqueuedIds.length > 0) {
+                    updateCardsAfterConfirmationRequest(successfullyEnqueuedIds);
+                }
+
                 // Uncheck all checkboxes
                 const checkedBoxes = assignedColumn?.querySelectorAll('.load-checkbox:checked') || [];
                 checkedBoxes.forEach(cb => {
@@ -232,6 +239,79 @@ document.addEventListener('DOMContentLoaded', function() {
             updateConfirmButtonState();
         });
     }
+
+    // Function to update cards after pickup confirmation request
+    function updateCardsAfterConfirmationRequest(loadIds) {
+        loadIds.forEach(loadId => {
+            // Find the card by data-load-id attribute
+            const card = document.querySelector(`.load-card[data-load-id="${loadId}"]`);
+            if (card) {
+                // Add awaiting confirmation class
+                card.classList.add('awaiting-confirmation');
+                
+                // Disable checkbox if exists
+                const checkbox = card.querySelector('.load-checkbox');
+                if (checkbox) {
+                    checkbox.disabled = true;
+                    checkbox.title = 'This load is awaiting pickup confirmation call';
+                }
+                
+                // Check if badge already exists
+                let badgeExists = card.querySelector('.awaiting-confirmation-badge');
+                if (!badgeExists) {
+                    // Find the pickup date row
+                    const pickupDateRow = card.querySelector('.pickup-date-row');
+                    
+                    if (pickupDateRow) {
+                        // Create badge element
+                        const badge = document.createElement('span');
+                        badge.className = 'mini-badge awaiting-confirmation-badge';
+                        badge.title = 'Awaiting pickup confirmation call';
+                        badge.innerHTML = '<i class="fas fa-phone"></i> Awaiting Call';
+                        
+                        // Add badge after pickup status badge if exists, otherwise at the end
+                        const pickupStatusBadge = pickupDateRow.querySelector('.pickup-status-badge');
+                        if (pickupStatusBadge) {
+                            pickupStatusBadge.insertAdjacentElement('afterend', badge);
+                        } else {
+                            pickupDateRow.appendChild(badge);
+                        }
+                    } else {
+                        // If pickup date row doesn't exist, find or create card-dates container
+                        let cardDates = card.querySelector('.card-dates');
+                        if (!cardDates) {
+                            const cardContent = card.querySelector('.card-content');
+                            if (cardContent) {
+                                cardDates = document.createElement('div');
+                                cardDates.className = 'card-dates';
+                                cardContent.appendChild(cardDates);
+                            }
+                        }
+                        
+                        if (cardDates) {
+                            // Create pickup date row with badge
+                            const newRow = document.createElement('div');
+                            newRow.className = 'pickup-date-row';
+                            
+                            const badge = document.createElement('span');
+                            badge.className = 'mini-badge awaiting-confirmation-badge';
+                            badge.title = 'Awaiting pickup confirmation call';
+                            badge.innerHTML = '<i class="fas fa-phone"></i> Awaiting Call';
+                            
+                            newRow.appendChild(badge);
+                            cardDates.appendChild(newRow);
+                        }
+                    }
+                } else {
+                    // Update badge status if it already exists
+                    const badgeIcon = badgeExists.querySelector('i');
+                    const badgeText = badgeExists.textContent.trim();
+                    if (badgeText === 'Awaiting Confirmation') {
+                        badgeExists.innerHTML = '<i class="fas fa-phone"></i> Awaiting Call';
+                    }
+                }
+            }
+        });
     }
 });
 // Deletar todos os loads

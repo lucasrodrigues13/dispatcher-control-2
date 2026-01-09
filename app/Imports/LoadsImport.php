@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Load;
 use App\Services\LoadService;
+use App\Helpers\PhoneHelper;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -129,12 +130,18 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 'pickup_zip' => $this->cleanString($this->getValue($row, [
                     'pickup_zip', 'pickup_zipcode', 'pickup_cep', 'cep_coleta', 'coleta_cep'
                 ])),
-                'pickup_phone' => $this->cleanString($this->getValue($row, [
-                    'pickup_phone', 'pickup_tel', 'telefone_coleta', 'coleta_telefone'
-                ])),
-                'pickup_mobile' => $this->cleanString($this->getValue($row, [
-                    'pickup_mobile', 'pickup_cell', 'pickup_cel', 'celular_coleta', 'coleta_celular'
-                ])),
+                'pickup_phone' => PhoneHelper::formatPhoneForDatabase(
+                    $this->cleanString($this->getValue($row, [
+                        'pickup_phone', 'pickup_tel', 'telefone_coleta', 'coleta_telefone'
+                    ])),
+                    '+1'
+                ),
+                'pickup_mobile' => PhoneHelper::formatPhoneForDatabase(
+                    $this->cleanString($this->getValue($row, [
+                        'pickup_mobile', 'pickup_cell', 'pickup_cel', 'celular_coleta', 'coleta_celular'
+                    ])),
+                    '+1'
+                ),
                 'pickup_notes' => $this->cleanLongText($this->getValue($row, [
                     'pickup_notes', 'pickup_obs', 'observacoes_coleta', 'coleta_observacoes'
                 ])),
@@ -164,12 +171,18 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 'delivery_zip' => $this->cleanString($this->getValue($row, [
                     'delivery_zip', 'delivery_zipcode', 'delivery_cep', 'cep_entrega', 'entrega_cep'
                 ])),
-                'delivery_phone' => $this->cleanString($this->getValue($row, [
-                    'delivery_phone', 'delivery_tel', 'telefone_entrega', 'entrega_telefone'
-                ])),
-                'delivery_mobile' => $this->cleanString($this->getValue($row, [
-                    'delivery_mobile', 'delivery_cell', 'delivery_cel', 'celular_entrega', 'entrega_celular'
-                ])),
+                'delivery_phone' => PhoneHelper::formatPhoneForDatabase(
+                    $this->cleanString($this->getValue($row, [
+                        'delivery_phone', 'delivery_tel', 'telefone_entrega', 'entrega_telefone'
+                    ])),
+                    '+1'
+                ),
+                'delivery_mobile' => PhoneHelper::formatPhoneForDatabase(
+                    $this->cleanString($this->getValue($row, [
+                        'delivery_mobile', 'delivery_cell', 'delivery_cel', 'celular_entrega', 'entrega_celular'
+                    ])),
+                    '+1'
+                ),
                 'delivery_notes' => $this->cleanLongText($this->getValue($row, [
                     'delivery_notes', 'delivery_obs', 'observacoes_entrega', 'entrega_observacoes'
                 ])),
@@ -184,9 +197,12 @@ class LoadsImport implements ToModel, WithHeadingRow, WithValidation
                 'shipper_name' => $this->cleanString($this->getValue($row, [
                     'shipper_name', 'shipper', 'remetente', 'nome_remetente'
                 ])),
-                'shipper_phone' => $this->cleanString($this->getValue($row, [
-                    'shipper_phone', 'shipper_tel', 'telefone_remetente', 'remetente_telefone'
-                ])),
+                'shipper_phone' => PhoneHelper::formatPhoneForDatabase(
+                    $this->cleanString($this->getValue($row, [
+                        'shipper_phone', 'shipper_tel', 'telefone_remetente', 'remetente_telefone'
+                    ])),
+                    '+1'
+                ),
 
                 // Valores financeiros
                 'price' => $this->getNumeric($row, [

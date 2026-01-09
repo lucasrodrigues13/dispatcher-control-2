@@ -19,6 +19,7 @@ use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Traits\ToggleUserStatus;
+use App\Helpers\PhoneHelper;
 
 class DriverController extends Controller
 {
@@ -161,7 +162,16 @@ class DriverController extends Controller
             'name'         => 'required|string|max:255',
             'email'        => 'required|email|unique:users,email',
             'carrier_id'   => 'required|exists:carriers,id',
-            'phone'        => 'required|string|max:20',
+            'phone'        => ['required', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'ssn_tax_id'   => 'required|string|max:50',
         ];
         
@@ -243,11 +253,14 @@ class DriverController extends Controller
                 'is_subowner' => false,
             ]);
 
+            // Formata telefone antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            
             // Cria o driver (vinculado ao user_id)
             Driver::create([
                 'carrier_id' => $validated['carrier_id'],
                 'name' => $validated['name'],
-                'phone'      => $validated['phone'],
+                'phone'      => PhoneHelper::formatPhoneForDatabase($validated['phone'] ?? null, $phoneCountryCode),
                 'ssn_tax_id' => $validated['ssn_tax_id'],
                 'email' => $validated['email'],
             ]);
@@ -361,7 +374,16 @@ class DriverController extends Controller
             'email'        => "required|email|unique:users,email,{$user->id}",
             'password'     => 'nullable|string|min:8|confirmed',
             'carrier_id'   => 'required|exists:carriers,id',
-            'phone'        => 'required|string|max:20',
+            'phone'        => ['required', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'ssn_tax_id'   => 'required|string|max:50',
         ]);
         
@@ -395,12 +417,15 @@ class DriverController extends Controller
                 'password' => $validated['password'] ? Hash::make($validated['password']) : $user->password,
             ]);
 
+            // Formata telefone antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            
             // Atualiza dados do driver
             $driver->update([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'carrier_id' => $validated['carrier_id'],
-                'phone'      => $validated['phone'],
+                'phone'      => PhoneHelper::formatPhoneForDatabase($validated['phone'] ?? null, $phoneCountryCode),
                 'ssn_tax_id' => $validated['ssn_tax_id'],
             ]);
 

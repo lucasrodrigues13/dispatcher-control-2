@@ -85,8 +85,9 @@
                                 <thead>
                                     <tr>
                                         <th>Load ID</th>
+                                        <th>Year/Make/Model</th>
                                         <th>Status</th>
-                                        <th>Attempts</th>
+                                        <th>Created By</th>
                                         <th>Created At</th>
                                         <th>Error Message</th>
                                         <th>Actions</th>
@@ -94,7 +95,7 @@
                                 </thead>
                                 <tbody id="jobsTableBody">
                                     <tr>
-                                        <td colspan="6" class="text-center">
+                                        <td colspan="7" class="text-center">
                                             <div class="spinner-border" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -106,6 +107,34 @@
                         <div id="jobsPagination" class="mt-3"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para exibir mensagem de erro completa -->
+<div class="modal fade" id="errorMessageModal" tabindex="-1" aria-labelledby="errorMessageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorMessageModalLabel">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>Error Message
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-bold">Complete Error Message:</label>
+                <textarea class="form-control" 
+                          id="errorMessageTextarea" 
+                          rows="10" 
+                          readonly 
+                          style="font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; resize: none; background-color: #f8f9fa;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copyErrorMessage()">
+                    <i class="fas fa-copy me-2"></i>Copy to Clipboard
+                </button>
             </div>
         </div>
     </div>
@@ -133,17 +162,24 @@
     color: #fff;
 }
 
-.error-message {
+.error-message-truncated {
+    display: inline-block;
     max-width: 300px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: pointer;
 }
 
-.error-message:hover {
-    white-space: normal;
-    overflow: visible;
+.error-message-truncated:hover {
+    text-decoration: underline !important;
+    opacity: 0.8;
+}
+
+#errorMessageTextarea {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 </style>
 
@@ -200,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading jobs:', error);
                 document.getElementById('jobsTableBody').innerHTML = 
-                    '<tr><td colspan="6" class="text-center text-danger">Error loading data</td></tr>';
+                    '<tr><td colspan="7" class="text-center text-danger">Error loading data</td></tr>';
             });
     }
 
@@ -251,36 +287,71 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
-    // Render jobs table
+    // Render jobs table (now showing pickup confirmation attempts)
     function renderJobsTable(data) {
         const tbody = document.getElementById('jobsTableBody');
         
         if (data.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No jobs found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No requests found</td></tr>';
             return;
         }
 
-        tbody.innerHTML = data.data.map(job => {
-            const statusBadge = getStatusBadge(job.status);
-            const errorMessage = job.error_message || (job.exception ? extractErrorMessage(job.exception) : '');
-            const retryButton = job.status === 'failed' && job.uuid
-                ? `<button class="btn btn-sm btn-warning" onclick="retryJob('${job.uuid}')">
-                    <i class="fas fa-redo me-1"></i>Retry
-                   </button>`
+        tbody.innerHTML = data.data.map(attempt => {
+            const statusBadge = getStatusBadge(attempt.status);
+            const errorMessage = attempt.error_message || '';
+            const confirmationLink = attempt.confirmation_id 
+                ? `<a href="#" class="btn btn-sm btn-info" title="View Confirmation #${attempt.confirmation_id}">
+                    <i class="fas fa-eye me-1"></i>View
+                   </a>`
                 : '';
+            
+            // Get user load_id (campo manual criado pelo usuário no SuperDispatcher)
+            // Prioridade: user_load_id (do controller) > load.load_id > load.internal_load_id
+            const userLoadId = attempt.user_load_id || attempt.load?.load_id || attempt.load?.internal_load_id || 'N/A';
+            
+            // Get year/make/model
+            const yearMakeModel = attempt.year_make_model || attempt.load?.year_make_model || 'N/A';
+
+            // Truncar error message para exibição
+            let errorMessageDisplay = '-';
+            if (errorMessage && errorMessage.trim() !== '') {
+                if (errorMessage.length > 50) {
+                    errorMessageDisplay = errorMessage.substring(0, 50) + '...';
+                } else {
+                    errorMessageDisplay = errorMessage;
+                }
+            }
+            
+            // Usar data attribute para armazenar a mensagem completa de forma segura
+            // Escapar HTML entities e preservar quebras de linha
+            const safeErrorMessage = errorMessage
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/\n/g, '&#10;')  // Preservar quebras de linha
+                .replace(/\r/g, '&#13;')  // Preservar carriage return
+                .replace(/\t/g, '&#9;');  // Preservar tabs
+            
+            const errorMessageCell = errorMessage && errorMessage.trim() !== '' 
+                ? `<span class="error-message-truncated" 
+                          style="cursor: pointer; color: #dc3545; text-decoration: underline;" 
+                          data-error-message="${safeErrorMessage}"
+                          onclick="showErrorMessageModalFromElement(this)">
+                      ${errorMessageDisplay}
+                   </span>`
+                : '<span class="text-muted">-</span>';
 
             return `
                 <tr>
-                    <td>${job.load_id || 'N/A'}</td>
+                    <td><strong>${userLoadId}</strong></td>
+                    <td>${yearMakeModel}</td>
                     <td>${statusBadge}</td>
-                    <td>${job.attempts || 0}</td>
-                    <td>${new Date(job.created_at || job.failed_at).toLocaleString()}</td>
-                    <td>
-                        ${errorMessage ? 
-                            `<span class="error-message" title="${errorMessage}">${errorMessage}</span>` : 
-                            '<span class="text-muted">-</span>'}
-                    </td>
-                    <td>${retryButton}</td>
+                    <td>${attempt.created_by_name || 'N/A'}</td>
+                    <td>${new Date(attempt.created_at).toLocaleString()}</td>
+                    <td>${errorMessageCell}</td>
+                    <td>${confirmationLink}</td>
                 </tr>
             `;
         }).join('');
@@ -289,7 +360,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function getStatusBadge(status) {
         const badges = {
             'pending': '<span class="badge badge-status badge-pending">Pending</span>',
-            'processed': '<span class="badge badge-status badge-processed">Processed</span>',
+            'processing': '<span class="badge badge-status" style="background-color: #17a2b8; color: #fff;">Processing</span>',
+            'completed': '<span class="badge badge-status badge-processed">Completed</span>',
             'failed': '<span class="badge badge-status badge-failed">Failed</span>'
         };
         return badges[status] || '<span class="badge badge-secondary">Unknown</span>';
@@ -433,6 +505,118 @@ document.addEventListener('DOMContentLoaded', function() {
         loadJobs();
     });
 });
+
+// Função para exibir modal com mensagem de erro completa a partir de um elemento
+function showErrorMessageModalFromElement(element) {
+    const errorMessage = element.getAttribute('data-error-message');
+    if (!errorMessage) {
+        console.error('Error message not found in data attribute');
+        return;
+    }
+    
+    // Decodificar HTML entities preservando formatação
+    const decodedMessage = errorMessage
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#10;/g, '\n')  // Restaurar quebras de linha
+        .replace(/&#13;/g, '\r')  // Restaurar carriage return
+        .replace(/&#9;/g, '\t');  // Restaurar tabs
+    
+    // Preencher o textarea
+    const textarea = document.getElementById('errorMessageTextarea');
+    if (textarea) {
+        textarea.value = decodedMessage;
+    }
+    
+    // Abrir o modal
+    const modalElement = document.getElementById('errorMessageModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+}
+
+// Função alternativa para exibir modal diretamente com mensagem (para compatibilidade)
+function showErrorMessageModal(errorMessage) {
+    const textarea = document.getElementById('errorMessageTextarea');
+    if (textarea) {
+        textarea.value = errorMessage;
+    }
+    
+    const modalElement = document.getElementById('errorMessageModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    }
+}
+
+// Função para copiar mensagem de erro para clipboard
+function copyErrorMessage() {
+    const textarea = document.getElementById('errorMessageTextarea');
+    if (textarea) {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999); // Para mobile
+        
+        try {
+            // Usar Clipboard API moderna se disponível
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    showCopyFeedback(event.target);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    fallbackCopyTextToClipboard(textarea.value);
+                });
+            } else {
+                fallbackCopyTextToClipboard(textarea.value);
+            }
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+        }
+    }
+}
+
+// Fallback para copiar usando método antigo
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+        showCopyFeedback(event.target);
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        alert('Failed to copy to clipboard');
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// Feedback visual ao copiar
+function showCopyFeedback(button) {
+    const originalHTML = button.innerHTML;
+    const originalClasses = button.className;
+    
+    button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-success');
+    button.disabled = true;
+    
+    setTimeout(() => {
+        button.innerHTML = originalHTML;
+        button.className = originalClasses;
+        button.disabled = false;
+    }, 2000);
+}
 </script>
 @endsection
 

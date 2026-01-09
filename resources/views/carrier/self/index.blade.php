@@ -3,9 +3,104 @@
 @section('conteudo')
 @can('pode_visualizar_carriers')
 
-<div class="container">
- <div class="page-inner">
-   <div class="page-header">
+<style>
+  /* Padrão para telas de listagem - Container com altura máxima da tela */
+  .list-container-wrapper {
+    display: flex !important;
+    flex-direction: column;
+    height: calc(100vh - 200px) !important; /* Altura da viewport menos header (~70px), flash messages (~50px), e padding (~80px) */
+    min-height: 500px;
+    max-height: calc(100vh - 200px) !important;
+    overflow: visible !important;
+    padding-bottom: 20px;
+  }
+  
+  .list-page-header {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .list-card-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+  }
+  
+  .list-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: visible;
+    margin-bottom: 0;
+  }
+  
+  .list-card .card-header {
+    flex-shrink: 0;
+  }
+  
+  .list-card-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+    position: relative;
+    padding: 1rem;
+  }
+  
+  .list-table-responsive {
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+  }
+  
+  /* Garantir que dropdowns apareçam acima de tudo */
+  .list-table-responsive .dropdown {
+    position: relative !important;
+  }
+  
+  .list-table-responsive .dropdown-menu {
+    z-index: 9999 !important;
+    position: absolute !important;
+    right: 0 !important;
+    left: auto !important;
+    top: 100% !important;
+    margin-top: 0.125rem;
+    transform: none !important;
+  }
+  
+  /* Garantir que a última coluna (Actions) tenha espaço para o dropdown */
+  .list-table-responsive table td:last-child {
+    position: relative;
+    white-space: nowrap;
+  }
+  
+  .list-card-footer {
+    flex-shrink: 0;
+    border-top: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+  }
+  
+  /* Ajustar row para usar flex */
+  .list-container-wrapper .row.flex-grow-1 {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  
+  .list-container-wrapper .row.flex-grow-1 .col-md-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+</style>
+
+<div class="container-fluid px-4">
+ <div class="page-inner list-container-wrapper">
+   <div class="page-header list-page-header">
       <h3 class="fw-bold mb-3">Carriers</h3>
       <ul class="breadcrumbs mb-3">
         <li class="nav-home"><a href="#"><i class="icon-home"></i></a></li>
@@ -16,9 +111,9 @@
       </ul>
     </div>
 
-    <div class="row">
+    <div class="row flex-grow-1">
       <div class="col-md-12">
-        <div class="card">
+        <div class="card list-card">
 
           <!-- Cabeçalho: Pesquisa + Botão "Novo" -->
           <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
@@ -37,8 +132,8 @@
           </div>
 
           <!-- Tabela -->
-          <div class="card-body">
-            <div class="table-responsive">
+          <div class="card-body list-card-body">
+            <div class="table-responsive list-table-responsive">
               <table class="table table-striped align-middle">
                 <thead>
                   <tr>
@@ -71,11 +166,11 @@
                         <x-user-status-badge :user="$carrier->user" />
                       </td>
                       <td class="text-center">
-                        <div class="dropdown">
-                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <div class="dropdown dropend">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Actions
                           </button>
-                          <ul class="dropdown-menu">
+                          <ul class="dropdown-menu dropdown-menu-end">
                             @can('pode_editar_carriers')
                             <li>
                               <a class="dropdown-item" href="{{ route('carriers.edit', $carrier) }}">
@@ -121,7 +216,7 @@
           </div>
 
           <!-- Rodapé com paginação -->
-          <div class="card-footer d-flex justify-content-start">
+          <div class="card-footer list-card-footer d-flex justify-content-start">
             {{ $carriers->appends(request()->query())->links('pagination::bootstrap-4') }}
           </div>
 

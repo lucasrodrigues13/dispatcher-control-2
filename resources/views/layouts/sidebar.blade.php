@@ -126,7 +126,7 @@
         @if($hasAiVoiceService)
         <li class="nav-item {{ request()->is('voice-calls*') ? 'active' : '' }}">
           <a href="{{ route('voice-calls.index') }}">
-            <i class="fas fa-phone-alt"></i><p>Voice Calls</p>
+            <i class="fas fa-microphone"></i><p>Voice Calls</p>
           </a>
         </li>
         @endif

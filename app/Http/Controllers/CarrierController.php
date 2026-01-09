@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\NewCarrierCredentialsMail;
 use App\Http\Controllers\Traits\ToggleUserStatus;
+use App\Helpers\PhoneHelper;
 
 class CarrierController extends Controller
 {
@@ -112,8 +113,26 @@ class CarrierController extends Controller
             'email'        => 'required|email|unique:users,email',
             'company_name' => 'required|string|max:255',
             'contact_name' => 'required|string|max:255',
-            'phone'        => 'nullable|string|max:20',
-            'contact_phone'=> 'nullable|string|max:20',
+            'phone'        => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'contact_phone'=> ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('contact_phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The contact phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
+            'contact_phone_country_code' => 'nullable|string',
             'address'      => 'nullable|string|max:255',
             'city'         => 'nullable|string|max:100',
             'state'        => 'nullable|string|max:100',
@@ -218,11 +237,15 @@ class CarrierController extends Controller
                 'is_subowner' => false,
             ]);
 
+            // Formata telefones antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            $contactPhoneCountryCode = $request->input('contact_phone_country_code', '+1');
+            
             // Cria carrier
             $carrier = Carrier::create([
                 'user_id'          => $user->id,
                 'company_name'     => $validated['company_name'],
-                'phone'            => $validated['phone'],
+                'phone'            => PhoneHelper::formatPhoneForDatabase($validated['phone'] ?? null, $phoneCountryCode),
                 'contact_name'     => $validated['contact_name'] ?? null,
                 'about'            => $validated['about'] ?? null,
                 'website'          => $validated['website'] ?? null,
@@ -230,7 +253,7 @@ class CarrierController extends Controller
                 'is_auto_hauler'   => (bool) ($validated['is_auto_hauler'] ?? false),
                 'is_towing'        => (bool) ($validated['is_towing'] ?? false),
                 'is_driveaway'     => (bool) ($validated['is_driveaway'] ?? false),
-                'contact_phone'    => $validated['contact_phone'] ?? null,
+                'contact_phone'    => PhoneHelper::formatPhoneForDatabase($validated['contact_phone'] ?? null, $contactPhoneCountryCode),
                 'address'          => $validated['address'],
                 'city'             => $validated['city'] ?? null,
                 'state'            => $validated['state'] ?? null,
@@ -307,11 +330,16 @@ class CarrierController extends Controller
 
     public function edit(string $id)
     {
-        // Carrega o carrier + empresa de dispatcher + usuário do dispatcher
-        $carrier = Carrier::with('dispatchers.user')->findOrFail($id);
+        // Carrega o carrier + dispatcher + usuário do dispatcher
+        $carrier = Carrier::with(['dispatcher.user', 'user'])->findOrFail($id);
 
         // Lista todas as empresas de dispatcher com o usuário carregado
-        $dispatchers = Dispatcher::with('user')->get();
+        // Filtra apenas dispatchers do tenant atual
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        $dispatchers = Dispatcher::where('owner_id', $ownerId)
+            ->with('user')
+            ->get();
 
         return view('carrier.self.edit', compact('carrier', 'dispatchers'));
     }
@@ -322,14 +350,32 @@ class CarrierController extends Controller
 
         $validatedData = $request->validate([
             'company_name' => 'nullable|string|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => ['required', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
             'contact_name' => 'nullable|string|max:255',
             'about' => 'nullable|string|max:1000',
             'trailer_capacity' => 'nullable|integer|min:0',
             'is_auto_hauler' => 'nullable|boolean',
             'is_towing' => 'nullable|boolean',
             'is_driveaway' => 'nullable|boolean',
-            'contact_phone' => 'nullable|string|max:20',
+            'contact_phone' => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('contact_phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The contact phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
+            'contact_phone_country_code' => 'nullable|string',
             'address' => 'required|string|max:255',
             'city' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
@@ -347,7 +393,21 @@ class CarrierController extends Controller
         ]);
 
         if (!$carrier->user) {
-            return back()->withErrors(['user' => 'Usuário associado não encontrado.']);
+            return back()->withErrors(['user' => 'Usuário associado não encontrado.'])->withInput();
+        }
+
+        // Garantir que dispatcher_id está presente (usar valor existente se não foi enviado)
+        if (empty($validatedData['dispatcher_id'])) {
+            $validatedData['dispatcher_id'] = $carrier->dispatcher_id;
+        }
+
+        // Validar que dispatcher_id existe e pertence ao tenant
+        $authUser = Auth::user();
+        $ownerId = $authUser->getOwnerId();
+        $tenantDispatchers = Dispatcher::where('owner_id', $ownerId)->pluck('id');
+        
+        if (!in_array($validatedData['dispatcher_id'], $tenantDispatchers->toArray())) {
+            return back()->withErrors(['dispatcher_id' => 'Dispatcher não pertence ao seu tenant.'])->withInput();
         }
 
         try {
@@ -364,10 +424,14 @@ class CarrierController extends Controller
 
             $user->save();
 
+            // Formata telefones antes de salvar
+            $phoneCountryCode = $request->input('phone_country_code', '+1');
+            $contactPhoneCountryCode = $request->input('contact_phone_country_code', '+1');
+            
             // Atualiza o carrier
             $carrier->update([
                 'company_name' => $validatedData['company_name'] ?? $carrier->company_name,
-                'phone' => $validatedData['phone'],
+                'phone' => PhoneHelper::formatPhoneForDatabase($validatedData['phone'] ?? null, $phoneCountryCode),
                 'contact_name' => $validatedData['contact_name'] ?? $carrier->contact_name,
                 'about' => $validatedData['about'] ?? $carrier->about,
                 'website' => $validatedData['website'] ?? $carrier->website,
@@ -375,7 +439,7 @@ class CarrierController extends Controller
                 'is_auto_hauler' => $validatedData['is_auto_hauler'] ?? $carrier->is_auto_hauler,
                 'is_towing' => $validatedData['is_towing'] ?? $carrier->is_towing,
                 'is_driveaway' => $validatedData['is_driveaway'] ?? $carrier->is_driveaway,
-                'contact_phone' => $validatedData['contact_phone'] ?? $carrier->contact_phone,
+                'contact_phone' => PhoneHelper::formatPhoneForDatabase($validatedData['contact_phone'] ?? null, $contactPhoneCountryCode),
                 'address' => $validatedData['address'],
                 'city' => $validatedData['city'] ?? $carrier->city,
                 'state' => $validatedData['state'] ?? $carrier->state,
@@ -384,7 +448,7 @@ class CarrierController extends Controller
                 'mc' => $validatedData['mc'] ?? $carrier->mc,
                 'dot' => $validatedData['dot'] ?? $carrier->dot,
                 'ein' => $validatedData['ein'] ?? $carrier->ein,
-                'dispatcher_id' => $validatedData['dispatcher_id'],
+                'dispatcher_id' => $validatedData['dispatcher_id'] ?? $carrier->dispatcher_id,
             ]);
 
             // Verificar se tem assinatura unlimited, se não tiver, criar

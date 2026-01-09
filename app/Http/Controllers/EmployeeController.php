@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\NewCarrierCredentialsMail;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Traits\ToggleUserStatus;
+use App\Helpers\PhoneHelper;
 
 class EmployeeController extends Controller
 {
@@ -118,7 +119,16 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:employees,email',
             'dispatcher_id' => 'required|exists:dispatchers,id',
-            'phone' => 'nullable|string|max:255',
+            'phone' => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'position' => 'nullable|string|max:255',
             'ssn_tax_id' => 'nullable|string|max:255',
         ];
@@ -208,11 +218,14 @@ class EmployeeController extends Controller
                 ->withInput();
         }
 
+        // Formata telefone antes de salvar
+        $phoneCountryCode = $request->input('phone_country_code', '+1');
+        
         Employee::create([
             'dispatcher_id' => $request->dispatcher_id ?? $ownerDispatcher->id, // Usar dispatcher do request ou owner
             'name'          => $request->name,
             'email'         => $request->email,
-            'phone'         => $request->phone ?? null,
+            'phone'         => PhoneHelper::formatPhoneForDatabase($request->phone ?? null, $phoneCountryCode),
             'position'      => $request->position ?? null,
             'ssn_tax_id'    => $request->ssn_tax_id ?? null,
         ]);
@@ -252,17 +265,29 @@ class EmployeeController extends Controller
             'name'                  => 'required|string|max:255',
             'email'                 => "required|email|unique:employees,email,{$employee->id}",
             'dispatcher_id'         => 'required|exists:dispatchers,id',
-            'phone'                 => 'nullable|string|max:255',
+            'phone'                 => ['nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (!empty($value)) {
+                    $countryCode = $request->input('phone_country_code', '+1');
+                    $formatted = PhoneHelper::formatPhoneForDatabase($value, $countryCode);
+                    if (!$formatted || !PhoneHelper::validatePhoneFormat($value)) {
+                        $fail('The phone number format is invalid. Expected format: XXX-XXX-XXXX with country code.');
+                    }
+                }
+            }],
+            'phone_country_code' => 'nullable|string',
             'position'              => 'nullable|string|max:255',
             'ssn_tax_id'            => 'nullable|string|max:255',
         ]);
+
+        // Formata telefone antes de salvar
+        $phoneCountryCode = $request->input('phone_country_code', '+1');
 
         // Atualiza employee
         $employee->update([
             'name'          => $data['name'],
             'email'         => $data['email'],
             'dispatcher_id' => $data['dispatcher_id'],
-            'phone'         => $data['phone'] ?? null,
+            'phone'         => PhoneHelper::formatPhoneForDatabase($data['phone'] ?? null, $phoneCountryCode),
             'position'      => $data['position'] ?? null,
             'ssn_tax_id'    => $data['ssn_tax_id'] ?? null,
         ]);

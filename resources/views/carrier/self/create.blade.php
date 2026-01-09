@@ -258,4 +258,5 @@
     </div>
   </div>
 @endcan
+
 @endsection

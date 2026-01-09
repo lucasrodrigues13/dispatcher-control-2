@@ -684,6 +684,8 @@
     });
     </script>
 
+    <!-- Phone Mask Script -->
+    <script src="{{ asset('js/phone-mask.js') }}"></script>
 
   </body>
 </html>

@@ -103,14 +103,14 @@
                                     <div class="form-group">
                                         <label for="phone">Phone</label>
                                         <input type="text" name="phone" class="form-control" id="phone" required
-                                            value="{{ old('phone', $carrier->phone) }}">
+                                            value="{{ old('phone', \App\Helpers\PhoneHelper::formatPhoneForDisplay($carrier->phone)) }}">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="contact_phone">Contact Phone</label>
                                         <input type="text" name="contact_phone" class="form-control" id="contact_phone"
-                                            value="{{ old('contact_phone', $carrier->contact_phone) }}">
+                                            value="{{ old('contact_phone', \App\Helpers\PhoneHelper::formatPhoneForDisplay($carrier->contact_phone)) }}">
                                     </div>
                                 </div>
                             </div>
@@ -227,13 +227,13 @@
                             <div class="row mt-3">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="dispatcher_company_id">Dispatcher</label>
-                                        <select name="dispatcher_company_id" class="form-control" id="dispatcher_company_id" required>
+                                        <label for="dispatcher_id">Dispatcher</label>
+                                        <select name="dispatcher_id" class="form-control" id="dispatcher_id" required>
                                             <option value="">Select Dispatcher</option>
                                             @foreach ($dispatchers as $dispatcher)
                                                 <option value="{{ $dispatcher->id }}"
-                                                    {{ old('dispatcher_company_id', $carrier->dispatcher_company_id) == $dispatcher->id ? 'selected' : '' }}>
-                                                    {{ $dispatcher->user->name }}
+                                                    {{ old('dispatcher_id', $carrier->dispatcher_id) == $dispatcher->id ? 'selected' : '' }}>
+                                                    {{ $dispatcher->user ? $dispatcher->user->name : 'N/A' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -263,4 +263,15 @@
     </div>
   </div>
 @endcan
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar máscaras de telefone
+    if (typeof initPhoneMask === 'function') {
+        initPhoneMask('phone', 'phone_country_code', '+1');
+        initPhoneMask('contact_phone', 'contact_phone_country_code', '+1');
+    }
+});
+</script>
+
 @endsection

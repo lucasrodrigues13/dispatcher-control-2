@@ -171,4 +171,22 @@ class Load extends Model
     {
         return $this->hasOne(LoadPickupConfirmation::class)->latestOfMany();
     }
+
+    /**
+     * Relacionamento com Pickup Confirmation Attempts
+     */
+    public function pickupConfirmationAttempts()
+    {
+        return $this->hasMany(LoadPickupConfirmationAttempt::class);
+    }
+
+    /**
+     * Tentativa pendente de confirmação
+     */
+    public function pendingPickupConfirmationAttempt()
+    {
+        return $this->hasOne(LoadPickupConfirmationAttempt::class)
+            ->whereIn('status', ['pending', 'processing'])
+            ->latestOfMany();
+    }
 }

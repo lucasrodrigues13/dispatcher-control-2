@@ -8,8 +8,10 @@ use App\Models\Dispatcher;
 use App\Models\Employee;
 use App\Models\Load;
 use App\Models\LoadPickupConfirmation;
+use App\Models\LoadPickupConfirmationAttempt;
 use App\Jobs\ConfirmPickupLoadJob;
 use App\Services\LoadService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
@@ -38,8 +40,8 @@ class KanbanController extends Controller
         // Use LoadService to build filtered query (reuses same logic as list view)
         $query = $this->loadService->buildFilteredQuery($request);
 
-        // Load all loads with filters applied
-        $loads = $query->orderByDesc('updated_at')->get();
+        // Load all loads with filters applied, including pending pickup confirmation attempts
+        $loads = $query->with('pendingPickupConfirmationAttempt')->orderByDesc('updated_at')->get();
 
         // ⭐ Organize loads by kanban column status
         $loadsByStatus = $this->organizeLoadsByStatus($loads);
@@ -341,19 +343,71 @@ class KanbanController extends Controller
                 ], 404);
             }
 
+            // Verificar se há tentativas pendentes e filtrar loads
+            $loadsToProcess = [];
+            $skippedLoads = [];
+            
+            foreach ($loads as $load) {
+                // Verificar se já existe tentativa pendente
+                if (LoadPickupConfirmationAttempt::hasPendingAttempt($load->id)) {
+                    $skippedLoads[] = $load->id;
+                    continue;
+                }
+                
+                $loadsToProcess[] = $load;
+            }
+
+            // Retornar erro se todos os loads já têm tentativas pendentes
+            if (empty($loadsToProcess)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All selected loads already have pending pickup confirmation attempts. Please wait for the current attempts to complete.',
+                    'data' => [
+                        'loads_enqueued' => 0,
+                        'skipped_load_ids' => $skippedLoads,
+                    ]
+                ], 400);
+            }
+
             // Enqueue each load for pickup confirmation
             $enqueuedCount = 0;
-            foreach ($loads as $load) {
-                ConfirmPickupLoadJob::dispatch($load->id);
-                $enqueuedCount++;
+            $failedLoads = [];
+            
+            foreach ($loadsToProcess as $load) {
+                try {
+                    // Criar tentativa antes de enfileirar
+                    $attempt = LoadPickupConfirmationAttempt::create([
+                        'load_id' => $load->id,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    // Enfileirar job
+                    ConfirmPickupLoadJob::dispatch($load->id);
+                    
+                    // O job_uuid será preenchido pelo próprio job quando ele iniciar o processamento
+                    // Para rastreamento, usamos a tentativa (attempt) que já tem o load_id
+
+                    $enqueuedCount++;
+                } catch (\Exception $e) {
+                    Log::error("Error creating attempt for load {$load->id}: " . $e->getMessage());
+                    $failedLoads[] = $load->id;
+                }
+            }
+            
+            $message = "Successfully enqueued {$enqueuedCount} load(s) for pickup confirmation";
+            if (!empty($skippedLoads)) {
+                $message .= ". " . count($skippedLoads) . " load(s) were skipped because they already have pending attempts.";
             }
             
             return response()->json([
                 'success' => true,
-                'message' => "Successfully enqueued {$enqueuedCount} load(s) for pickup confirmation",
+                'message' => $message,
                 'data' => [
                     'loads_enqueued' => $enqueuedCount,
-                    'load_ids' => $loads->pluck('id')->toArray(),
+                    'load_ids' => array_column($loadsToProcess, 'id'),
+                    'skipped_load_ids' => $skippedLoads,
+                    'failed_load_ids' => $failedLoads,
                 ]
             ]);
 
@@ -364,16 +418,10 @@ class KanbanController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Don't show error to user, just log it
-            // Return success even if there's an error (jobs will be processed asynchronously)
             return response()->json([
-                'success' => true,
-                'message' => 'Loads have been queued for processing. They will be processed asynchronously.',
-                'data' => [
-                    'loads_enqueued' => count($request->input('load_ids', [])),
-                    'load_ids' => $request->input('load_ids', []),
-                ]
-            ]);
+                'success' => false,
+                'message' => 'Error confirming loads: ' . $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -463,6 +511,28 @@ class KanbanController extends Controller
             // Create confirmation record
             $confirmation = LoadPickupConfirmation::create($confirmationData);
 
+            // Atualizar tentativa relacionada para 'completed'
+            $attempt = LoadPickupConfirmationAttempt::getPendingAttempt($load->id);
+            if ($attempt) {
+                $attempt->update([
+                    'status' => 'completed',
+                    'confirmation_id' => $confirmation->id,
+                ]);
+            } else {
+                // Se não encontrou tentativa pendente, buscar a mais recente
+                $attempt = LoadPickupConfirmationAttempt::where('load_id', $load->id)
+                    ->whereIn('status', ['processing'])
+                    ->latest()
+                    ->first();
+                
+                if ($attempt) {
+                    $attempt->update([
+                        'status' => 'completed',
+                        'confirmation_id' => $confirmation->id,
+                    ]);
+                }
+            }
+
             // Update load status based on confirmation
             $this->updateLoadPickupStatus($load, $confirmation);
 
@@ -472,6 +542,7 @@ class KanbanController extends Controller
                 'data' => [
                     'load_id' => $load->id,
                     'confirmation_id' => $confirmation->id,
+                    'attempt_id' => $attempt?->id,
                     'pickup_status' => $load->pickup_status,
                 ]
             ]);
