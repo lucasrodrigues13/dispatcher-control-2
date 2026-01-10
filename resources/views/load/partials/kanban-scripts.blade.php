@@ -168,12 +168,14 @@ document.addEventListener('DOMContentLoaded', function() {
             })
         })
         .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
-                });
-            }
-            return response.json();
+            return response.json().then(data => {
+                if (!response.ok) {
+                    // Extrair mensagem de erro do backend
+                    const errorMessage = data.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+                return data;
+            });
         })
         .then(data => {
             if (data.success) {
@@ -220,16 +222,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error:', error);
             
+            // Restore button state on error (antes do finally executar)
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = originalHTML;
+            
             // Show error message using SweetAlert
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    html: error.message || 'Failed to enqueue loads. Please try again.',
-                    confirmButtonText: 'OK'
+                    text: error.message || 'Failed to enqueue loads. Please try again.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#3085d6'
                 });
             } else {
-                console.error('Error:', error.message || 'Failed to enqueue loads. Please try again.');
+                alert('Error: ' + (error.message || 'Failed to enqueue loads. Please try again.'));
             }
         })
         .finally(() => {

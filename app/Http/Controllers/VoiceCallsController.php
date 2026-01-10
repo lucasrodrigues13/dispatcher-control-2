@@ -5,17 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\LoadPickupConfirmation;
 use App\Models\Load;
 use App\Services\BillingService;
+use App\Services\StripeService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class VoiceCallsController extends Controller
 {
     protected $billingService;
+    protected $stripeService;
 
-    public function __construct(BillingService $billingService)
+    public function __construct(BillingService $billingService, StripeService $stripeService)
     {
         $this->billingService = $billingService;
+        $this->stripeService = $stripeService;
     }
 
     /**
@@ -113,7 +117,7 @@ class VoiceCallsController extends Controller
                     'start_time' => $call->created_at->format('M d, Y, H:i'),
                     'duration' => $duration,
                     'duration_seconds' => $call->call_duration,
-                    'cost' => $call->call_cost ? number_format($call->call_cost, 2) : '0.00',
+                    'cost' => $call->call_cost ? number_format((float) $call->call_cost, 2) : '0.00', // MoneyCast retorna em dólares
                     'status' => $call->vapi_call_status,
                     'has_audio' => !empty($call->call_record_url),
                     'has_transcription' => !empty($call->call_transcription_url),
@@ -156,5 +160,153 @@ class VoiceCallsController extends Controller
         }
         
         return $remainingSeconds . 's';
+    }
+
+    /**
+     * Show recharge credits page
+     */
+    public function showRecharge()
+    {
+        $user = auth()->user();
+        $mainUser = $this->billingService->getMainUser($user);
+        
+        // Get user's credits balance
+        $creditsBalance = $mainUser->ai_voice_credits ?? 0.00;
+        
+        return view('voice-calls.recharge', compact('creditsBalance'));
+    }
+
+    /**
+     * Create PaymentIntent for credits recharge
+     */
+    public function createPaymentIntentForCredits(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'amount' => 'required|numeric|min:10|max:10000',
+            ], [
+                'amount.required' => 'Amount is required',
+                'amount.numeric' => 'Amount must be a number',
+                'amount.min' => 'Minimum amount is $10.00',
+                'amount.max' => 'Maximum amount is $10,000.00',
+            ]);
+
+            $user = auth()->user();
+            $mainUser = $this->billingService->getMainUser($user);
+            
+            $amount = (float) $request->input('amount');
+            $amountInCents = (int) round($amount * 100);
+
+            // Create PaymentIntent via Stripe
+            $paymentIntent = $this->stripeService->createPaymentIntent(
+                $amountInCents,
+                [
+                    'user_id' => (string) $mainUser->id,
+                    'type' => 'voice_credits_recharge',
+                    'credits_amount' => (string) $amount,
+                ],
+                'usd'
+            );
+
+            return response()->json([
+                'success' => true,
+                'client_secret' => $paymentIntent->client_secret,
+                'payment_intent_id' => $paymentIntent->id,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error creating payment intent for credits: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'amount' => $request->input('amount'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating payment intent: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Process credits payment and add credits to user
+     */
+    public function processCreditsPayment(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'payment_intent_id' => 'required|string',
+                'amount' => 'required|numeric|min:10',
+            ]);
+
+            $user = auth()->user();
+            $mainUser = $this->billingService->getMainUser($user);
+            
+            $amount = (float) $request->input('amount');
+            $paymentIntentId = $request->input('payment_intent_id');
+
+            // Verificar PaymentIntent no Stripe
+            $paymentIntent = $this->stripeService->retrievePaymentIntent($paymentIntentId);
+
+            if ($paymentIntent->status !== 'succeeded') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not completed. Status: ' . $paymentIntent->status
+                ], 400);
+            }
+
+            // Adicionar créditos ao usuário
+            $currentCredits = $mainUser->ai_voice_credits ?? 0.00;
+            $newBalance = $currentCredits + $amount;
+            
+            $mainUser->update([
+                'ai_voice_credits' => $newBalance
+            ]);
+
+            Log::info('Credits recharged successfully', [
+                'user_id' => $mainUser->id,
+                'amount_added' => $amount,
+                'previous_balance' => $currentCredits,
+                'new_balance' => $newBalance,
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully added $" . number_format($amount, 2) . " to your credits balance.",
+                'data' => [
+                    'credits_added' => $amount,
+                    'previous_balance' => $currentCredits,
+                    'new_balance' => $newBalance,
+                ]
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error processing credits payment: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'payment_intent_id' => $request->input('payment_intent_id'),
+                'amount' => $request->input('amount'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing payment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -11,6 +11,7 @@ use App\Models\LoadPickupConfirmation;
 use App\Models\LoadPickupConfirmationAttempt;
 use App\Jobs\ConfirmPickupLoadJob;
 use App\Services\LoadService;
+use App\Services\BillingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -343,6 +344,31 @@ class KanbanController extends Controller
                 ], 404);
             }
 
+            // Validar telefones antes de continuar
+            $phoneValidation = $this->validatePhoneNumbers($loads);
+            if (!$phoneValidation['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The phone number field is not filled in; please enter it before making a connection.',
+                    'data' => [
+                        'loads_without_phone' => $phoneValidation['loads_without_phone']
+                    ]
+                ], 400);
+            }
+
+            // Validar créditos antes de enfileirar
+            $creditValidation = $this->validateCredits($loads);
+            if (!$creditValidation['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $creditValidation['message'],
+                    'data' => [
+                        'credits_balance' => $creditValidation['credits_balance'],
+                        'required_credits' => $creditValidation['required_credits']
+                    ]
+                ], 400);
+            }
+
             // Verificar se há tentativas pendentes e filtrar loads
             $loadsToProcess = [];
             $skippedLoads = [];
@@ -482,6 +508,10 @@ class KanbanController extends Controller
                 ]);
             }
 
+            // Calcular custo final: retorno de custo x 2
+            $rawCallCost = isset($arguments['call_cost']) ? (float) $arguments['call_cost'] : 0.00;
+            $finalCallCost = $rawCallCost * 2; // Custo da ligação = retorno de custo x 2
+            
             // Prepare confirmation data
             $confirmationData = [
                 'load_id' => $load->id,
@@ -494,6 +524,8 @@ class KanbanController extends Controller
                 'special_instructions' => $arguments['special_instructions'] ?? null,
                 'call_record_url' => $arguments['call_record_url'] ?? null,
                 'call_transcription_url' => $arguments['call_transcription_url'] ?? null,
+                'call_duration' => isset($arguments['call_duration']) ? (int) $arguments['call_duration'] : null,
+                'call_cost' => $finalCallCost > 0 ? $finalCallCost : null, // MoneyCast converte automaticamente para centavos
                 'vapi_call_id' => $arguments['vapi_call_id'],
                 'vapi_call_status' => $arguments['vapi_call_status'],
                 'raw_payload' => $request->all(),
@@ -511,13 +543,116 @@ class KanbanController extends Controller
             // Create confirmation record
             $confirmation = LoadPickupConfirmation::create($confirmationData);
 
-            // Atualizar tentativa relacionada para 'completed'
+            // Verificar se ligação conectou (para determinar se deduz créditos e tipo de falha)
+            $hasCallRecord = !empty($arguments['call_record_url']);
+            $hasTranscription = !empty($arguments['call_transcription_url']);
+            $hasCallDuration = isset($arguments['call_duration']) && $arguments['call_duration'] > 0;
+            $callConnected = $hasCallRecord || $hasTranscription || $hasCallDuration;
+            
+            // Determinar tipo de falha (se vapi_call_status = 'fail')
+            $isCallAttemptFailure = false;
+            $failureReason = null;
+            
+            if ($arguments['vapi_call_status'] === 'fail') {
+                // Se não há registro de áudio, transcrição ou duração, é falha na tentativa de conectar
+                if (!$callConnected) {
+                    $isCallAttemptFailure = true;
+                    $failureReason = 'Call attempt failed - call did not connect (no audio record, transcription, or duration)';
+                    
+                    Log::warning('Pickup confirmation: Call attempt failure', [
+                        'load_id' => $load->id,
+                        'vapi_call_id' => $arguments['vapi_call_id'],
+                        'reason' => $failureReason
+                    ]);
+                } else {
+                    // Ligação conectou mas falhou por outros fatores
+                    $failureReason = 'Call connected but failed during the call';
+                    
+                    Log::info('Pickup confirmation: Call connected but failed', [
+                        'load_id' => $load->id,
+                        'vapi_call_id' => $arguments['vapi_call_id'],
+                        'has_call_record' => $hasCallRecord,
+                        'has_transcription' => $hasTranscription,
+                        'call_duration' => $arguments['call_duration'] ?? null
+                    ]);
+                }
+            }
+            
+            // Deduzir créditos apenas se a ligação conectou e tem custo
+            // Não deduzir se foi falha na tentativa de conectar (não conectou)
+            if ($callConnected && $finalCallCost > 0 && !$isCallAttemptFailure) {
+                try {
+                    // Obter dispatcher através do load
+                    $load->load('dispatcher.user');
+                    $dispatcher = $load->dispatcher;
+                    
+                    if ($dispatcher && $dispatcher->user) {
+                        $billingService = app(BillingService::class);
+                        $mainUser = $billingService->getMainUser($dispatcher->user);
+                        
+                        // MoneyCast trabalha com dólares (float) no código, converte automaticamente para centavos no banco
+                        $currentCredits = $mainUser->ai_voice_credits ?? 0.00; // Retorna em dólares
+                        
+                        if ($currentCredits >= $finalCallCost) {
+                            // Deduzir créditos (MoneyCast converte automaticamente para centavos)
+                            $newBalance = $currentCredits - $finalCallCost;
+                            $mainUser->update([
+                                'ai_voice_credits' => max(0, $newBalance) // Garantir que não fique negativo
+                            ]);
+                            
+                            Log::info('Credits deducted for call', [
+                                'user_id' => $mainUser->id,
+                                'load_id' => $load->id,
+                                'vapi_call_id' => $arguments['vapi_call_id'],
+                                'raw_cost' => $rawCallCost,
+                                'final_cost' => $finalCallCost,
+                                'previous_balance' => $currentCredits,
+                                'new_balance' => $newBalance,
+                            ]);
+                        } else {
+                            // Créditos insuficientes (não deveria acontecer se validação foi feita antes)
+                            Log::warning('Insufficient credits for call deduction', [
+                                'user_id' => $mainUser->id,
+                                'load_id' => $load->id,
+                                'vapi_call_id' => $arguments['vapi_call_id'],
+                                'required' => $finalCallCost,
+                                'available' => $currentCredits,
+                            ]);
+                        }
+                    } else {
+                        Log::warning('Could not find user for credit deduction', [
+                            'load_id' => $load->id,
+                            'dispatcher_id' => $load->dispatcher_id,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    // Log erro mas não interrompe o processamento da confirmação
+                    Log::error('Error deducting credits for call', [
+                        'load_id' => $load->id,
+                        'vapi_call_id' => $arguments['vapi_call_id'],
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
+            }
+
+            // Atualizar tentativa relacionada
             $attempt = LoadPickupConfirmationAttempt::getPendingAttempt($load->id);
             if ($attempt) {
-                $attempt->update([
-                    'status' => 'completed',
-                    'confirmation_id' => $confirmation->id,
-                ]);
+                // Se foi falha na tentativa de conectar, marcar como failed
+                // Se foi falha durante a ligação ou sucesso, marcar como completed
+                if ($isCallAttemptFailure) {
+                    $attempt->update([
+                        'status' => 'failed',
+                        'confirmation_id' => $confirmation->id,
+                        'error_message' => $failureReason
+                    ]);
+                } else {
+                    $attempt->update([
+                        'status' => 'completed',
+                        'confirmation_id' => $confirmation->id,
+                    ]);
+                }
             } else {
                 // Se não encontrou tentativa pendente, buscar a mais recente
                 $attempt = LoadPickupConfirmationAttempt::where('load_id', $load->id)
@@ -526,15 +661,25 @@ class KanbanController extends Controller
                     ->first();
                 
                 if ($attempt) {
-                    $attempt->update([
-                        'status' => 'completed',
-                        'confirmation_id' => $confirmation->id,
-                    ]);
+                    if ($isCallAttemptFailure) {
+                        $attempt->update([
+                            'status' => 'failed',
+                            'confirmation_id' => $confirmation->id,
+                            'error_message' => $failureReason
+                        ]);
+                    } else {
+                        $attempt->update([
+                            'status' => 'completed',
+                            'confirmation_id' => $confirmation->id,
+                        ]);
+                    }
                 }
             }
 
-            // Update load status based on confirmation
-            $this->updateLoadPickupStatus($load, $confirmation);
+            // Update load status based on confirmation (apenas se não for falha na tentativa de conectar)
+            if (!$isCallAttemptFailure) {
+                $this->updateLoadPickupStatus($load, $confirmation);
+            }
 
             return response()->json([
                 'success' => true,
@@ -573,8 +718,93 @@ class KanbanController extends Controller
     }
 
     /**
-     * Update load pickup status based on confirmation
+     * Validate phone numbers for loads
+     * 
+     * @param \Illuminate\Database\Eloquent\Collection $loads
+     * @return array
      */
+    private function validatePhoneNumbers($loads): array
+    {
+        $loadsWithoutPhone = [];
+        
+        foreach ($loads as $load) {
+            $hasPhone = !empty($load->pickup_phone);
+            $hasMobile = !empty($load->pickup_mobile);
+            
+            if (!$hasPhone && !$hasMobile) {
+                $loadsWithoutPhone[] = [
+                    'id' => $load->id,
+                    'load_id' => $load->load_id ?? $load->internal_load_id ?? 'N/A'
+                ];
+            }
+        }
+        
+        return [
+            'valid' => empty($loadsWithoutPhone),
+            'loads_without_phone' => $loadsWithoutPhone
+        ];
+    }
+
+    /**
+     * Validate if user has enough credits for calls
+     * Estimates minimum cost per call (can be adjusted based on average call duration)
+     * 
+     * @param \Illuminate\Database\Eloquent\Collection $loads
+     * @return array
+     */
+    private function validateCredits($loads): array
+    {
+        if ($loads->isEmpty()) {
+            return [
+                'valid' => true,
+                'message' => 'No loads to validate',
+                'credits_balance' => 0,
+                'required_credits' => 0
+            ];
+        }
+
+        // Obter usuário principal através do primeiro load
+        $firstLoad = $loads->first();
+        $firstLoad->load(['dispatcher.user']);
+        $dispatcher = $firstLoad->dispatcher;
+        
+        if (!$dispatcher || !$dispatcher->user) {
+            return [
+                'valid' => false,
+                'message' => 'Could not find user to validate credits',
+                'credits_balance' => 0,
+                'required_credits' => 0
+            ];
+        }
+
+        $billingService = app(BillingService::class);
+        $mainUser = $billingService->getMainUser($dispatcher->user);
+        
+        // MoneyCast retorna em dólares (float)
+        $currentCredits = $mainUser->ai_voice_credits ?? 0.00;
+        
+        // Estimar custo mínimo por ligação (exemplo: $0.40 = custo mínimo estimado de $0.20 x 2)
+        // Como não sabemos o custo exato antes da ligação, usamos um valor mínimo conservador
+        $estimatedCostPerCall = 0.40; // $0.40 por ligação (baseado em custo mínimo estimado x 2)
+        $requiredCredits = count($loads) * $estimatedCostPerCall;
+        
+        if ($currentCredits < $requiredCredits) {
+            return [
+                'valid' => false,
+                'message' => "Insufficient credits. You need at least $" . number_format($requiredCredits, 2) . " to make " . count($loads) . " call(s), but you have $" . number_format($currentCredits, 2) . " available. Please recharge your credits.",
+                'credits_balance' => $currentCredits,
+                'required_credits' => $requiredCredits
+            ];
+        }
+        
+        return [
+            'valid' => true,
+            'message' => 'Credits validated successfully',
+            'credits_balance' => $currentCredits,
+            'required_credits' => $requiredCredits
+        ];
+    }
+
     private function updateLoadPickupStatus(Load $load, LoadPickupConfirmation $confirmation): void
     {
         $updateData = [

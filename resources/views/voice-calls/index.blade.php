@@ -17,7 +17,15 @@
                 </div>
                 <div class="card-body text-center">
                     <h2 class="text-primary mb-3">${{ number_format($creditsBalance, 2) }}</h2>
-                    <p class="text-muted mb-0">Available credits for voice calls</p>
+                    <p class="text-muted mb-2">Available credits for voice calls</p>
+                    @if($creditsBalance < 10)
+                        <div class="alert alert-warning mb-2">
+                            <small>Low credits balance. Recharge to continue making calls.</small>
+                        </div>
+                    @endif
+                    <a href="{{ route('voice-calls.recharge') }}" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-plus-circle me-2"></i> Recharge Credits
+                    </a>
                 </div>
             </div>
 

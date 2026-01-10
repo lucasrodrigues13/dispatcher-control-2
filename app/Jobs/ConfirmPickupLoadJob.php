@@ -92,7 +92,7 @@ class ConfirmPickupLoadJob implements ShouldQueue
             // Não atualizamos aqui para completed porque ainda não recebemos a confirmação
 
         } catch (\Exception $e) {
-            // Log error and update attempt status
+            // Log error
             Log::warning("ConfirmPickupLoadJob: Error processing load {$this->loadId}", [
                 'error' => $e->getMessage(),
                 'attempt_id' => $attempt?->id,
@@ -117,6 +117,9 @@ class ConfirmPickupLoadJob implements ShouldQueue
      */
     private function preparePayloadForN8N(Load $load): array
     {
+        // Verificar se phone existe, se não existir usar mobile
+        $pickupPhone = !empty($load->pickup_phone) ? $load->pickup_phone : $load->pickup_mobile;
+        
         return [
             'load' => [
                 'id' => $load->id,
@@ -136,7 +139,7 @@ class ConfirmPickupLoadJob implements ShouldQueue
                 'pickup_state' => $load->pickup_state,
                 'pickup_zip' => $load->pickup_zip,
                 'scheduled_pickup_date' => $load->scheduled_pickup_date?->format('Y-m-d'),
-                'pickup_phone' => $load->pickup_phone,
+                'pickup_phone' => $pickupPhone,
                 'pickup_mobile' => $load->pickup_mobile,
                 'actual_pickup_date' => $load->actual_pickup_date?->format('Y-m-d'),
                 'buyer_number' => $load->buyer_number,

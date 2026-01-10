@@ -290,6 +290,14 @@ Route::middleware(['auth', 'check.subscription'])->group(function () {
         ->name('voice-calls.index');
     Route::get('/voice-calls/data', [App\Http\Controllers\VoiceCallsController::class, 'getCalls'])
         ->name('voice-calls.data');
+    
+    // Voice Credits Recharge
+    Route::get('/voice-calls/recharge', [App\Http\Controllers\VoiceCallsController::class, 'showRecharge'])
+        ->name('voice-calls.recharge');
+    Route::post('/voice-calls/recharge/create-payment-intent', [App\Http\Controllers\VoiceCallsController::class, 'createPaymentIntentForCredits'])
+        ->name('voice-calls.recharge.create-payment-intent');
+    Route::post('/voice-calls/recharge/process-payment', [App\Http\Controllers\VoiceCallsController::class, 'processCreditsPayment'])
+        ->name('voice-calls.recharge.process-payment');
 
 
     // Kanban Container
