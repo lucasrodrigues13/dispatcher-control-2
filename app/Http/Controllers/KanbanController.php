@@ -582,9 +582,11 @@ class KanbanController extends Controller
             // Não deduzir se foi falha na tentativa de conectar (não conectou)
             if ($callConnected && $finalCallCost > 0 && !$isCallAttemptFailure) {
                 try {
-                    // Obter dispatcher através do load
-                    $load->load('dispatcher.user');
-                    $dispatcher = $load->dispatcher;
+                    // Buscar dispatcher diretamente pelo ID para evitar conflito com atributo 'dispatcher' (string)
+                    $dispatcher = null;
+                    if ($load->dispatcher_id) {
+                        $dispatcher = Dispatcher::with('user')->find($load->dispatcher_id);
+                    }
                     
                     if ($dispatcher && $dispatcher->user) {
                         $billingService = app(BillingService::class);
@@ -765,8 +767,18 @@ class KanbanController extends Controller
 
         // Obter usuário principal através do primeiro load
         $firstLoad = $loads->first();
-        $firstLoad->load(['dispatcher.user']);
-        $dispatcher = $firstLoad->dispatcher;
+        
+        // Buscar dispatcher diretamente pelo ID para evitar conflito com atributo 'dispatcher' (string)
+        if (!$firstLoad->dispatcher_id) {
+            return [
+                'valid' => false,
+                'message' => 'Load does not have a dispatcher assigned',
+                'credits_balance' => 0,
+                'required_credits' => 0
+            ];
+        }
+        
+        $dispatcher = Dispatcher::with('user')->find($firstLoad->dispatcher_id);
         
         if (!$dispatcher || !$dispatcher->user) {
             return [
