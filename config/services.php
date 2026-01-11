@@ -46,4 +46,8 @@ return [
         ),
     ],
 
+    'vapi' => [
+        'api_key' => env('VAPI_API_PRIVATE_KEY'),
+    ],
+
 ];

@@ -40,19 +40,21 @@
                             <table class="table table-striped table-hover" id="confirmationsTable">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th style="width: 40px;"></th>
                                         <th>Load ID</th>
                                         <th>Contact Name</th>
+                                        <th>Status</th>
                                         <th>Ready for Pickup</th>
+                                        <th>Hours of Operation</th>
+                                        <th>Car Condition</th>
                                         <th>Address Correct</th>
-                                        <th>Call Status</th>
                                         <th>Date</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="confirmationsTableBody">
                                     <tr>
-                                        <td colspan="8" class="text-center">
+                                        <td colspan="10" class="text-center">
                                             <div class="spinner-border" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -181,6 +183,66 @@
     white-space: pre-wrap;
     word-wrap: break-word;
 }
+
+.expand-icon {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.expand-details-btn {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 0.875rem;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.expand-details-btn:hover {
+    color: #0d6efd;
+}
+
+.expand-details-btn.expanded {
+    color: #0d6efd;
+}
+
+.confirmation-details-row {
+    background-color: #f8f9fa;
+}
+
+.details-cell {
+    padding: 20px !important;
+    border-top: 2px solid #dee2e6;
+}
+
+.confirmation-details {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.confirmation-details strong {
+    color: #495057;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.confirmation-details span {
+    color: #212529;
+}
+
+.transcription-preview {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
 </style>
 
 <script>
@@ -211,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading confirmations:', error);
                 document.getElementById('confirmationsTableBody').innerHTML = 
-                    '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+                    '<tr><td colspan="10" class="text-center text-danger">Error loading data</td></tr>';
             });
     }
 
@@ -240,12 +302,25 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
     // Render confirmations table
     function renderConfirmationsTable(data) {
         const tbody = document.getElementById('confirmationsTableBody');
         
         if (data.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">No confirmations found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center">No confirmations found</td></tr>';
             return;
         }
 
@@ -261,8 +336,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? '<span class="badge bg-success">Success</span>'
                 : '<span class="badge bg-danger">Failed</span>';
             
+            const hoursOfOperation = confirmation.hours_of_operation || 'N/A';
+            const carCondition = confirmation.car_condition || 'N/A';
+            
             const downloadButtons = `
-                ${confirmation.call_transcription_url ? 
+                ${confirmation.transcription ? 
                     `<a href="{{ route('pickup-confirmations.download-transcription', ':id') }}" class="btn btn-sm btn-outline-primary me-1" title="Download Transcription">
                         <i class="fas fa-file-alt"></i>
                     </a>`.replace(':id', confirmation.id) : ''}
@@ -272,19 +350,116 @@ document.addEventListener('DOMContentLoaded', function() {
                     </a>`.replace(':id', confirmation.id) : ''}
             `;
 
+            // Format date for "Not Ready When"
+            const notReadyWhen = confirmation.not_ready_when 
+                ? new Date(confirmation.not_ready_when).toLocaleString() 
+                : null;
+
+            // Format different address
+            const differentAddress = !confirmation.is_address_correct && (
+                confirmation.pickup_address || 
+                confirmation.pickup_city || 
+                confirmation.pickup_state || 
+                confirmation.pickup_zip
+            ) ? [
+                confirmation.pickup_address,
+                confirmation.pickup_city,
+                confirmation.pickup_state,
+                confirmation.pickup_zip
+            ].filter(Boolean).join(', ') : null;
+
+            // Build details HTML
+            const detailsHtml = `
+                <div class="confirmation-details">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>If Not Ready When:</strong><br>
+                            <span>${notReadyWhen || 'N/A'}</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Call ID:</strong><br>
+                            <span>${confirmation.vapi_call_id || 'N/A'}</span>
+                        </div>
+                        ${differentAddress ? `
+                        <div class="col-md-12 mb-3">
+                            <strong>Different Address:</strong><br>
+                            <span>${differentAddress}</span>
+                        </div>
+                        ` : ''}
+                        ${confirmation.special_instructions ? `
+                        <div class="col-md-12 mb-3">
+                            <strong>Special Instructions:</strong><br>
+                            <span>${escapeHtml(confirmation.special_instructions)}</span>
+                        </div>
+                        ` : ''}
+                        ${confirmation.summary ? `
+                        <div class="col-md-12 mb-3">
+                            <strong>Summary:</strong><br>
+                            <span>${escapeHtml(confirmation.summary)}</span>
+                        </div>
+                        ` : ''}
+                        ${confirmation.transcription ? `
+                        <div class="col-md-12 mb-3">
+                            <strong>Transcription:</strong><br>
+                            <div class="transcription-preview" style="max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 0.9em;">
+                                <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">${escapeHtml(confirmation.transcription)}</pre>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
             return `
-                <tr>
-                    <td>${confirmation.id}</td>
+                <tr class="confirmation-row" data-confirmation-id="${confirmation.id}">
+                    <td class="expand-icon">
+                        <button class="btn btn-sm btn-link expand-details-btn" type="button" data-confirmation-id="${confirmation.id}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </td>
                     <td>${load.load_id || load.internal_load_id || 'N/A'}</td>
                     <td>${confirmation.contact_name || 'N/A'}</td>
-                    <td>${readyBadge}</td>
-                    <td>${addressBadge}</td>
                     <td>${statusBadge}</td>
+                    <td>${readyBadge}</td>
+                    <td>${hoursOfOperation}</td>
+                    <td>${carCondition}</td>
+                    <td>${addressBadge}</td>
                     <td>${new Date(confirmation.created_at).toLocaleString()}</td>
                     <td>${downloadButtons || '<span class="text-muted">No files</span>'}</td>
                 </tr>
+                <tr class="confirmation-details-row" id="details-${confirmation.id}" style="display: none;">
+                    <td colspan="10" class="details-cell">
+                        ${detailsHtml}
+                    </td>
+                </tr>
             `;
         }).join('');
+
+        // Attach event listeners to expand buttons
+        attachExpandListeners();
+    }
+
+    // Attach expand/collapse listeners
+    function attachExpandListeners() {
+        document.querySelectorAll('.expand-details-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const confirmationId = this.getAttribute('data-confirmation-id');
+                const detailsRow = document.getElementById(`details-${confirmationId}`);
+                const icon = this.querySelector('i');
+                
+                if (detailsRow.style.display === 'none') {
+                    detailsRow.style.display = 'table-row';
+                    icon.classList.remove('fa-plus');
+                    icon.classList.add('fa-minus');
+                    this.classList.add('expanded');
+                } else {
+                    detailsRow.style.display = 'none';
+                    icon.classList.remove('fa-minus');
+                    icon.classList.add('fa-plus');
+                    this.classList.remove('expanded');
+                }
+            });
+        });
     }
 
     // Render jobs table (now showing pickup confirmation attempts)

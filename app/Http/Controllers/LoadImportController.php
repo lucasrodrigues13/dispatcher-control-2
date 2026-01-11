@@ -376,7 +376,7 @@ class LoadImportController extends Controller
         return response()->json($load);
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         // Buscar dispatcher do usuário logado
         $dispatcher = Dispatcher::with('user')
@@ -404,7 +404,10 @@ class LoadImportController extends Controller
         }
 
         $load = Load::findOrFail($id);
-        return view('load.edit', compact('load', 'dispatchers', 'carriers', 'employees'));
+        // Obter parâmetro source da query string (kanban ou lista)
+        $source = $request->get('source', 'lista');
+        
+        return view('load.edit', compact('load', 'dispatchers', 'carriers', 'employees', 'source'));
     }
 
     public function update(Request $request, $id)
@@ -523,8 +526,17 @@ class LoadImportController extends Controller
         $load->fill($data);
         $load->save();
 
-        return redirect()->route('loads.index')
-            ->with('success', 'Load atualizado com sucesso!');
+        // Verificar de onde veio a edição (kanban ou lista)
+        $source = $request->input('source', 'lista');
+        
+        // Redirecionar baseado na origem
+        if ($source === 'kanban') {
+            return redirect()->route('loads.mode')
+                ->with('success', 'Load atualizado com sucesso!');
+        } else {
+            return redirect()->route('loads.index')
+                ->with('success', 'Load atualizado com sucesso!');
+        }
     }
 
     public function updateEmployee(Request $request, Load $load)

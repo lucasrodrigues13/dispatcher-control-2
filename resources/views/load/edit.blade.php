@@ -52,6 +52,7 @@
                         <form method="POST" action="{{ route('loads.update', $load->id) }}">
                             @csrf
                             @method('PUT')
+                            <input type="hidden" name="source" value="{{ $source ?? 'lista' }}">
 
                             {{-- ====================================== --}}
                             {{-- IDENTIFICAÇÃO / BÁSICO --}}
@@ -417,7 +418,11 @@
 
                             {{-- BOTÕES --}}
                             <div class="d-flex justify-content-end">
-                                <a href="{{ route('loads.index') }}" class="btn btn-secondary me-2">Cancel</a>
+                                @if(isset($source) && $source === 'kanban')
+                                    <a href="{{ route('loads.mode') }}" class="btn btn-secondary me-2">Cancel</a>
+                                @else
+                                    <a href="{{ route('loads.index') }}" class="btn btn-secondary me-2">Cancel</a>
+                                @endif
                                 <button type="submit" class="btn btn-primary">Update</button>
                             </div>
                         </form>
