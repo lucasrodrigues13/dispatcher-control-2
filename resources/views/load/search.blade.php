@@ -277,7 +277,7 @@
                         <td>{{ $load->carrier_id }}</td>
                         <td class="text-center actions">
                           <div class="form-button-action">
-                            <a href="{{ route('loads.edit', $load->id) }}" class="btn btn-link btn-primary btn-lg" data-bs-toggle="tooltip" title="Edit">
+                            <a href="{{ route('loads.edit', $load->id) }}?source=lista" class="btn btn-link btn-primary btn-lg" data-bs-toggle="tooltip" title="Edit">
                               <i class="fa fa-edit"></i>
                             </a>
                             <form action="{{ route('loads.destroy', $load->id) }}" method="POST" style="display:inline-block">

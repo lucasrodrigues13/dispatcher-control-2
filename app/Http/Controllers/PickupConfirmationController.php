@@ -222,14 +222,12 @@ class PickupConfirmationController extends Controller
         try {
             $confirmation = LoadPickupConfirmation::findOrFail($id);
             
-            if (!$confirmation->call_transcription_url) {
-                return redirect()->back()->with('error', 'Transcription URL not available');
+            if (!$confirmation->transcription) {
+                return redirect()->back()->with('error', 'Transcription not available');
             }
 
-            // Download and return the file
-            $content = file_get_contents($confirmation->call_transcription_url);
-            
-            return response($content)
+            // Return the transcription text as a file
+            return response($confirmation->transcription)
                 ->header('Content-Type', 'text/plain')
                 ->header('Content-Disposition', 'attachment; filename="transcription_' . $confirmation->vapi_call_id . '.txt"');
         } catch (\Exception $e) {

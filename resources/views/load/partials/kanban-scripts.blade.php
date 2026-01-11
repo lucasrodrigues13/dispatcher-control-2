@@ -587,7 +587,8 @@ function updateCardInBoard(loadData) {
 // Função para abrir tela de edição do load (redireciona para página completa)
 function openLoadEditModal(loadId) {
     // Redireciona para a mesma tela de edição usada na lista de loads
-    window.location.href = `/loads/edit/${loadId}`;
+    // Passa parâmetro source=kanban para redirecionar de volta ao kanban após salvar
+    window.location.href = `/loads/edit/${loadId}?source=kanban`;
 }
 </script>
 

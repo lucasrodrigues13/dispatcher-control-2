@@ -10,6 +10,7 @@ use App\Models\Load;
 use App\Models\LoadPickupConfirmation;
 use App\Models\LoadPickupConfirmationAttempt;
 use App\Jobs\ConfirmPickupLoadJob;
+use App\Jobs\FetchVapiCallDetailsJob;
 use App\Services\LoadService;
 use App\Services\BillingService;
 use Illuminate\Support\Facades\DB;
@@ -523,7 +524,6 @@ class KanbanController extends Controller
                 'is_address_correct' => $arguments['is_address_correct'] ?? true,
                 'special_instructions' => $arguments['special_instructions'] ?? null,
                 'call_record_url' => $arguments['call_record_url'] ?? null,
-                'call_transcription_url' => $arguments['call_transcription_url'] ?? null,
                 'call_duration' => isset($arguments['call_duration']) ? (int) $arguments['call_duration'] : null,
                 'call_cost' => $finalCallCost > 0 ? $finalCallCost : null, // MoneyCast converte automaticamente para centavos
                 'vapi_call_id' => $arguments['vapi_call_id'],
@@ -545,9 +545,8 @@ class KanbanController extends Controller
 
             // Verificar se ligação conectou (para determinar se deduz créditos e tipo de falha)
             $hasCallRecord = !empty($arguments['call_record_url']);
-            $hasTranscription = !empty($arguments['call_transcription_url']);
             $hasCallDuration = isset($arguments['call_duration']) && $arguments['call_duration'] > 0;
-            $callConnected = $hasCallRecord || $hasTranscription || $hasCallDuration;
+            $callConnected = $hasCallRecord || $hasCallDuration;
             
             // Determinar tipo de falha (se vapi_call_status = 'fail')
             $isCallAttemptFailure = false;
@@ -572,7 +571,6 @@ class KanbanController extends Controller
                         'load_id' => $load->id,
                         'vapi_call_id' => $arguments['vapi_call_id'],
                         'has_call_record' => $hasCallRecord,
-                        'has_transcription' => $hasTranscription,
                         'call_duration' => $arguments['call_duration'] ?? null
                     ]);
                 }
@@ -682,6 +680,10 @@ class KanbanController extends Controller
             if (!$isCallAttemptFailure) {
                 $this->updateLoadPickupStatus($load, $confirmation);
             }
+
+            // Disparar job para buscar detalhes adicionais da API VAPI
+            // Este job será executado independente do status (success ou fail)
+            FetchVapiCallDetailsJob::dispatch($confirmation->id, $arguments['vapi_call_id']);
 
             return response()->json([
                 'success' => true,
