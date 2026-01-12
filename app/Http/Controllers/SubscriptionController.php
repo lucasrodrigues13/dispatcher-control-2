@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Plan;
+use App\Models\Load;
+use App\Models\LoadPickupConfirmation;
 use App\Services\BillingService;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +33,39 @@ class SubscriptionController extends Controller
         
         $subscription = $mainUser->subscription;
 
-        return view('subscription.index', compact('subscription'));
+        // Verificar se o owner tem serviço de AI Voice
+        $hasAiVoiceService = $billingService->hasAiVoiceService($user);
+        $voiceCallsData = null;
+
+        if ($hasAiVoiceService) {
+            // Get user's credits balance
+            $creditsBalance = $mainUser->ai_voice_credits ?? 0.00;
+            
+            // Get load IDs that belong to this user (TenantScope will filter automatically)
+            $loadIds = Load::pluck('id')->toArray();
+            
+            // Get calls statistics
+            $totalCalls = LoadPickupConfirmation::whereIn('load_id', $loadIds)->count();
+            
+            // Sum retorna centavos (integer), converter para dólares
+            $totalCostCents = LoadPickupConfirmation::whereIn('load_id', $loadIds)
+                ->whereNotNull('call_cost')
+                ->sum('call_cost') ?? 0;
+            $totalCost = $totalCostCents / 100;
+            
+            $successCalls = LoadPickupConfirmation::whereIn('load_id', $loadIds)
+                ->where('vapi_call_status', 'success')
+                ->count();
+
+            $voiceCallsData = [
+                'creditsBalance' => $creditsBalance,
+                'totalCalls' => $totalCalls,
+                'totalCost' => $totalCost,
+                'successCalls' => $successCalls,
+            ];
+        }
+
+        return view('subscription.index', compact('subscription', 'hasAiVoiceService', 'voiceCallsData'));
     }
 
     /** Listagem de planos - ⭐ DESABILITADO: Redireciona para build-plan */

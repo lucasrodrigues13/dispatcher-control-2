@@ -118,18 +118,6 @@
         </li>
         @endcan
 
-        {{-- Voice Calls (only for users with AI Voice Service) --}}
-        @php
-            $billingService = app(\App\Services\BillingService::class);
-            $hasAiVoiceService = $billingService->hasAiVoiceService(auth()->user());
-        @endphp
-        @if($hasAiVoiceService)
-        <li class="nav-item {{ request()->is('voice-calls*') ? 'active' : '' }}">
-          <a href="{{ route('voice-calls.index') }}">
-            <i class="fas fa-microphone"></i><p>Voice Calls</p>
-          </a>
-        </li>
-        @endif
 
         {{-- Invoices --}}
         @php
