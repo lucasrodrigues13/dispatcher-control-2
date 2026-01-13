@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // Executar processamento de cobrança diariamente
         $schedule->command('billing:process')->daily();
+        
+        // Sincronizar subscriptions do Stripe diariamente (fallback)
+        $schedule->command('stripe:sync-subscriptions')->daily();
     }
 
     /**
@@ -29,5 +32,6 @@ class Kernel extends ConsoleKernel
 
     protected $commands = [
         \App\Console\Commands\ProcessSubscriptionBilling::class,
+        \App\Console\Commands\SyncStripeSubscriptions::class,
     ];
 }

@@ -126,4 +126,108 @@ class StripeService
 
         return $this->getStripeClient()->subscriptions->update($subscriptionId, $params);
     }
+
+    /**
+     * Cria uma Subscription no Stripe
+     * 
+     * @param string $customerId ID do customer no Stripe
+     * @param array $items Array de items (price_data ou price)
+     * @param array $metadata Metadata adicional
+     * @return \Stripe\Subscription
+     */
+    public function createSubscription(string $customerId, array $items, array $metadata = [])
+    {
+        $params = [
+            'customer' => $customerId,
+            'items' => $items,
+            'payment_behavior' => 'default_incomplete',
+            'payment_settings' => [
+                'payment_method_types' => ['card'],
+                'save_default_payment_method' => 'on_subscription',
+            ],
+        ];
+
+        if (!empty($metadata)) {
+            $params['metadata'] = $metadata;
+        }
+
+        return $this->getStripeClient()->subscriptions->create($params);
+    }
+
+    /**
+     * Recupera uma Subscription do Stripe
+     */
+    public function retrieveSubscription(string $subscriptionId)
+    {
+        return $this->getStripeClient()->subscriptions->retrieve($subscriptionId);
+    }
+
+    /**
+     * Atualiza uma Subscription no Stripe
+     * 
+     * @param string $subscriptionId
+     * @param array $updateData Dados para atualizar
+     * @param bool $proration Se deve aplicar proration (default: true para upgrades)
+     * @return \Stripe\Subscription
+     */
+    public function updateSubscription(string $subscriptionId, array $updateData, bool $proration = true)
+    {
+        if (!isset($updateData['proration_behavior'])) {
+            $updateData['proration_behavior'] = $proration ? 'always_invoice' : 'none';
+        }
+
+        return $this->getStripeClient()->subscriptions->update($subscriptionId, $updateData);
+    }
+
+    /**
+     * Cria um Subscription Item
+     */
+    public function createSubscriptionItem(string $subscriptionId, array $itemData)
+    {
+        $params = array_merge($itemData, [
+            'subscription' => $subscriptionId,
+        ]);
+
+        return $this->getStripeClient()->subscriptionItems->create($params);
+    }
+
+    /**
+     * Atualiza um Subscription Item
+     */
+    public function updateSubscriptionItem(string $subscriptionItemId, array $updateData, bool $proration = true)
+    {
+        if (!isset($updateData['proration_behavior'])) {
+            $updateData['proration_behavior'] = $proration ? 'always_invoice' : 'none';
+        }
+
+        return $this->getStripeClient()->subscriptionItems->update($subscriptionItemId, $updateData);
+    }
+
+    /**
+     * Deleta um Subscription Item
+     */
+    public function deleteSubscriptionItem(string $subscriptionItemId, bool $proration = false)
+    {
+        $params = [
+            'proration_behavior' => $proration ? 'always_invoice' : 'none',
+        ];
+
+        return $this->getStripeClient()->subscriptionItems->delete($subscriptionItemId, $params);
+    }
+
+    /**
+     * Cria um Price dinâmico (para planos customizados)
+     */
+    public function createPrice(array $priceData)
+    {
+        return $this->getStripeClient()->prices->create($priceData);
+    }
+
+    /**
+     * Recupera um Price do Stripe
+     */
+    public function retrievePrice(string $priceId)
+    {
+        return $this->getStripeClient()->prices->retrieve($priceId);
+    }
 }

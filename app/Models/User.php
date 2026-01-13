@@ -27,6 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'photo',
         'logo',
         'ai_voice_credits',
+        'stripe_customer_id',
     ];
 
     protected $hidden = [
@@ -63,6 +64,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function usageTracking()
     {
         return $this->hasMany(UsageTracking::class);
+    }
+
+    public function creditTransactions()
+    {
+        return $this->hasMany(CreditTransaction::class);
+    }
+
+    public function paymentAttempts()
+    {
+        return $this->hasMany(PaymentAttempt::class);
     }
 
     // Relacionamentos de entidades

@@ -21,6 +21,10 @@ class Subscription extends Model
         'payment_method',
         'payment_gateway_id',
         'stripe_payment_id',  // Adicionado
+        'stripe_subscription_id',
+        'stripe_status',
+        'stripe_current_period_start',
+        'stripe_current_period_end',
         'amount',
         'billing_cycle_day',
         'due_date',           // Adicionado
@@ -34,6 +38,8 @@ class Subscription extends Model
         'trial_ends_at' => 'datetime',
         'blocked_at' => 'datetime',
         'due_date' => 'datetime',        // Adicionado
+        'stripe_current_period_start' => 'datetime',
+        'stripe_current_period_end' => 'datetime',
         'amount' => 'decimal:2',
     ];
 
@@ -55,6 +61,16 @@ class Subscription extends Model
     public function billingNotifications()
     {
         return $this->hasMany(BillingNotification::class);
+    }
+
+    public function subscriptionItems()
+    {
+        return $this->hasMany(SubscriptionItem::class);
+    }
+
+    public function paymentAttempts()
+    {
+        return $this->hasMany(PaymentAttempt::class);
     }
 
     // Verifica se é plano unlimited (carrier)

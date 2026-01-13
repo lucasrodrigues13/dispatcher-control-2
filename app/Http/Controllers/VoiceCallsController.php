@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\LoadPickupConfirmation;
 use App\Models\Load;
+use App\Models\Subscription;
+use App\Models\SubscriptionItem;
 use App\Services\BillingService;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
@@ -90,7 +92,8 @@ class VoiceCallsController extends Controller
             $calls = $query->paginate($perPage);
 
             // Format data for frontend
-            $formattedCalls = $calls->getCollection()->map(function($call) {
+            $formattedCalls = $calls->items();
+            $formattedCalls = collect($formattedCalls)->map(function($call) {
                 $load = $call->loadRelation;
                 
                 // Determine success evaluation based on vapi_call_status
@@ -178,6 +181,7 @@ class VoiceCallsController extends Controller
 
     /**
      * Create PaymentIntent for credits recharge
+     * ⚠️ VALIDAÇÕES OBRIGATÓRIAS: Plano ativo + Serviço de IA ativo
      */
     public function createPaymentIntentForCredits(Request $request): JsonResponse
     {
@@ -195,18 +199,39 @@ class VoiceCallsController extends Controller
             $mainUser = $this->billingService->getMainUser($user);
             
             $amount = (float) $request->input('amount');
+
+            // ⚠️ VALIDAÇÕES OBRIGATÓRIAS ANTES DE CRIAR PAYMENT INTENT
+            $validationResult = $this->validateCreditRecharge($mainUser);
+            if (!$validationResult['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validationResult['message'],
+                    'code' => $validationResult['code'] ?? 'validation_failed'
+                ], 400);
+            }
+
             $amountInCents = (int) round($amount * 100);
+
+            // Criar/Recuperar Customer no Stripe se necessário
+            $customerId = $this->getOrCreateStripeCustomer($mainUser);
 
             // Create PaymentIntent via Stripe
             $paymentIntent = $this->stripeService->createPaymentIntent(
                 $amountInCents,
                 [
+                    'customer' => $customerId,
                     'user_id' => (string) $mainUser->id,
-                    'type' => 'voice_credits_recharge',
-                    'credits_amount' => (string) $amount,
+                    'transaction_type' => 'credit_recharge',
+                    'amount' => (string) $amount,
                 ],
                 'usd'
             );
+
+            Log::info('Payment Intent created for credit recharge', [
+                'user_id' => $mainUser->id,
+                'amount' => $amount,
+                'payment_intent_id' => $paymentIntent->id
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -232,6 +257,109 @@ class VoiceCallsController extends Controller
                 'success' => false,
                 'message' => 'Error creating payment intent: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Valida se pode realizar recarga de créditos
+     * ⚠️ CRÍTICO: Implementar ANTES de criar Payment Intent
+     */
+    protected function validateCreditRecharge($user): array
+    {
+        // 1. Validar amount mínimo
+        // (já validado no request, mas pode adicionar lógica adicional)
+
+        // 2. Buscar subscription ativa
+        $subscription = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where(function($q) {
+                $q->whereNull('stripe_status')
+                  ->orWhereIn('stripe_status', ['active', 'trialing']);
+            })
+            ->first();
+
+        if (!$subscription) {
+            return [
+                'valid' => false,
+                'message' => 'Your plan is inactive. Please resolve payment to use AI Voice Service.',
+                'code' => 'plan_inactive'
+            ];
+        }
+
+        // 3. Validar serviço de IA ativo na subscription
+        $aiServiceItem = SubscriptionItem::where('subscription_id', $subscription->id)
+            ->where('item_type', 'ai_voice_service')
+            ->first();
+
+        if (!$aiServiceItem) {
+            return [
+                'valid' => false,
+                'message' => 'Activate AI Voice Service to add credits.',
+                'code' => 'service_not_active'
+            ];
+        }
+
+        // 4. Validação dupla: verificar status no Stripe se subscription tem stripe_subscription_id
+        if ($subscription->stripe_subscription_id) {
+            try {
+                $stripeSubscription = $this->stripeService->retrieveSubscription($subscription->stripe_subscription_id);
+                
+                if (!in_array($stripeSubscription->status, ['active', 'trialing'])) {
+                    return [
+                        'valid' => false,
+                        'message' => 'Recharge blocked: service unavailable at this time.',
+                        'code' => 'stripe_subscription_inactive'
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error checking Stripe subscription status', [
+                    'subscription_id' => $subscription->stripe_subscription_id,
+                    'error' => $e->getMessage()
+                ]);
+                // Continuar mesmo com erro (pode ser temporário)
+            }
+        }
+
+        // Todas validações passaram
+        return [
+            'valid' => true,
+            'message' => 'Validation passed'
+        ];
+    }
+
+    /**
+     * Obtém ou cria Customer no Stripe
+     */
+    protected function getOrCreateStripeCustomer($user): ?string
+    {
+        // Se já tem customer_id, retornar
+        if ($user->stripe_customer_id) {
+            return $user->stripe_customer_id;
+        }
+
+        // Criar customer no Stripe
+        try {
+            $customer = $this->stripeService->createCustomer([
+                'email' => $user->email,
+                'name' => $user->name,
+                'metadata' => [
+                    'internal_user_id' => (string) $user->id,
+                    'user_type' => 'owner',
+                ]
+            ]);
+
+            // Salvar customer_id
+            $user->update([
+                'stripe_customer_id' => $customer->id
+            ]);
+
+            return $customer->id;
+        } catch (\Exception $e) {
+            Log::error('Error creating Stripe customer', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 
