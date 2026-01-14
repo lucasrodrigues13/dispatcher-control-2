@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\LoadPickupConfirmation;
 use App\Models\Load;
 use App\Models\Subscription;
-use App\Models\SubscriptionItem;
 use App\Services\BillingService;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
@@ -286,12 +285,9 @@ class VoiceCallsController extends Controller
             ];
         }
 
-        // 3. Validar serviço de IA ativo na subscription
-        $aiServiceItem = SubscriptionItem::where('subscription_id', $subscription->id)
-            ->where('item_type', 'ai_voice_service')
-            ->first();
-
-        if (!$aiServiceItem) {
+        // 3. Validar serviço de IA ativo no plano
+        // Usar o método do BillingService que verifica corretamente se o plano tem o serviço
+        if (!$this->billingService->hasAiVoiceService($user)) {
             return [
                 'valid' => false,
                 'message' => 'Activate AI Voice Service to add credits.',

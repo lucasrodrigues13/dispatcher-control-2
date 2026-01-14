@@ -16,6 +16,19 @@
                     </div>
                 </div>
                 <div class="card-body p-4">
+                    <!-- Error Alert - Hidden by default -->
+                    <div id="error-alert" class="alert alert-danger alert-dismissible fade show d-none mb-4" role="alert">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3 mt-1">
+                                <i class="fas fa-exclamation-circle fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span id="error-alert-message"></span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </div>
+
                     <!-- Current Balance -->
                     <div class="alert alert-info mb-4">
                         <div class="d-flex justify-content-between align-items-center">
@@ -68,7 +81,7 @@
 
                         <!-- Payment Method -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">Payment Method</label>
+                            <label class="form-label fw-bold">Payment Method <span class="text-danger">*</span></label>
                             <div id="card-element" class="form-control p-3" style="height: 60px;">
                                 <!-- Stripe Elements will create input fields here -->
                             </div>
@@ -133,20 +146,6 @@
                             Back to Voice Calls
                         </a>
                     </div>
-
-                    <!-- Error Message -->
-                    <div id="payment-error" class="d-none">
-                        <div class="alert alert-danger" role="alert">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <span id="error-message"></span>
-                            </div>
-                        </div>
-                        <button onclick="resetForm()" class="btn btn-secondary w-100">
-                            <i class="fas fa-redo me-2"></i>
-                            Try Again
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -158,13 +157,32 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Function to show error in the standard location
+    function showError(message) {
+        const errorAlert = document.getElementById('error-alert');
+        const errorMessage = document.getElementById('error-alert-message');
+        if (errorAlert && errorMessage) {
+            errorMessage.textContent = message;
+            errorAlert.classList.remove('d-none');
+            // Scroll to error
+            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // Function to hide error
+    function hideError() {
+        const errorAlert = document.getElementById('error-alert');
+        if (errorAlert) {
+            errorAlert.classList.add('d-none');
+        }
+    }
+
     const stripeKey = "{{ config('services.stripe.key') }}";
     
     // Verificar se a chave do Stripe está configurada
     if (!stripeKey || stripeKey.trim() === '') {
+        showError('Stripe is not configured. Please contact support.');
         document.getElementById('recharge-form').classList.add('d-none');
-        document.getElementById('payment-error').classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Stripe is not configured. Please contact support.';
         return;
     }
 
@@ -205,9 +223,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } catch (error) {
         console.error('Error initializing Stripe:', error);
+        showError('Error initializing payment system: ' + error.message);
         document.getElementById('recharge-form').classList.add('d-none');
-        document.getElementById('payment-error').classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Error initializing payment system: ' + error.message;
         return;
     }
 
@@ -255,9 +272,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } catch (error) {
         console.error('Error mounting card element:', error);
+        showError('Error loading payment form: ' + error.message);
         document.getElementById('recharge-form').classList.add('d-none');
-        document.getElementById('payment-error').classList.remove('d-none');
-        document.getElementById('error-message').textContent = 'Error loading payment form: ' + error.message;
         return;
     }
 
@@ -268,9 +284,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const amount = parseFloat(amountInput.value);
         
+        // Hide previous errors
+        hideError();
+        document.getElementById('amount-error').textContent = '';
+
         // Validate amount
         if (!amount || amount < 10) {
-            document.getElementById('amount-error').textContent = 'Minimum amount is $10.00';
+            const errorMsg = 'Minimum amount is $10.00';
+            document.getElementById('amount-error').textContent = errorMsg;
+            showError(errorMsg);
             return;
         }
 
@@ -301,7 +323,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
 
                 if (!data.success) {
-                    throw new Error(data.message || 'Failed to create payment intent');
+                    const errorMessage = data.message || 'Failed to create payment intent';
+                    showError(errorMessage);
+                    throw new Error(errorMessage);
                 }
 
                 paymentIntentClientSecret = data.client_secret;
@@ -324,7 +348,9 @@ document.addEventListener('DOMContentLoaded', function() {
             );
 
             if (stripeError) {
-                throw new Error(stripeError.message);
+                const errorMessage = stripeError.message || 'Payment failed';
+                showError(errorMessage);
+                throw new Error(errorMessage);
             }
 
             // Step 3: Process payment on backend
@@ -344,10 +370,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const processData = await processResponse.json();
 
             if (!processData.success) {
-                throw new Error(processData.message || 'Failed to process payment');
+                const errorMessage = processData.message || 'Failed to process payment';
+                showError(errorMessage);
+                throw new Error(errorMessage);
             }
 
             // Success!
+            hideError(); // Hide any previous errors
             form.classList.add('d-none');
             document.getElementById('payment-success').classList.remove('d-none');
             document.getElementById('credits-added').textContent = '$' + amount.toFixed(2);
@@ -356,36 +385,16 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error:', error);
             
-            // Show error
-            form.classList.add('d-none');
-            document.getElementById('payment-error').classList.remove('d-none');
-            document.getElementById('error-message').textContent = error.message || 'An error occurred while processing your payment. Please try again.';
+            // Show error in standard location
+            // Note: Some errors may have been shown already, but this ensures all errors are displayed
+            showError(error.message || 'An error occurred while processing your payment. Please try again.');
 
-            // Re-enable form
+            // Re-enable form (keep form visible)
             submitButton.disabled = false;
             buttonText.classList.remove('d-none');
             spinner.classList.add('d-none');
         }
     });
-
-    function resetForm() {
-        document.getElementById('payment-error').classList.add('d-none');
-        document.getElementById('recharge-form').classList.remove('d-none');
-        paymentIntentClientSecret = null;
-        
-        const submitButton = document.getElementById('submit-button');
-        const buttonText = document.getElementById('button-text');
-        const spinner = document.getElementById('spinner');
-        
-        submitButton.disabled = false;
-        buttonText.classList.remove('d-none');
-        spinner.classList.add('d-none');
-        
-        // Clear card element
-        if (cardElement) {
-            cardElement.clear();
-        }
-    }
 });
 </script>
 @endsection
